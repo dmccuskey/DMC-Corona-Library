@@ -7,6 +7,16 @@ The DMC Corona Library is a collection of classes and utilities for use with Lua
 
 ### dmc_object.lua ###
 
+This file contains the base class Object which is intended to be used as the top-most class when doing object oriented programming in Lua and the Corona SDK.
+When doing OOP, this class provides:
+
+* simple structure to help organize code and facilitate optimizations when doing OOP in Lua and the Corona SDK
+* super() and superCall() functions to access super classes and methods
+* object printing support
+* an API similar to Corona objects
+
+Documentation: http://docs.davidmccuskey.com/display/docs/dmc_object.lua
+
 
 ### dmc_buttons.lua ###
 
