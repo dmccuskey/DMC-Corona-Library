@@ -2,6 +2,11 @@
 
 The DMC Corona Library is a collection of classes and utilities for use with Lua and Corona SDK.
 
+
+Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
+
+
+
 ## Current Files ##
 
 
