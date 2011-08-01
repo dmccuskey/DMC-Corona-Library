@@ -10,6 +10,15 @@ The DMC Corona Library is a collection of classes and utilities for use with Lua
 
 ### dmc_buttons.lua ###
 
+This file contains classes to create different types of graphical buttons and button groups. It can create:
+
+* a Push button with optional text label
+* a Radio/Toggle button (on/off state) with optional text label
+* Toggle Group which allows either none or one selection of a group of buttons
+•* Radio Group which allows single selection of a group of buttons
+
+Documentation: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
+
 
 ### dmc_utils.lua ###
 
