@@ -30,9 +30,12 @@ This file contains classes to create different types of graphical buttons and bu
 * a Push button with optional text label
 * a Radio/Toggle button (on/off state) with optional text label
 * Toggle Group which allows either none or one selection of a group of buttons
-•* Radio Group which allows single selection of a group of buttons
+* Radio Group which allows single selection of a group of buttons
 
 Documentation: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
+
+
+_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua._
 
 
 ### dmc_utils.lua ###
