@@ -10,17 +10,18 @@ Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Lib
 ## Current Files ##
 
 
-### dmc_object.lua ###
+### dmc_objects.lua ###
 
-This file contains the base class Object which is intended to be used as the top-most class when doing object oriented programming in Lua and the Corona SDK.
+This file contains several object classes which can be used as the top-most class when doing object-oriented programming in Lua and the Corona SDK.
 When doing OOP, this class provides:
 
-* simple structure to help organize code and facilitate optimizations when doing OOP in Lua and the Corona SDK
+* a simple structure for doing OOP in Lua and Corona SDK
+* optimizations to speed up property access on objects
 * super() and superCall() functions to access super classes and methods
 * object printing support
 * an API similar to Corona objects
 
-Documentation: http://docs.davidmccuskey.com/display/docs/dmc_object.lua
+Documentation: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
 
 
 ### dmc_buttons.lua ###
