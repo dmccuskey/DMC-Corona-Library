@@ -17,11 +17,13 @@ When doing OOP, this class provides:
 
 * a simple structure for doing OOP in Lua and Corona SDK
 * optimizations to speed up property access on objects
-* super() and superCall() functions to access super classes and methods
+* superClass() and superCall() functions to access super classes and methods
 * object printing support
 * an API similar to Corona objects
 
 Documentation: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
+
+_There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. There are even several original Corona examples modified to be object oriented - this makes it easy to see how to move to an OOP style of programming._
 
 
 ### dmc_buttons.lua ###
