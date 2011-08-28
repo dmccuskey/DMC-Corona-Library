@@ -1,6 +1,6 @@
 # Overview #
 
-The DMC Corona Library is a collection of classes and utilities for use with Corona SDK. _Though it's not just for Corona - the top-level object classes can be used when developing software in just Lua._
+The DMC Corona Library is a collection of classes and utilities for use with Lua and Corona SDK.
 
 
 Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
@@ -13,7 +13,7 @@ Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Lib
 
 ### dmc_objects.lua ###
 
-This file contains several object classes which can be used as the top-most class when doing object-oriented programming in Lua and the Corona SDK.
+This file contains several object classes which can be used as the top-most class when doing object-oriented programming with Corona SDK.  _**Though it's not just for Corona - the top-level object classes can be used when developing software in just Lua.**_
 
 When doing OOP, these classes provide:
 
