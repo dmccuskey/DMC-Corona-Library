@@ -1,6 +1,6 @@
 # Overview #
 
-The DMC Corona Library is a collection of classes and utilities for use with Lua and Corona SDK.
+The DMC Corona Library is a collection of classes and utilities for use with Corona SDK. _Though it's not just for Corona - the top-level object classes can be used when developing software in just Lua._
 
 
 Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
@@ -39,14 +39,14 @@ When doing OOP, these classes provide:
 
 * **an API similar to Corona display objects**
 
-	The core Corona API has been added to some of the base classes in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
+	The core Corona API has been added to the pertinent base classes in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
 
 * **object printing support**
 
 	There is flexible, built-in support to print objects during debugging.
 
 
-&dagger; You can treat them like Corona objects 99% of the time. The other 1% is easy to understand. :)
+&dagger; You can treat them like Corona objects 99% of the time. Don't worry, the other 1% is easy to understand. :)
 
 
 **Documentation**
