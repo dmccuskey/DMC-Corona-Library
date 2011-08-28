@@ -17,6 +17,7 @@ This file contains several object classes which can be used as the top-most clas
 When doing OOP, these classes provide:
 
 * *a classical model of object oriented programming*
+
 {{dmc_objects}} is structured after the classical inheritance model, thus is easy to learn and use by people with varying levels of experience. This also helps give a solid organizational structure when using a language that is relatively unstructured.
 
 * *a simple structure for doing OOP in Lua and Corona SDK*
