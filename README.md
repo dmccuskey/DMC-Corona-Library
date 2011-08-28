@@ -27,7 +27,7 @@ When doing OOP, these classes provide:
 
 * **fast execution through structure and optimizations**
 
-	Because of the way Lua (and similar prototype-based languages) performs lookup for properties and methods, there can be a performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
+	Because of the way Lua performs lookups for properties and methods, there can be a performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
 
 * **a mechanism for getters and setters**
 
@@ -39,11 +39,11 @@ When doing OOP, these classes provide:
 
 * **an API similar to Corona display objects**
 
-	The core Corona API has been added to some of the base classes available in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
+	The core Corona API has been added to some of the base classes in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
 
 * **object printing support**
 
-	There is flexible output support built in which can help to debug when coding.
+	There is flexible, built-in support to print objects during debugging.
 
 
 &dagger; You can treat them like Corona objects 99% of the time. The other 1% is easy to understand. :)
@@ -56,7 +56,7 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_object
 _There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. There are even several original Corona examples modified to be object oriented - this makes it easy to see how to move to an OOP style of programming._
 
 
-&dagger;
+
 
 ### dmc_buttons.lua ###
 
@@ -67,10 +67,15 @@ This file contains classes to create different types of graphical buttons and bu
 * Toggle Group which allows either none or one selection of a group of buttons
 * Radio Group which allows single selection of a group of buttons
 
-Documentation: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
-
 
 _The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua._
+
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
+
+
 
 
 ### dmc_utils.lua ###
@@ -84,7 +89,11 @@ It provides these functions:
 * destroy() - generic table destruction
 * print() - multi-level object printing
 
-Documentation: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
+
+**Documentation**
+
+API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
+
 
 
 ## License ##
