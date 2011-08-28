@@ -27,7 +27,7 @@ When doing OOP, these classes provide:
 
 * **fast execution through structure and optimizations**
 
-	Because of the way Lua (and similar prototype-based languages), there can be a performance penalty when using objects with many levels of inheritance. The solution is to get object properies and methods as close to the object as possible. This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization via objects.
+	Because of the way Lua (and similar prototype-based languages) performs lookup for properties and methods, there can be a performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
 
 * **a mechanism for getters and setters**
 
@@ -39,12 +39,13 @@ When doing OOP, these classes provide:
 
 * **an API similar to Corona display objects**
 
-	The core Corona API has been added to some of the base classes available in `dmc_objects`. This allows you to (mostly) treat your objects as if they were native Corona Display Objects.
+	The core Corona API has been added to some of the base classes available in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
 
 * **object printing support**
 
 	There is flexible output support built in which can help to debug when coding.
 
+\*
 
 **Documentation**
 
