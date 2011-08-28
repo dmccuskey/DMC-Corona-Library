@@ -16,12 +16,12 @@ Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Lib
 This file contains several object classes which can be used as the top-most class when doing object-oriented programming in Lua and the Corona SDK.
 When doing OOP, these classes provide:
 
-* *a classical model of object oriented programming*
+* **a classical model of object oriented programming**
 
 	{{dmc_objects}} is structured after the classical inheritance model, thus is easy to learn and use by people with varying levels of experience. This also helps give a solid organizational structure when using a language that is relatively unstructured.
 
-* *a simple structure for doing OOP in Lua and Corona SDK*
-The framework also abstracts the details of inheritance in Lua so that both experienced and inexperienced users of the language can focus on the code being written, and not the gory details of the language. There is no need to learn about Lua {{metatables}} until you want to know. All of that is taken care of so you can get things done.
+* **a simple structure for doing OOP in Lua and Corona SDK**
+	The framework also abstracts the details of inheritance in Lua so that both experienced and inexperienced users of the language can focus on the code being written, and not the gory details of the language. There is no need to learn about Lua {{metatables}} until you want to know. All of that is taken care of so you can get things done.
 
 * *fast execution through structure and optimizations*
 Because of the way Lua (and similar prototype-based languages), there can be a performance penalty when using objects with many levels of inheritance. The solution is to get object properies and methods as close to the object as possible. This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization via objects.
