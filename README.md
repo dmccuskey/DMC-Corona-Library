@@ -45,7 +45,9 @@ When doing OOP, these classes provide:
 
 	There is flexible output support built in which can help to debug when coding.
 
-\*
+
+&dagger; You can treat them like Corona objects 99% of the time. The other 1% is easy to understand. :)
+
 
 **Documentation**
 
@@ -54,6 +56,7 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_object
 _There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. There are even several original Corona examples modified to be object oriented - this makes it easy to see how to move to an OOP style of programming._
 
 
+&dagger;
 
 ### dmc_buttons.lua ###
 
