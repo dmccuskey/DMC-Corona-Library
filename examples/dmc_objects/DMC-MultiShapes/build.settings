@@ -1,0 +1,22 @@
+-- build.settings
+
+settings =
+{
+	orientation =
+	{
+		default = "portrait",
+	},
+
+	iphone =
+	{
+		plist=
+		{
+			UIHiddenStatusBar= true,
+	        CFBundleIconFile = "Icon.png",
+	        CFBundleIconFiles = {
+	           "Icon.png",
+	           "Icon@2x.png",
+	        },
+		},
+	},
+}
