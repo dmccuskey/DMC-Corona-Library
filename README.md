@@ -60,7 +60,7 @@ Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 **Examples**
 
-There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. Among these are some original Corona examples which have been modified to use `dmc_objects` and fit into an OOP style of programming. These will make it easier to see how to move your projects to be object-oriented as well.
+There are several examples in the folder `examples/dmc_objects/` which show how to setup OOP structures in Lua. Among these are some original Corona examples which have been modified to use `dmc_objects` and fit into an OOP style of programming. These will make it easier to see how to move your projects to be object-oriented as well.
 
 
 
@@ -89,7 +89,7 @@ Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 **Examples**
 
-There are several examples in the folder `examples/dmc_objects/` which show examples of how to use the `dmc_buttons` library.
+There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library. Other examples use the button class as well - check in `examples/dmc_objects/`.
 
 
 
