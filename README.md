@@ -27,11 +27,11 @@ When doing OOP, these classes provide:
 
 * **fast execution through structure and optimizations**
 
-	Because of the way Lua performs lookups for properties and methods, there can be a performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
+	Because of the way Lua performs lookups for properties and methods, there can be a small performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
 
 * **a mechanism for getters and setters**
 
-	The object model in `dmc_objects` was built to provide getters and setters in your object classes ! Yay, getters and setters !!!
+	The object model in `dmc_objects` was built to provide getters and setters in your object classes ! Go ahead, you can say it, "Yay, getters and setters !!!"
 
 * **superClass() and superCall()**
 
@@ -75,7 +75,7 @@ This file contains classes to create different types of graphical buttons and bu
 * Radio Group which allows single selection of a group of buttons
 
 
-_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua._
+_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua. If you want an easier example of multi-level inheritance, see `examples/dmc_objects/DMC-Multishapes/`._
 
 
 **Documentation**
