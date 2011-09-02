@@ -46,7 +46,7 @@ When doing OOP, these classes provide:
 	There is flexible, built-in support to print objects during debugging.
 
 
-&dagger; You can treat them like Corona objects 99.5% of the time. Don't worry, the other 0.5% of the time is easy to understand. :)
+&dagger; You can treat them like Corona objects 99.5% of the time. Don't worry, the other 0.5% is easy to understand. :)
 
 
 **Documentation**
@@ -113,7 +113,7 @@ API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
 
 **Examples**
 
-There are no specific examples for `dmc_utils`, however the other files in this library make use of it.
+As of yet there are no specific examples for `dmc_utils`, however the other files in this library make use of it. Check them for examples.
 
 
 
