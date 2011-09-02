@@ -52,7 +52,9 @@ When doing OOP, these classes provide:
 **Documentation**
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_objects
+
 Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
+
 API: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
 
 _There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. Among these are some original Corona examples which have been modified to use `dmc_objects` and fit into an OOP style of programming. This will make it easy to see how to move your projects to be object-oriented as well._
@@ -76,7 +78,9 @@ _The code in this file is also great if you're looking for an example of multi-l
 **Documentation**
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
+
 Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
+
 API: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
 
 
