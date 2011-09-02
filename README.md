@@ -3,7 +3,7 @@
 The DMC Corona Library is a collection of classes and utilities for use with Lua and Corona SDK.
 
 
-Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
+Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
 
 
 
@@ -27,7 +27,7 @@ When doing OOP, these classes provide:
 
 * **fast execution through structure and optimizations**
 
-	Because of the way Lua performs lookups for properties and methods, there can be a small performance penalty when using objects with many levels of inheritance. The solution is to get an object's properties and methods as close to the object as possible (ie, ON the object). This framework does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by objects.
+	Because of the way Lua performs lookups for properties and methods, there can be a small performance penalty when using objects with many levels of inheritance. The solution for this is to get an object's properties and methods as close to the object as possible (ie, ON the object). `dmc_objects` does this for you so you can get the execution speed without having to sacrifice the benefit of code organization provided by object-oriented programming.
 
 * **a mechanism for getters and setters**
 
@@ -60,7 +60,7 @@ API: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
 
 **Examples**
 
-There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. Among these are some original Corona examples which have been modified to use `dmc_objects` and fit into an OOP style of programming. This will make it easy to see how to move your projects to be object-oriented as well.
+There are several examples in the folder 'examples/dmc_objects/' which show how to setup OOP structures in Lua. Among these are some original Corona examples which have been modified to use `dmc_objects` and fit into an OOP style of programming. These will make it easier to see how to move your projects to be object-oriented as well.
 
 
 
@@ -89,7 +89,7 @@ API: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
 
 **Examples**
 
-There are several examples in the folder 'examples/dmc_objects/' which show examples of how to use the `dmc_buttons` library.
+There are several examples in the folder `examples/dmc_objects/` which show examples of how to use the `dmc_buttons` library.
 
 
 
