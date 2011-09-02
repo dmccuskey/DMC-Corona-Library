@@ -23,7 +23,7 @@ When doing OOP, these classes provide:
 
 * **a simple structure for doing OOP in Lua and Corona SDK**
 
-	The framework also abstracts the details of doing inheritance in Lua so that both experienced and inexperienced users of the language can focus on the code being written, and not the gory details of the language. There is no need to learn about Lua `metatables` until you want to know. All of that is taken care of so you can get things done.
+	The framework also abstracts the details of doing inheritance in Lua so that both experienced and inexperienced users of the language can focus on the code being written, and not the gory details of the language - ie, there is no need to learn about Lua `metatables` until you want to know. All of that is taken care of so you can get things done.
 
 * **fast execution through structure and optimizations**
 
@@ -35,11 +35,11 @@ When doing OOP, these classes provide:
 
 * **superClass() and superCall()**
 
-	Among other object-related methods, `dmc_objects` has `superClass()` to access an object's parent, and `superCall()` allows you to call an overridden method on a super class !
+	Among other object-related methods, `dmc_objects` has `superClass()` to access an object's parent, and `superCall()` which allows you to call an overridden method on a super class !
 
 * **an API similar to Corona display objects**
 
-	The core Corona Object API and Corona Physics Body API have been added to the pertinent base classes in `dmc_objects`. This allows you to treat your objects as if they were native Corona Display Objects &dagger;.
+	The core Corona Object API and Corona Physics Body API have been added to the pertinent base classes in `dmc_objects`. This allows you to treat your custom objects as if they were native Corona Display Objects &dagger;.
 
 * **object printing support**
 
@@ -53,9 +53,9 @@ When doing OOP, these classes provide:
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_objects
 
-Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
-
 API: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
+
+Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 
 **Examples**
@@ -82,9 +82,9 @@ _The code in this file is also great if you're looking for an example of multi-l
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
 
-Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
-
 API: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
+
+Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 
 **Examples**
@@ -96,8 +96,7 @@ There are several examples in the folder `examples/dmc_objects/` which show exam
 
 ### dmc_utils.lua ###
 
-This file is a small, but growing list of helpful utility functions. At the moment they are mostly concerned with tables.
-It provides these functions:
+This file is a small, but growing list of helpful utility functions. At the moment they are mostly concerned with tables. It provides these functions:
 
 * extend() - copy one table into another ( similar to jQuery extend() )
 * hasOwnProperty() - check if a property is directly on an object ( similar to JavaScript hasOwnProperty )
@@ -110,6 +109,11 @@ It provides these functions:
 **Documentation**
 
 API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
+
+
+**Examples**
+
+There are no specific examples for `dmc_utils`, however the other files in this library make use of it.
 
 
 
