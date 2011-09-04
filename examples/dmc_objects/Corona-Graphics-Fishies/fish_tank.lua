@@ -55,7 +55,7 @@ end
 function FishTank:_createView()
 
 	-- we didn't use the built-in display object, because
-	-- that would have required us to change the names of the vars
+	-- that would have required us to change the names of the vars and we
 	-- wanted to keep this as much like the original code as possible
 
 	self.backgroundPortrait = display.newImage( "assets/aquariumbackgroundIPhone.jpg", 0, 0 )
