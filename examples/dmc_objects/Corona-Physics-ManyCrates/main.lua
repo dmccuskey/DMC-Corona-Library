@@ -1,21 +1,28 @@
 print(" ------------------------------------------------ ")
 
-
-local seed = os.time();
-math.randomseed( seed )
-
-
-display.setStatusBar( display.HiddenStatusBar )
-
-
--- ==========================
--- do imports
+--====================================================================--
+-- Imports
+--====================================================================--
 
 local CrateFactory = require("crates")
 
 local physics = require("physics")
 physics.start()
 
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
+local seed = os.time();
+math.randomseed( seed )
+
+display.setStatusBar( display.HiddenStatusBar )
+
+
+--====================================================================--
+-- Main
+--====================================================================--
 
 -- ==========================
 -- set background image

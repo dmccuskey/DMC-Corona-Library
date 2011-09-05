@@ -37,38 +37,40 @@ pageGroup:insert( navDisplayGroup )
 
 
 --====================================================================--
--- Create Tab Group
+-- Main
 --====================================================================--
 
+-- ==============================
+-- Create Tab Group
 
 	-----------------
 	-- button group handler
 	-----------------
 
 
-	function handleButtonGroupChange( event )
+function handleButtonGroupChange( event )
 
-		local eText = "EVENT: '" .. event.name .. "' button '" .. event.label .. "' to '" .. event.state .. "'"
-		print ( eText )
-		local button_label = event.label
+	local eText = "EVENT: '" .. event.name .. "' button '" .. event.label .. "' to '" .. event.state .. "'"
+	print ( eText )
+	local button_label = event.label
 
-		if button_label == "favorites" then
-			director:changeScene("screen-favorites")
-		elseif button_label == "recents" then
-			director:changeScene("screen-recents")
-		elseif button_label == "contacts" then
-			director:changeScene("screen-contacts")
-		elseif button_label == "keypad" then
-			director:changeScene("screen-keypad")
-		elseif button_label == "voicemail" then
-			director:changeScene("screen-voicemail")
-		end
-
-
-		--local txt = textBox.text
-		--textBox.text = eText
-		--media.playEventSound( snd_toggle_btn_id )
+	if button_label == "favorites" then
+		director:changeScene("screen-favorites")
+	elseif button_label == "recents" then
+		director:changeScene("screen-recents")
+	elseif button_label == "contacts" then
+		director:changeScene("screen-contacts")
+	elseif button_label == "keypad" then
+		director:changeScene("screen-keypad")
+	elseif button_label == "voicemail" then
+		director:changeScene("screen-voicemail")
 	end
+
+
+	--local txt = textBox.text
+	--textBox.text = eText
+	--media.playEventSound( snd_toggle_btn_id )
+end
 
 
 

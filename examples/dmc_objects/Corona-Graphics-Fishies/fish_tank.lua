@@ -1,9 +1,17 @@
 
 
+--====================================================================--
+-- Imports
+--====================================================================--
+
 local Objects = require( "dmc_objects" )
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
 
+
+--====================================================================--
+-- Fish Tank Object
+--====================================================================--
 
 local FishTank = inheritsFrom( CoronaBase )
 FishTank.NAME = "Fish Tank"
