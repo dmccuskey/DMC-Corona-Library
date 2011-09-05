@@ -49,7 +49,7 @@ local CoronaBase = Objects.CoronaBase
 
 local ButtonBase = inheritsFrom( CoronaBase )
 ButtonBase.NAME = "Button Base"
-ButtonBase._SUPPORTED_IMAGES = {}
+ButtonBase._SUPPORTED_VIEWS = nil
 
 ButtonBase._PRINT_INCLUDE = Utils.extend( CoronaBase._PRINT_INCLUDE, { '_img_info', '_img_data', '_callback' } )
 ButtonBase._PRINT_EXCLUDE = Utils.extend( CoronaBase._PRINT_EXCLUDE, {} )
@@ -79,19 +79,17 @@ ButtonBase._BASE_STYLE_CONFIG = {
 }
 
 
-function ButtonBase:new( options )
 
-	local o = self:_bless()
-	o:_init( options )
-	if ( options ) then o:_createView() end
-
-	return o
-end
+-- =============================
+-- Constructor from CoronaBase
+-- =============================
 
 
 function ButtonBase:_init( options )
 	--print( "in ButtonBase:_init()" )
 	self:superCall( "_init" )
+
+	if self._SUPPORTED_VIEWS == nil then return end
 
 	local options = options or {}
 
@@ -117,8 +115,8 @@ end
 -- setup the default parameters for each image state
 --
 function ButtonBase:_setImageInfo()
-	--print("in ButtonBase:_setImageInfo()")
-	local img_list = self._SUPPORTED_IMAGES
+
+	local img_list = self._SUPPORTED_VIEWS
 	local img_info = self._img_info
 
 	for i=1, #img_list do
@@ -136,10 +134,12 @@ end
 --
 function ButtonBase:_createView()
 
+	if self._SUPPORTED_VIEWS == nil then return end
+
 	local img_info, img_data = self._img_info, self._img_data
 	local group, grp_info, img, label
 
-	local img_list = self._SUPPORTED_IMAGES
+	local img_list = self._SUPPORTED_VIEWS
 
 	for i=1, #img_list do
 		local t = img_list[ i ] -- image string, eg 'active'
@@ -175,18 +175,13 @@ function ButtonBase:_createView()
 
 	end
 
-	-- INITIALIZE -------------------
-	-- things to do after after display items are in place
-
-	self:_initView()
-
 end
 
 function ButtonBase:destroy()
 	--print( "in ButtonBase:destroy()" )
 
 	local img_info, img_data = self._img_info, self._img_data
-	local img_list = self._SUPPORTED_IMAGES
+	local img_list = self._SUPPORTED_VIEWS
 
 	for i=1, #img_list do
 		local obj, group
@@ -218,25 +213,16 @@ function ButtonBase:destroy()
 end
 
 
--- _initView()
---
--- chance to set initial view, object states, etc
---
-function ButtonBase:_initView()
-	-- override this
-end
-
-
 
 --== PUBLIC METHODS ============================================
 
--- setX()
+-- x()
 --
 -- overridden from super
 --
 function ButtonBase.__setters:x( value )
 
-	local img_list = self._SUPPORTED_IMAGES
+	local img_list = self._SUPPORTED_VIEWS
 	local i
 
 	for i=1, #img_list do
@@ -247,13 +233,13 @@ function ButtonBase.__setters:x( value )
 
 end
 
--- setY()
+-- y()
 --
 -- overridden from super
 --
 function ButtonBase.__setters:y( value )
 
-	local img_list = self._SUPPORTED_IMAGES
+	local img_list = self._SUPPORTED_VIEWS
 	local i
 
 	for i=1, #img_list do
@@ -272,7 +258,7 @@ end
 
 local PushButton = inheritsFrom( ButtonBase )
 PushButton.NAME = "Push Button"
-PushButton._SUPPORTED_IMAGES = { "up", "down" }
+PushButton._SUPPORTED_VIEWS = { "up", "down" }
 
 
 function PushButton:_init( options )
@@ -350,7 +336,7 @@ function PushButton:_init( options )
 end
 
 
-function PushButton:_initView()
+function PushButton:_initComplete()
 
 	local img_data = self._img_data
 	img_data.up.isVisible = true
@@ -395,7 +381,7 @@ function PushButton:touch( e )
 	elseif self.isFocus then
 
 		-- check if touch is over the button
-		local bounds = self.stageBounds
+		local bounds = self.contentBounds
 		local x,y = e.x,e.y
 		local isWithinBounds =
 			bounds.xMin <= x and bounds.xMax >= x and bounds.yMin <= y and bounds.yMax >= y
@@ -445,7 +431,7 @@ end
 
 local BinaryButton = inheritsFrom( ButtonBase )
 BinaryButton.NAME = "Binary Button"
-BinaryButton._SUPPORTED_IMAGES = { 'active', 'inactive' }
+BinaryButton._SUPPORTED_VIEWS = { 'active', 'inactive' }
 
 BinaryButton.STATE_INACTIVE = "inactive"
 BinaryButton.STATE_ACTIVE = "active"
@@ -463,10 +449,8 @@ end
 
 
 function BinaryButton:_init( options )
-	--print( "in BinaryButton:_init() " .. self.NAME .. ":" .. self.id )
 
-	--self:_superCall( "_init" )
-	ButtonBase._init( self )
+	self:superCall( "_init" )
 
 	local options = options or {}
 	local img_info, img_data = self._img_info, self._img_data
@@ -539,7 +523,7 @@ function BinaryButton:_init( options )
 
 end
 
-function BinaryButton:_initView()
+function BinaryButton:_initComplete()
 
 	local img_data = self._img_data
 	img_data.active.isVisible = false
@@ -591,7 +575,7 @@ function BinaryButton:touch( e )
 	elseif self.isFocus then
 
 		-- check if touch is over the button
-		local bounds = self.stageBounds
+		local bounds = self.contentBounds
 		local x,y = e.x,e.y
 		local isWithinBounds =
 			bounds.xMin <= x and bounds.xMax >= x and bounds.yMin <= y and bounds.yMax >= y
