@@ -1,22 +1,30 @@
 print(" ------------------------------------------------ ")
 
-local seed = os.time();
-math.randomseed( seed )
-
-
-display.setStatusBar( display.HiddenStatusBar )
-
-
--- do our imports
+--====================================================================--
+-- Imports
+--====================================================================--
 
 local FishStore = require( "fish_store" )
 local FishTank = require( "fish_tank" )
 
 
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
+local seed = os.time();
+math.randomseed( seed )
+
+display.setStatusBar( display.HiddenStatusBar )
+
 -- how many fish in the tank
 
 local numFish = 10
 
+
+--====================================================================--
+-- Main
+--====================================================================--
 
 -- create our brand new fish tank
 
