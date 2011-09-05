@@ -46,7 +46,7 @@ UFO.CHANGE_TIME = 4000
 function UFO:new()
 
 	local o = self:_bless()
-	o:_init( options )
+	o:_init()
 	o:_createView()
 	o:_initComplete()
 
@@ -60,7 +60,7 @@ end
 -- _init()
 --
 -- one of the base methods to override for dmc_objects
--- put on our object properties, and start some listeners
+-- put on our object properties
 --
 function UFO:_init()
 
@@ -82,7 +82,6 @@ function UFO:_init()
 	self.vyTarget = 0
 	self.changeStart = 0
 	self.transition = nil
-
 
 end
 
