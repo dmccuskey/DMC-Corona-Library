@@ -640,8 +640,8 @@ function CoronaBase:rotate( ... )
 end
 -- scale( sx, sy )
 --
-function CoronaBase:scale( x, y )
-	self.display:scale( x, y )
+function CoronaBase:scale( ... )
+	self.display:scale( ... )
 end
 function CoronaBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
