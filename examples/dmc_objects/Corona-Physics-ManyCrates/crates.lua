@@ -18,11 +18,15 @@ local CrateBase = inheritsFrom( CoronaBase )
 CrateBase.IMAGE_SRC = nil
 
 
+-- don't actually need to have our constructor because
+-- functionality comes from CoronaBase
+--
 function CrateBase:new()
 
 	local o = self:_bless()
 	o:_init()
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end

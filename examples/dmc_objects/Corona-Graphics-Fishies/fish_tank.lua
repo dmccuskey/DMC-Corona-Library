@@ -14,14 +14,21 @@ FishTank.SOUND = audio.loadSound( "assets/bubble_strong_wav.wav" )
 
 
 
-function FishTank:new()
+--[[
+-- don't actually need to have our constructor because
+-- functionality comes from CoronaBase
+-- it's just here for reference
+--
+function FishTank:new( options )
 
 	local o = self:_bless()
-	o:_init()
+	o:_init( options )
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end
+--]]
 
 
 
@@ -42,14 +49,7 @@ function FishTank:_init()
 	self.container = nil
 	self.theFish = {}
 
-
-	-- add some event listeners for those events we'd like to know about
-
-	Runtime:addEventListener( "enterFrame", self )
-	Runtime:addEventListener( "orientation", self )
-
 end
-
 
 
 function FishTank:_createView()
@@ -70,6 +70,15 @@ function FishTank:_createView()
 
 end
 
+
+function FishTank:_initComplete()
+
+	-- add some event listeners for those events we'd like to know about
+
+	Runtime:addEventListener( "enterFrame", self )
+	Runtime:addEventListener( "orientation", self )
+
+end
 
 
 function FishTank:addFish( fish )

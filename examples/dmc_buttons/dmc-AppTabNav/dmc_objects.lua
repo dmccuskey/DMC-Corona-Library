@@ -310,31 +310,30 @@ function CoronaBase:new( options )
 	local o = self:_bless()
 	o:_init( options )
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end
 
 
 -- _init()
--- initialize the object by taking on options and setting the display
+-- initialize the object - setting the display
 --
 function CoronaBase:_init( options )
 
-	-- add new properties specific to our class
+	-- == Create Properties ==
+
+	-- has-a - Corona display object
 	self.display = nil
 
-	-- add passed in properties
-	if options then Utils.extend( options, self ) end
-
 	-- create our class display container
-	local d = self:_createDisplay()
-	self:_setDisplay( d )
+	self:_setDisplay( display.newGroup() )
 
 end
 
 
 -- _createView()
--- method where any visual items specific to object are created
+-- create any visual items specific to object
 -- they are then put into the Corona display object
 --
 function CoronaBase:_createView()
@@ -342,19 +341,23 @@ function CoronaBase:_createView()
 end
 
 
--- _createDisplay()
--- create and return the root display object
+-- _initComplete()
+-- any setup after object is done being created
 --
-function CoronaBase:_createDisplay()
-	return display.newGroup()
+function CoronaBase:_initComplete()
+	-- OVERRIDE THIS
 end
 
 
--- _setDisplay( obj )
--- set the object to the display property
+-- _setDisplay( displayObject )
+-- set the display property to incoming display object
+-- remove current if already set, only check direct property, not hierarchy
 --
-function CoronaBase:_setDisplay( obj )
-	self.display = obj
+function CoronaBase:_setDisplay( displayObject )
+	if rawget( self, 'display' ) ~= nil then
+		self.display:removeSelf()
+	end
+	self.display = displayObject
 end
 
 

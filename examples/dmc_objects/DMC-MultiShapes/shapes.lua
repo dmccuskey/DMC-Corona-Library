@@ -20,8 +20,8 @@ Shape.NAME = "Shape Base"
 Shape.TRANSPARENT = { 0, 0, 0, 0 }
 Shape.STROKE_WIDTH = 5
 
-Shape.P_LIST1 = {}
-Shape.P_LIST2 = {}
+Shape.P_LIST1 = nil
+Shape.P_LIST2 = nil
 
 
 -- Shape constructor
@@ -29,8 +29,9 @@ Shape.P_LIST2 = {}
 function Shape:new( options )
 
 	local o = self:_bless()
-	o:_init()
-	if options then o:_createView() end
+	o:_init( options )
+	o:_createView()
+	o:_initComplete()
 
 	return o
 end
@@ -52,12 +53,17 @@ end
 
 function Shape:_createView()
 
-	local d = display.newLine( unpack( self.P_LIST1 ) )
-	d:append( unpack( self.P_LIST2 ) )
-	self:_setDisplay( d )
+	local p_list1 = self.P_LIST1
+	local p_list2 = self.P_LIST2
 
-	d:setColor( unpack( self.color ) )
-	d.width = self.STROKE_WIDTH
+	if p_list1 and p_list2 then
+		local d = display.newLine( unpack( p_list1 ) )
+		d:append( unpack( p_list2 ) )
+		self:_setDisplay( d )
+
+		d:setColor( unpack( self.color ) )
+		d.width = self.STROKE_WIDTH
+	end
 
 end
 
@@ -76,8 +82,8 @@ Square.P_LIST1 = { 0, 0, 40, 40 }
 function Square:_createView()
 
 	local d = display.newRect( unpack( self.P_LIST1 ) )
-
 	self:_setDisplay( d )
+
 	d:setStrokeColor( unpack( self.color ) )
 	d:setFillColor( unpack( Shape.TRANSPARENT ) )
 	d.strokeWidth = self.STROKE_WIDTH

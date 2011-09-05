@@ -20,15 +20,21 @@ Fish.file1 = "assets/fish.small.red.png"
 Fish.file2 = "assets/fish.small.blue.png"
 
 
-function Fish:new()
+--[[
+-- don't actually need to have our constructor because
+-- functionality comes from CoronaBase
+-- it's just here for reference
+--
+function Fish:new( options )
 
 	local o = self:_bless()
-	o:_init()
+	o:_init( options )
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end
-
+--]]
 
 
 function Fish:_init()
@@ -40,12 +46,6 @@ function Fish:_init()
 	-- assign each fish a random velocity
 	self.vx = math.random( 1, 5 )
 	self.vy = math.random( -2, 2 )
-
-
-	-- add some event listeners for those events we'd like to know about
-
-	self:addEventListener( "touch", self )
-	Runtime:addEventListener( "orientation", self )
 
 end
 
@@ -62,6 +62,16 @@ function Fish:_createView()
 	img = display.newImage( Fish.file2 )
 	img.isVisible = false
 	self:insert( img, true )
+
+end
+
+
+function Fish:_initComplete()
+
+	-- add some event listeners for those events we'd like to know about
+
+	self:addEventListener( "touch", self )
+	Runtime:addEventListener( "orientation", self )
 
 end
 

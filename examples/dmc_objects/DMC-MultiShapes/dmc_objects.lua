@@ -310,31 +310,30 @@ function CoronaBase:new( options )
 	local o = self:_bless()
 	o:_init( options )
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end
 
 
 -- _init()
--- initialize the object by taking on options and setting the display
+-- initialize the object - setting the display
 --
 function CoronaBase:_init( options )
 
-	-- add new properties specific to our class
+	-- == Create Properties ==
+
+	-- has-a - Corona display object
 	self.display = nil
 
-	-- add passed in properties
-	if options then Utils.extend( options, self ) end
-
 	-- create our class display container
-	local d = self:_createDisplay()
-	self:_setDisplay( d )
+	self:_setDisplay( display.newGroup() )
 
 end
 
 
 -- _createView()
--- method where any visual items specific to object are created
+-- create any visual items specific to object
 -- they are then put into the Corona display object
 --
 function CoronaBase:_createView()
@@ -342,19 +341,23 @@ function CoronaBase:_createView()
 end
 
 
--- _createDisplay()
--- create and return the root display object
+-- _initComplete()
+-- any setup after object is done being created
 --
-function CoronaBase:_createDisplay()
-	return display.newGroup()
+function CoronaBase:_initComplete()
+	-- OVERRIDE THIS
 end
 
 
--- _setDisplay( obj )
--- set the object to the display property
+-- _setDisplay( displayObject )
+-- set the display property to incoming display object
+-- remove current if already set, only check direct property, not hierarchy
 --
-function CoronaBase:_setDisplay( obj )
-	self.display = obj
+function CoronaBase:_setDisplay( displayObject )
+	if rawget( self, 'display' ) ~= nil then
+		self.display:removeSelf()
+	end
+	self.display = displayObject
 end
 
 
@@ -367,67 +370,305 @@ function CoronaBase:destroy()
 end
 
 
--- Getters and Setters
-
-
-function CoronaBase.__getters:x()
-	return self.display.x
-end
-function CoronaBase.__setters:x( value )
-	self.display.x = value
-end
-function CoronaBase.__getters:y()
-	return self.display.y
-end
-function CoronaBase.__setters:y( value )
-	self.display.y = value
-end
-
-function CoronaBase.__getters:stageBounds()
-	return self.display.stageBounds
-end
-function CoronaBase.__getters:contentBounds()
-	return self.display.contentBounds
-end
-
-
-
 function CoronaBase:show()
 	self.display.isVisible = true
 end
 function CoronaBase:hide()
 	self.display.isVisible = false
 end
-function CoronaBase:setWidth( value )
-	self.display.width = value
+
+
+--== Corona Specific Properties and Methods ==--
+
+
+--= DISPLAY GROUP =--
+
+-- Properties --
+
+-- numChildren
+--
+function CoronaBase.__getters:numChildren()
+	return self.display.numChildren
 end
-function CoronaBase:setHeight( value )
+
+
+-- Methods --
+
+-- insert( [index,] child, [, resetTransform]  )
+--
+function CoronaBase:insert( ... )
+	self.display:insert( ... )
+end
+-- remove( indexOrChild )
+--
+function CoronaBase:remove( ... )
+	self.display:remove( ... )
+end
+
+
+
+--= CORONA OBJECT =--
+
+-- Properties
+
+-- alpha
+--
+function CoronaBase.__getters:alpha()
+	return self.display.alpha
+end
+function CoronaBase.__setters:alpha( value )
+	self.display.alpha = value
+end
+-- contentBounds
+--
+function CoronaBase.__getters:contentBounds()
+	return self.display.contentBounds
+end
+-- contentHeight
+--
+function CoronaBase.__getters:contentHeight()
+	return self.display.contentHeight
+end
+-- contentWidth
+--
+function CoronaBase.__getters:contentWidth()
+	return self.display.contentWidth
+end
+-- height
+--
+function CoronaBase.__getters:height()
+	return self.display.height
+end
+function CoronaBase.__setters:height( value )
 	self.display.height = value
 end
-function CoronaBase:translate( x, y )
-	self.display:translate( x, y )
+-- isHitTestMasked
+--
+function CoronaBase.__getters:isHitTestMasked()
+	return self.display.isHitTestMasked
 end
+function CoronaBase.__setters:isHitTestMasked( value )
+	self.display.isHitTestMasked = value
+end
+-- isHitTestable
+--
+function CoronaBase.__getters:isHitTestable()
+	return self.display.isHitTestable
+end
+function CoronaBase.__setters:isHitTestable( value )
+	self.display.isHitTestable = value
+end
+-- isVisible
+--
+function CoronaBase.__getters:isVisible()
+	return self.display.isVisible
+end
+function CoronaBase.__setters:isVisible( value )
+	self.display.isVisible = value
+end
+-- maskRotation
+--
+function CoronaBase.__getters:maskRotation()
+	return self.display.maskRotation
+end
+function CoronaBase.__setters:maskRotation( value )
+	self.display.maskRotation = value
+end
+-- maskScaleX
+--
+function CoronaBase.__getters:maskScaleX()
+	return self.display.maskScaleX
+end
+function CoronaBase.__setters:maskScaleX( value )
+	self.display.maskScaleX = value
+end
+-- maskScaleY
+--
+function CoronaBase.__getters:maskScaleY()
+	return self.display.maskScaleY
+end
+function CoronaBase.__setters:maskScaleY( value )
+	self.display.maskScaleY = value
+end
+-- maskX
+--
+function CoronaBase.__getters:maskX()
+	return self.display.maskX
+end
+function CoronaBase.__setters:maskX( value )
+	self.display.maskX = value
+end
+-- maskY
+--
+function CoronaBase.__getters:maskY()
+	return self.display.maskY
+end
+function CoronaBase.__setters:maskY( value )
+	self.display.maskY = value
+end
+-- parent
+--
+function CoronaBase.__getters:parent()
+	return self.display.parent
+end
+-- rotation
+--
+function CoronaBase.__getters:rotation()
+	return self.display.rotation
+end
+function CoronaBase.__setters:rotation( value )
+	self.display.rotation = value
+end
+-- stageBounds
+--
+function CoronaBase.__getters:stageBounds()
+	print( "\nDEPRECATED: object.stageBounds - use object.contentBounds\n" )
+	return self.display.stageBounds
+end
+-- width
+--
+function CoronaBase.__getters:width()
+	return self.display.width
+end
+function CoronaBase.__setters:width( value )
+	self.display.width = value
+end
+-- x
+--
+function CoronaBase.__getters:x()
+	return self.display.x
+end
+function CoronaBase.__setters:x( value )
+	self.display.x = value
+end
+-- xOrigin
+--
+function CoronaBase.__getters:xOrigin()
+	return self.display.xOrigin
+end
+function CoronaBase.__setters:xOrigin( value )
+	self.display.xOrigin = value
+end
+-- xReference
+--
+function CoronaBase.__getters:xReference()
+	return self.display.xReference
+end
+function CoronaBase.__setters:xReference( value )
+	self.display.xReference = value
+end
+-- xScale
+--
+function CoronaBase.__getters:xScale()
+	return self.display.xScale
+end
+function CoronaBase.__setters:xScale( value )
+	self.display.xScale = value
+end
+-- y
+--
+function CoronaBase.__getters:y()
+	return self.display.y
+end
+function CoronaBase.__setters:y( value )
+	self.display.y = value
+end
+-- yOrigin
+--
+function CoronaBase.__getters:yOrigin()
+	return self.display.yOrigin
+end
+function CoronaBase.__setters:yOrigin( value )
+	self.display.yOrigin = value
+end
+-- yReference
+--
+function CoronaBase.__getters:yReference()
+	return self.display.yReference
+end
+function CoronaBase.__setters:yReference( value )
+	self.display.yReference = value
+end
+-- yScale
+--
+function CoronaBase.__getters:yScale()
+	return self.display.yScale
+end
+function CoronaBase.__setters:yScale( value )
+	self.display.yScale = value
+end
+
+
+
+-- Methods --
+
+-- addEventListener( eventName, listener )
+--
+function CoronaBase:addEventListener( ... )
+	self.display:addEventListener( ... )
+end
+-- contentToLocal( x_content, y_content )
+--
+function CoronaBase:contentToLocal( ... )
+	self.display:contentToLocal( ... )
+end
+-- dispatchEvent( event )
+--
+function CoronaBase:dispatchEvent( ... )
+	self.display:dispatchEvent( ... )
+end
+-- localToContent( x, y )
+--
+function CoronaBase:localToContent( ... )
+	self.display:localToContent( ... )
+end
+-- removeEventListener( eventName, listener )
+--
+function CoronaBase:removeEventListener( ... )
+	self.display:removeEventListener( ... )
+end
+-- removeSelf()
+--
+function CoronaBase:removeSelf()
+	print( "\nOVERRIDE: removeSelf()\n" );
+	--self.display:removeSelf()
+end
+-- rotate( deltaAngle )
+--
+function CoronaBase:rotate( ... )
+	self.display:rotate( ... )
+end
+-- scale( sx, sy )
+--
 function CoronaBase:scale( x, y )
 	self.display:scale( x, y )
 end
-function CoronaBase:insert( obj )
-	self.display:insert( obj )
+function CoronaBase:setMask( ... )
+	print( "\nWARNING: setMask( mask ) not tested \n" );
+	self.display:setMask( ... )
 end
-function CoronaBase:remove( obj )
-	self.display:remove( obj )
+-- setReferencePoint( referencePoint )
+--
+function CoronaBase:setReferencePoint( ... )
+	self.display:setReferencePoint( ... )
 end
-function CoronaBase:addEventListener( obj, func )
-	self.display:addEventListener( obj, func )
+-- toBack()
+--
+function CoronaBase:toBack()
+	self.display:toBack()
 end
-function CoronaBase:removeEventListener( obj, func )
-	self.display:removeEventListener( obj, func )
+-- toFront()
+--
+function CoronaBase:toFront()
+	self.display:toFront()
 end
-function CoronaBase:dispatchEvent( event )
-	self.display:dispatchEvent( event )
+-- translate( deltaX, deltaY )
+--
+function CoronaBase:translate( ... )
+	self.display:translate( ... )
 end
-function CoronaBase:setReferencePoint( reference )
-	self.display:setReferencePoint( reference )
-end
+
+
 
 
 
@@ -441,63 +682,129 @@ local CoronaPhysics = inheritsFrom( CoronaBase )
 CoronaPhysics.NAME = "Corona Physics"
 
 
--- Getters and Setters
+-- Properties --
 
-function CoronaBase.__getters:isAwake()
-	return self.display.isAwake
-end
-function CoronaBase.__getters:isBodyActive()
-	return self.display.isBodyActive
-end
-function CoronaBase.__getters:isBullet()
-	return self.display.isBullet
-end
-function CoronaBase.__getters:isSensor()
-	return self.display.isSensor
-end
-function CoronaBase.__getters:isSleepingAllowed()
-	return self.display.isSleepingAllowed
-end
-function CoronaBase.__getters:isFixedRotation()
-	return self.display.isFixedRotation
-end
-function CoronaBase.__getters:angularVelocity()
-	return self.display.angularVelocity
-end
-function CoronaBase.__getters:linearDamping()
-	return self.display.linearDamping
-end
+
+-- angularDamping()
+--
 function CoronaBase.__getters:angularDamping()
 	return self.display.angularDamping
 end
+function CoronaBase.__setters:angularDamping( value )
+	self.display.angularDamping = value
+end
+-- angularVelocity()
+--
+function CoronaBase.__getters:angularVelocity()
+	return self.display.angularVelocity
+end
+function CoronaBase.__setters:angularVelocity( value )
+	self.display.angularVelocity = value
+end
+-- bodyType()
+--
 function CoronaBase.__getters:bodyType()
 	return self.display.bodyType
 end
-
-
--- Methods
-
-function CoronaBase:setLinearVelocity( Vx, Vy )
-	self.display:setLinearVelocity( Vx, Vy )
+function CoronaBase.__setters:bodyType( value )
+	self.display.bodyType = value
 end
+-- isAwake()
+--
+function CoronaBase.__getters:isAwake()
+	return self.display.isAwake
+end
+function CoronaBase.__setters:isAwake( value )
+	self.display.isAwake = value
+end
+-- isBodyActive()
+--
+function CoronaBase.__getters:isBodyActive()
+	return self.display.isBodyActive
+end
+function CoronaBase.__setters:isBodyActive( value )
+	self.display.isBodyActive = value
+end
+-- isBullet()
+--
+function CoronaBase.__getters:isBullet()
+	return self.display.isBullet
+end
+function CoronaBase.__setters:isBullet( value )
+	self.display.isBullet = value
+end
+-- isFixedRotation()
+--
+function CoronaBase.__getters:isFixedRotation()
+	return self.display.isFixedRotation
+end
+function CoronaBase.__setters:isFixedRotation( value )
+	self.display.isFixedRotation = value
+end
+-- isSensor()
+--
+function CoronaBase.__getters:isSensor()
+	return self.display.isSensor
+end
+function CoronaBase.__setters:isSensor( value )
+	self.display.isSensor = value
+end
+-- isSleepingAllowed()
+--
+function CoronaBase.__getters:isSleepingAllowed()
+	return self.display.isSleepingAllowed
+end
+function CoronaBase.__setters:isSleepingAllowed( value )
+	self.display.isSleepingAllowed = value
+end
+-- linearDamping()
+--
+function CoronaBase.__getters:linearDamping()
+	return self.display.linearDamping
+end
+function CoronaBase.__setters:linearDamping( value )
+	self.display.linearDamping = value
+end
+
+
+-- Methods --
+
+-- applyAngularImpulse( appliedForce )
+--
+function CoronaBase:applyAngularImpulse( ... )
+	self.display:applyAngularImpulse( ... )
+end
+-- applyForce( xForce, yForce, bodyX, bodyY )
+--
+function CoronaBase:applyForce( ... )
+	self.display:applyForce( ... )
+end
+-- applyLinearImpulse( xForce, yForce, bodyX, bodyY )
+--
+function CoronaBase:applyLinearImpulse( ... )
+	self.display:applyLinearImpulse( ... )
+end
+-- applyTorque( appliedForce )
+--
+function CoronaBase:applyTorque( ... )
+	self.display:applyTorque( ... )
+end
+-- getLinearVelocity()
+--
 function CoronaBase:getLinearVelocity()
 	return self.display:getLinearVelocity()
 end
-function CoronaBase:applyForce( Fx, Fy, Px, Py )
-	self.display:applyForce( Fx, Fy, Px, Py )
-end
-function CoronaBase:applyTorque( force )
-	self.display:applyTorque( force )
-end
-function CoronaBase:applyLinearImpulse( Fx, Fy, Px, Py )
-	self.display:applyLinearImpulse( Fx, Fy, Px, Py )
-end
-function CoronaBase:applyAngularImpulse( force )
-	self.display:applyAngularImpulse( force )
-end
+-- resetMassData()
+--
 function CoronaBase:resetMassData()
 	self.display:resetMassData()
 end
+-- setLinearVelocity( xVelocity, yVelocity )
+--
+function CoronaBase:setLinearVelocity( ... )
+	self.display:setLinearVelocity( ... )
+end
+
 
 
 

@@ -40,13 +40,15 @@ UFO.IMG_H = 65
 UFO.TRANSITION_TIME = 1500
 UFO.CHANGE_TIME = 4000
 
+
 --==  Class constructor  ==--
 
 function UFO:new()
 
 	local o = self:_bless()
-	o:_init()
+	o:_init( options )
 	o:_createView()
+	o:_initComplete()
 
 	return o
 end
@@ -113,10 +115,20 @@ function UFO:_createView()
 	ufo_views.hot = img
 	img.isVisible = false
 
+end
+
+
+-- _initComplete()
+-- any setup after object is done being created
+--
+function UFO:_initComplete()
+
+	-- pick a direction/velocity for our UFO
+
 	self:_changeCourse()
 
 
-	-- start our actions
+	-- start our actions/listeners
 
 	timer.performWithDelay( UFO.CHANGE_TIME,
 		Utils.createObjectCallback( self, self._changeCourse ), 0 )
@@ -124,7 +136,6 @@ function UFO:_createView()
 	Runtime:addEventListener( "enterFrame", self )
 
 end
-
 
 
 -- _updateView()
