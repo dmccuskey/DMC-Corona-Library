@@ -1,9 +1,17 @@
 
 
+--====================================================================--
+-- Imports
+--====================================================================--
+
 local Objects = require( "dmc_objects" )
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
 
+
+--====================================================================--
+-- Fish Object
+--====================================================================--
 
 local Fish = inheritsFrom( CoronaBase )
 Fish.NAME = "A Fish"
@@ -98,7 +106,6 @@ function Fish:touch( event )
 end
 
 function Fish:orientation( event )
-	--print( "orienting fish: " .. event.type )
 
 	if ( event.delta ~= 0 ) then
 
@@ -119,12 +126,13 @@ end
 
 
 
-
--- let's make a Fish constructor. we can do a lot with that
+--====================================================================--
+-- Fish Store Factory
+--====================================================================--
 
 local FishStore = {}
 
-FishStore.buyFish = function( fish )
+FishStore.buyFish = function()
 	return Fish:new()
 end
 
