@@ -182,7 +182,6 @@ local ShapeFactory = {}
 function ShapeFactory.create( shape, options )
 
 	local shapeType = shape or selectRandomShape()
-	local options = options or {}
 	local s
 
 	if ( shapeType == "square" ) then
