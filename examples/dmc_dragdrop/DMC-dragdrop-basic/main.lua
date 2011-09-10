@@ -242,12 +242,12 @@ dragItem:addEventListener( "touch", dragItemTouchHandler )
 
 --== create Blue Drag Target ==--
 
-local function dragItemTouchHandler2( e )
+local function dragItemTouchHandler2( event )
 
 	if e.phase == "began" then
 
 		-- setup the item that is going to be dragged around the screen
-		local drag_source = e.target
+		local drag_source = event.target
 		local drag_info = {}
 		drag_info.target = createSquare( { 75, 75 }, color_lightblue )
 
@@ -255,7 +255,7 @@ local function dragItemTouchHandler2( e )
 		drag_info.yOffset = -30
 
 		-- now tell the Drag Manager about it
-		DragMgr:doDrag( drag_source, "blue", e, drag_info )
+		DragMgr:doDrag( drag_source, "blue", event, drag_info )
 	end
 
 	return true
