@@ -99,7 +99,6 @@ end
 --
 function DropTarget:_createView()
 
-	-- display[1]
 	local background = createSquare( { 120, 120 }, self.color )
 	background:setReferencePoint( display.CenterReferencePoint )
 	background.x = 0 ; background.y = 0
@@ -107,7 +106,6 @@ function DropTarget:_createView()
 
 	self.background = background
 
-	-- display[2]
 	local scoreboard = display.newText( "", 0, 0, native.systemFont, 24 )
 	scoreboard:setTextColor( 0, 0, 0, 255 )
 	scoreboard:setReferencePoint( display.CenterReferencePoint )
@@ -134,8 +132,7 @@ end
 -- define method handlers for each drag phase
 
 function DropTarget:dragStart( e )
-	--print("in DropTarget:dragStart")
-	local o = e.source
+
 	local data_format = e.format
 	if Utils.propertyIn( self.format, data_format ) then
 		self.background:setStrokeColor( 255, 0, 0 )
@@ -144,12 +141,10 @@ function DropTarget:dragStart( e )
 	return true
 end
 function DropTarget:dragEnter( e )
-	--print("in DropTarget:dragEnter")
 	-- must accept drag here
-	local o = e.source
+
 	local data_format = e.format
 	if Utils.propertyIn( self.format, data_format ) then
-		--print("--Drag Accepted")
 		self.background:setFillColor( unpack( color_lightgreen ) )
 		DragMgr:acceptDragDrop()
 	end
@@ -157,26 +152,24 @@ function DropTarget:dragEnter( e )
 	return true
 end
 function DropTarget:dragOver( e )
-	--print("in DropTarget:dragOver")
 
 	return true
 	end
 function DropTarget:dragDrop( e )
-	--print("in DropTarget:dragDrop")
+
 	self:_incrementScore()
 	self:dragExit( e )
 
 	return true
 end
 function DropTarget:dragExit( e )
-	--print("in DropTarget:dragExit")
+
 	self.background:setFillColor( unpack( self.color ) )
 
 	return true
 end
 function DropTarget:dragStop( e )
-	--print("in DropTarget:dragStop")
-	local o = e.source
+
 	self.background:setStrokeColor( unpack( color_grey ) )
 
 	return true
