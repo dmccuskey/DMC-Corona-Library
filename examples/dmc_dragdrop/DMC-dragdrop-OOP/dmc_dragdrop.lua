@@ -53,6 +53,30 @@ local isDisplayObject = function( object )
 end
 
 
+local color_blue = { 25, 100, 255 }
+local color_lightblue = { 90, 170, 255 }
+local color_green = { 50, 255, 50 }
+local color_lightgreen = { 170, 225, 170 }
+local color_red = { 255, 50, 50 }
+local color_lightred = { 255, 120, 120 }
+local color_grey = { 180, 180, 180 }
+local color_lightgrey = { 200, 200, 200 }
+
+-- createSquare()
+--
+-- function to help create shapes, useful for drag/drop target examples
+--
+local function createSquare( size, color )
+
+	s = display.newRect(0, 0, unpack( size ) )
+	s.strokeWidth = 3
+	s:setFillColor( unpack( color ) )
+	s:setStrokeColor( unpack( color_grey ) )
+
+	return s
+end
+
+
 
 --====================================================================--
 -- Drag Drop class
@@ -84,7 +108,7 @@ DragDrop.drop_target_accept = false
 
 
 function DragDrop:setDisplayProperty( name )
-	DragDrop.DISPLAY_PROPERTY = name
+	self.DISPLAY_PROPERTY = name
 end
 
 function DragDrop:register( obj, params )
@@ -119,12 +143,17 @@ function DragDrop:register( obj, params )
 	end
 end
 
-function DragDrop:doDrag( drag_source, format, event, drag_target_info )
+function DragDrop:doDrag( drag_op_info, event )
 
 	--== process Drag Target Info params
 
-	local drag_target_info = drag_target_info or {}
-	local drag_target = drag_target_info.target;
+	local drag_op_info = drag_op_info or {}
+
+	local size = {
+		drag_op_info.origin.width,
+		drag_op_info.origin.height
+	}
+	local drag_proxy = drag_op_info.proxy or createSquare( size, color_lightgrey );
 
 
 	--== Create data structure for this drag operation
@@ -133,50 +162,63 @@ function DragDrop:doDrag( drag_source, format, event, drag_target_info )
 		source: dragged item, Display Object / dmc_object
 		origin: dragged item origin object, Dislay Object
 		format: dragged item data format, String
+		data: any data to be sent around, <any>
 		x_offset: dragged item x-offset from touch center, Integer
 		y_offset: dragged item y-offset from touch center, Integer
 		alpha: dragged item alpha, Number
 	--]]
 	local drag_info = {}
 
-	drag_info.source = drag_target
-	drag_info.origin = drag_source
-	drag_info.format = format
-	drag_info.x_offset = drag_target_info.xOffset or 0
-	drag_info.y_offset = drag_target_info.yOffset or 0
-	drag_info.alpha = drag_target_info.alpha or 0.5
+	drag_info.proxy = drag_proxy
+	drag_info.origin = drag_op_info.origin
+	drag_info.format = drag_op_info.format
+	drag_info.data = drag_op_info.data
+	drag_info.x_offset = drag_op_info.xOffset or 0
+	drag_info.y_offset = drag_op_info.yOffset or 0
+	drag_info.alpha = drag_op_info.alpha or 0.5
 
-	DragDrop._drag_targets[ drag_target ] = drag_info
+	DragDrop._drag_targets[ drag_proxy ] = drag_info
 
 
 	--== Update the Drag Target visual item
 
-	drag_target.x = event.x + drag_info.x_offset
-	drag_target.y = event.y + drag_info.y_offset
-	drag_target.alpha = drag_info.alpha
-
-	drag_target.__is_dmc_drag = true
-	display.getCurrentStage():setFocus( drag_target )
+	drag_proxy.x = event.x + drag_info.x_offset
+	drag_proxy.y = event.y + drag_info.y_offset
+	drag_proxy.alpha = drag_info.alpha
 
 
-	-- start our drag operation
-	self:_doDragStart( drag_target )
-	self:_startListening( drag_target )
+	--== Start our drag operation
+	drag_proxy.__is_dmc_drag = true
+	display.getCurrentStage():setFocus( drag_proxy )
+
+	self:_doDragStart( drag_proxy )
+	self:_startListening( drag_proxy )
 
 end
 
-function DragDrop:_doDragStart( drag_target )
 
-	local drag_target = DragDrop._drag_targets[ drag_target ]
+function DragDrop:_createEventStructure( obj, drag_info )
+
+	local drag_info = drag_info or {}
+	local e = {
+		target = obj,
+		format = drag_info.format,
+	}
+
+	return e
+end
+
+function DragDrop:_doDragStart( drag_proxy )
+
+	local drag_info = DragDrop._drag_targets[ drag_proxy ]
 	local dragList = self._onDragStart
 	for i=1, #dragList do
 
 		local o = dragList[ i ]
 		local ds = self._registered[ o ]
 		local f = ds.dragStart
-		local e = {}
-		e.format = drag_target.format
-		e.source = o
+		local e = self:_createEventStructure( o, drag_info )
+
 		if ds.call_with_object then
 			f( o, e )
 		else
@@ -185,16 +227,17 @@ function DragDrop:_doDragStart( drag_target )
 	end
 end
 
-function DragDrop:_doDragStop()
+function DragDrop:_doDragStop( drag_proxy )
 
+	local drag_info = DragDrop._drag_targets[ drag_proxy ]
 	local dragList = self._onDragStop
 	for i=1, #dragList do
 
 		local o = dragList[ i ]
 		local ds = self._registered[ o ]
 		local f = ds.dragStop
-		local e = {}
-		e.source = o
+		local e = self:_createEventStructure( o, drag_info )
+
 		if ds.call_with_object then
 			f( o, e )
 		else
@@ -204,24 +247,24 @@ function DragDrop:_doDragStop()
 end
 
 function DragDrop:acceptDragDrop()
-	self.drop_target_accept = true
+	DragDrop.drop_target_accept = true
 end
 
 function DragDrop:touch( e )
 
-	local target = e.target
+	local proxy = e.target
 	local phase = e.phase
 	local result = false
 
-	local drag_info = DragDrop._drag_targets[ target ]
+	local drag_info = DragDrop._drag_targets[ proxy ]
 
-	if target.__is_dmc_drag then
+	if proxy.__is_dmc_drag then
 
 		if ( phase == "moved" ) then
 
 			-- keep the dragged item moving with the touch coordinates
-			target.x = e.x + drag_info.x_offset
-			target.y = e.y + drag_info.y_offset
+			proxy.x = e.x + drag_info.x_offset
+			proxy.y = e.y + drag_info.y_offset
 
 			-- see if we are over any drop targets
 			local newDropTarget = self:_searchDropTargets( e.x, e.y )
@@ -234,9 +277,8 @@ function DragDrop:touch( e )
 					local ds = self._registered[ o ]
 					local f = ds.dragOver
 					if f then
-						local e = {}
-						e.format = drag_info.format
-						e.source = o
+						local e = self:_createEventStructure( o, drag_info )
+
 						if ds.call_with_object then
 							result = f( o, e )
 						else
@@ -254,9 +296,8 @@ function DragDrop:touch( e )
 					local ds = self._registered[ o ]
 					local f = ds.dragExit
 					if f then
-						local e = {}
-						e.format = drag_info.format
-						e.source = o
+						local e = self:_createEventStructure( o, drag_info )
+
 						if ds.call_with_object then
 							result = f( o, e )
 						else
@@ -273,9 +314,8 @@ function DragDrop:touch( e )
 					local ds = self._registered[ newDropTarget ]
 					local f = ds.dragEnter
 					if f then
-						local e = {}
-						e.format = drag_info.format
-						e.source = o
+						local e = self:_createEventStructure( o, drag_info )
+
 						if ds.call_with_object then
 							result = f( ds.obj, e )
 						else
@@ -299,9 +339,8 @@ function DragDrop:touch( e )
 					local ds = self._registered[ o ]
 					local f = ds.dragDrop
 					if f then
-						local e = {}
-						e.format = drag_info.format
-						e.source = o
+						local e = self:_createEventStructure( o, drag_info )
+
 						if ds.call_with_object then
 							result = f( o, e )
 						else
@@ -311,13 +350,13 @@ function DragDrop:touch( e )
 					-- keep on Drop Target, and shrink
 					func = self:_createEndAnimation( { x=o.x, y=o.y,
 						time=DragDrop.ANIMATE_TIME_FAST,
-						resize=true, drag_target=target
+						resize=true, drag_proxy=proxy
 					})
 				else
 					-- drop not accepted, so move back to drag origin
 					func = self:_createEndAnimation({ x=drag_info.origin.x,
 						y=drag_info.origin.y, time=DragDrop.ANIMATE_TIME_SLOW,
-						resize=false, drag_target=target
+						resize=false, drag_proxy=proxy
 					})
 				end
 
@@ -326,11 +365,11 @@ function DragDrop:touch( e )
 			self.drop_target = nil
 			self.drop_target_accept = false
 
-			self:_doDragStop()
-			self:_stopListening( target )
+			self:_doDragStop( proxy )
+			self:_stopListening( proxy )
 			func()
 
-			target.__is_dmc_drag = nil
+			proxy.__is_dmc_drag = nil
 			display.getCurrentStage():setFocus( nil )
 
 		end
@@ -345,11 +384,11 @@ function DragDrop:_createEndAnimation( params )
 	local default_transition_time = 600
 	local fDelete, doFunc
 
-	local drag_target = params.drag_target
+	local drag_proxy = params.drag_proxy
 
 	-- create final removal
 	fDelete = function( e )
-		local dt = drag_target
+		local dt = drag_proxy
 		DragDrop._drag_targets[ dt ] = nil
 		dt:removeSelf()
 	end
@@ -366,21 +405,21 @@ function DragDrop:_createEndAnimation( params )
 	end
 
 	doFunc = function( e )
-		transition.to( drag_target, p )
+		transition.to( drag_proxy, p )
 	end
 
 	return doFunc
 end
 
 
-function DragDrop:_startListening( drag_target )
-	local drag_info = DragDrop._drag_targets[ drag_target ]
-	drag_info.source:addEventListener( "touch", self )
+function DragDrop:_startListening( drag_proxy )
+	local drag_info = DragDrop._drag_targets[ drag_proxy ]
+	drag_info.proxy:addEventListener( "touch", self )
 end
 
-function DragDrop:_stopListening( drag_target )
-	local drag_info = DragDrop._drag_targets[ drag_target ]
-	drag_info.source:removeEventListener( "touch", self )
+function DragDrop:_stopListening( drag_proxy )
+	local drag_info = DragDrop._drag_targets[ drag_proxy ]
+	drag_info.proxy:removeEventListener( "touch", self )
 end
 
 function DragDrop:_searchDropTargets( x, y )
