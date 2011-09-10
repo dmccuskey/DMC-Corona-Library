@@ -218,7 +218,7 @@ function DragDrop:_doDragStart( drag_proxy )
 		local ds = self._registered[ o ]
 		local f = ds.dragStart
 		local e = self:_createEventStructure( o, drag_info )
-print( o )
+
 		if ds.call_with_object then
 			f( o, e )
 		else
