@@ -143,15 +143,15 @@ function DragDrop:register( obj, params )
 	end
 end
 
-function DragDrop:doDrag( drag_op_info, event )
+function DragDrop:doDrag( drag_orgin, event, drag_op_info )
 
 	--== process Drag Target Info params
 
 	local drag_op_info = drag_op_info or {}
 
 	local size = {
-		drag_op_info.origin.width,
-		drag_op_info.origin.height
+		drag_orgin.width,
+		drag_orgin.height
 	}
 	local drag_proxy = drag_op_info.proxy or createSquare( size, color_lightgrey );
 
@@ -170,7 +170,7 @@ function DragDrop:doDrag( drag_op_info, event )
 	local drag_info = {}
 
 	drag_info.proxy = drag_proxy
-	drag_info.origin = drag_op_info.origin
+	drag_info.origin = drag_orgin
 	drag_info.format = drag_op_info.format
 	drag_info.data = drag_op_info.data
 	drag_info.x_offset = drag_op_info.xOffset or 0
@@ -203,6 +203,7 @@ function DragDrop:_createEventStructure( obj, drag_info )
 	local e = {
 		target = obj,
 		format = drag_info.format,
+		data = drag_info.data,
 	}
 
 	return e

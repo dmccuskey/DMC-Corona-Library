@@ -161,15 +161,12 @@ updateScore()
 
 local function dragItemTouchHandler( event )
 
+	local target = event.target
+
 	if event.phase == "began" then
 
-		-- setup info about the Drag Operation
-		local drag_info = {
-			origin = event.target,
-		}
-
 		-- now tell the Drag Manager about it
-		DragMgr:doDrag( drag_info, event )
+		DragMgr:doDrag( target, event )
 	end
 
 	return true

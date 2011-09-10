@@ -122,16 +122,17 @@ local function dragItemTouchHandler( event )
 
 	if event.phase == "began" then
 
+		local target = event.target
+
 		-- setup info about the drag operation
 		local drag_info = {
-			origin = event.target,
 			proxy = createSquare( { 75, 75 }, color_lightred ),
 			format = "red",
 			yOffset = -30,
 		}
 
 		-- now tell the Drag Manager about it
-		DragMgr:doDrag( drag_info, event )
+		DragMgr:doDrag( target, event, drag_info )
 	end
 
 	return true
@@ -151,16 +152,17 @@ local function dragItemTouchHandler2( event )
 
 	if event.phase == "began" then
 
+		local target = event.target
+
 		-- setup info about the drag operation
 		local drag_info = {
-			origin = event.target,
 			proxy = createSquare( { 75, 75 }, color_lightblue ),
 			format = "blue",
 			yOffset = -30,
 		}
 
 		-- now tell the Drag Manager about it
-		DragMgr:doDrag( drag_info, event )
+		DragMgr:doDrag( target, event, drag_info )
 	end
 
 	return true
