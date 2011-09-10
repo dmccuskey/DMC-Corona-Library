@@ -13,7 +13,6 @@
 -- Imports
 --=========================================================
 
-local Objects = require( "dmc_objects" )
 local DragMgr = require ( "dmc_dragdrop" )
 local Utils = require( "dmc_utils" )
 
