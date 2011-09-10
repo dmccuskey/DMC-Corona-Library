@@ -29,8 +29,6 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
-local Utils = require( "dmc_utils" )
-
 
 -- =========================================================
 -- Imports
