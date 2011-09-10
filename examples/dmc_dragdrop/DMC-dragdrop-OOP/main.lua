@@ -84,7 +84,7 @@ end
 --== Setup Drop Targets, using object-oriented code ==--
 -- For details, see the file 'drop_target.lua'
 
--- this one, Blue, accepts both Blue and Red drag notifications
+-- this one, Blue, accepts only Blue drag notifications
 local dropTarget2 = DropTarget.create( { format={ "blue" }, color=color_lightblue } )
 dropTarget2.x = 80 ; dropTarget2.y =  240
 
