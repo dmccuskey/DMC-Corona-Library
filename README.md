@@ -94,6 +94,24 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 
 
 
+### dmc_trajectory.lua ###
+
+The main intent of this module is to provide an easy way to have objects follow ballistic trajectories. The library module has a single, simple method to do this, but it also has other methods which can be used to obtain raw trajectory calculations if desired.
+
+
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
+
+
+
+**Examples**
+
+There are examples in the folder `examples/dmc_trajectory/` which show how to use the `dmc_trajectory` library.
+
+
+
 ### dmc_utils.lua ###
 
 This file is a small, but growing list of helpful utility functions. At the moment they are mostly concerned with tables. It provides these functions:

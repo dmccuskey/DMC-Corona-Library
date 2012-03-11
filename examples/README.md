@@ -48,3 +48,15 @@
 	_Even though we're using the Director library to switch screens, we control layering so that we only create one button group, but still retain Director functionality._
 
 	Tags: Director, Radio Group, custom buttons
+
+
+
+
+## Folder `dmc_trajectory/` ##
+
+* **DMC-trajectory-basic**
+
+	This is an example which shows three projectiles being simultaneously fired around a 3x3 grid.
+
+	Tags: ballistic trajectory
+
