@@ -47,33 +47,49 @@ local RAD_TO_DEG = 180 / math.pi
 -- returns a function which calculates the angle of the trajectory
 -- at a certain time in the trajectory path
 --
-local function createAngleIterator( Vx, Vy )
+local function createAngleIterator( Vx, Vy, params )
 	--print( "createAngleIterator" )
 	local func, f1, f2
 	local xP, yP -- previous
+	local adjust
+
+	params = params == nil and {} or params
+	local dir = params.direction == nil and "right" or params.direction
+
+
+	-- adjust for direction that object is facing, if necessary
+	if dir == "right" then
+		if Vx > 0 then adjust = 0 else adjust = 180 end
+	else
+		if Vx > 0 then adjust = 180 else adjust = 0 end
+	end
+
 
 	-- this one is only good for first calculation
 	f1 = function( x, y )
-		--print( "in f1", x, y )
+
 		local r2d = RAD_TO_DEG -- make a little faster ?
 
 		xP, yP = x, y -- save for next calc
 		func = f2 -- switch calc func
 
-		return math.atan( Vy / Vx ) * r2d
+		-- return negative to compensate for difference
+		-- in physics angles and Corona angles
+		return ( - math.atan( Vy / Vx ) * r2d ) + adjust
 	end
 
 	-- this will do all of the rest of the calculations
 	f2 = function( x, y )
-		--print( "in f2", x, y )
+
 		local r2d = RAD_TO_DEG -- make a little faster ?
-		local xD, yD = x - xP, yP - y
+		local xD, yD = x - xP, y - yP
 		--print( "in f2", x, xD, y, yD )
 
 		xP, yP = x, y -- save for next calc
 
-		--print( math.atan( yD / xD ) * r2d )
-		return math.atan( yD / xD ) * r2d
+		-- return negative to compensate for difference
+		-- in physics angles and Corona angles
+		return ( - math.atan( yD / xD ) * r2d ) + adjust
 	end
 
 	func = f1
@@ -115,7 +131,7 @@ local function performTransition( obj, ballistic, transition )
 	-- create iterator to rotate object
 
 	if transition.rotate == true then
-		angleIterator = createAngleIterator( Vx, Vy )
+		angleIterator = createAngleIterator( Vx, Vy, transition )
 	else
 		angleIterator = function( x, y ) return obj.rotation end
 	end
@@ -295,14 +311,15 @@ function Trajectory.calculate( params )
 	local Vy = Trajectory.Vy_Given_h( Yd )
 	local t = Trajectory.t_Given_Vy_pB_pE( Vy, pB, pE  )
 	local Vx = Trajectory.Vx_Given_t_pB_pE( t, pB, pE  )
-	local ang = math.atan( Vy / Vx ) * RAD_TO_DEG
+	local angIter = createAngleIterator( Vx, Vy, params )
+
 
 	-- results of calculation
 	return {
 		Vx = Vx,
 		Vy = Vy,
 		time = t,
-		angle = ang
+		angle = angIter() -- get first iteration
 	}
 end
 
@@ -338,7 +355,8 @@ function Trajectory.move( obj, params )
 		pB = params.pBegin,
 		pE = params.pEnd,
 		rotate = rO,
-		onComplete = params.onComplete
+		onComplete = params.onComplete,
+		direction = params.direction
 	}
 
 	-- create and run iterator to perform the transition
