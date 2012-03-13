@@ -56,7 +56,19 @@
 
 * **DMC-trajectory-basic**
 
+	Shows simple trajectory with a single object.
+
+	Tags: ballistic trajectory
+
+* **DMC-trajectory-multiple**
+
 	This is an example which shows three projectiles being simultaneously fired around a 3x3 grid.
+
+	Tags: ballistic trajectory
+
+* **DMC-trajectory-direction**
+
+	Shows example of how to setup dmc_trajectory with objects that face either left or right.
 
 	Tags: ballistic trajectory
 
