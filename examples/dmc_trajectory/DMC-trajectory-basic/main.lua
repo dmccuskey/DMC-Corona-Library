@@ -74,7 +74,7 @@ end
 
 
 -- doTransition()
--- recursive function which sets up test points with colored markers and runs a transition
+-- run the transition and cleanup
 --
 function doTransition()
 
