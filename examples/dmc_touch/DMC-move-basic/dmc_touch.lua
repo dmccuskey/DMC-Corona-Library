@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 --===================================================================--
@@ -43,6 +43,7 @@ local VERSION = "0.1.0"
 --===================================================================--
 
 local MOVE_EVENT = "move_event"
+local SWIPE_EVENT = "swipe_event"
 
 
 --===================================================================--
@@ -118,7 +119,7 @@ function checkBounds( value, bounds )
 	return v
 end
 
-function touchHandler( obj, event )
+function moveTouchHandler( obj, event )
 
 	local f, xPos, yPos
 	local dmc = obj.__dmc.touch
@@ -250,42 +251,286 @@ function touchHandler( obj, event )
 end
 
 
+function angle_given_x_y( x, y )
+
+	return math.deg( math.atan2( y, x ) )
+
+end
+
+function vector_given_x_y( x, y )
+
+	return math.floor( math.sqrt( math.pow( x, 2 ) + math.pow( y, 2 ) ) )
+
+end
+
+function direction_given_angle( angle, limit )
+	--print( "direction_given_angle" .. angle .. ":" .. limit )
+
+	local angle_abs = math.abs( angle )
+	local angle_sign = ( angle < 0 ) and -1 or 1
+	local dir
+
+	-- 0 degrees
+	if angle_abs >= 0 and angle_abs < (0 + limit) then
+		dir = "right"
+
+	-- 90 degrees, negative
+	elseif angle_sign == -1 and angle_abs > (90-limit) and angle_abs < (90+limit) then
+		dir = "up"
+
+	-- 90 degrees, positive
+	elseif angle_sign == 1 and angle_abs > (90-limit) and angle_abs < (90+limit) then
+		dir = "down"
+
+	-- 180 degrees
+	elseif angle_abs > (180-limit) and angle_abs <= 180 then
+		dir = "left"
+
+	-- default
+	else
+		dir = nil
+	end
+
+	return dir
+
+end
+
+function swipeTouchHandler( obj, event )
+	--print( "swipeTouchHandler", event )
+
+	local dmc = obj.__dmc.touch
+	local et, xDelta, yDelta, vector, angle
+
+	-- create our event to dispatch
+	local e = {
+		name = SWIPE_EVENT,
+		phase = event.phase,
+
+		target = obj,
+		direction = nil,
+		touch = {}
+	}
+
+
+	--== Start processing the Corona touch event ==--
+
+	if event.phase == 'began' then
+
+		-- fill in event and dispatch
+		et = e.touch
+		et.xStart = event.xStart
+		et.yStart = event.yStart
+		et.x = event.x
+		et.y = event.y
+
+		obj:dispatchEvent( e )
+
+		-- using hack as described here:
+		-- http://developer.anscamobile.com/reference/index/objectaddeventlistener
+		--
+		f = createObjectCallback( obj, finishPhaseBegan )
+		timer.performWithDelay( 1, f )
+
+		return true
+
+	elseif event.phase == 'moved' and dmc.isMoving == true then
+
+		xDelta = event.x - event.xStart
+		yDelta = event.y - event.yStart
+
+		vector = vector_given_x_y( xDelta, yDelta )
+		angle = angle_given_x_y( xDelta, yDelta )
+		e.swipe = {
+			angle = angle,
+			length = vector
+		}
+
+		-- fill in rest of event and dispatch
+		et = e.touch
+		et.xStart = event.xStart
+		et.yStart = event.yStart
+		et.x = event.x
+		et.y = event.y
+
+		obj:dispatchEvent( e )
+
+		return true
+
+	elseif ( event.phase == 'ended' or event.phase == 'canceled' ) then
+
+		if dmc.useStrictBounds then
+			local bounds = obj.contentBounds
+			xDelta = checkBounds( event.x, { bounds.xMin, bounds.xMax } ) - event.xStart
+			yDelta = checkBounds( event.y, { bounds.yMin, bounds.yMax } ) - event.yStart
+		else
+			xDelta = event.x - event.xStart
+			yDelta = event.y - event.yStart
+		end
+
+		vector = vector_given_x_y( xDelta, yDelta )
+		angle = angle_given_x_y( xDelta, yDelta )
+		e.swipe = {
+			angle = angle,
+			length = vector
+		}
+
+		if vector >= dmc.swipeLength then
+			e.direction = direction_given_angle( angle, dmc.limitAngle )
+		end
+
+		-- fill in rest of event and dispatch
+		et = e.touch
+		et.xStart = event.xStart
+		et.yStart = event.yStart
+		et.x = event.x
+		et.y = event.y
+
+		obj:dispatchEvent( e )
+
+		-- using hack as described here:
+		-- http://developer.anscamobile.com/reference/index/objectaddeventlistener
+		--
+		f = createObjectCallback( obj, finishPhaseEnd )
+		timer.performWithDelay( 1, f )
+
+		return true
+
+	end
+
+end
+
+
+
+
 
 --===================================================================--
 -- Touch Object
 --===================================================================--
 
+
 local Touch = {}
 
-Touch.MOVE_EVENT = MOVE_EVENT
 
+--== Constants ==--
+
+local MAX_LIMIT_ANGLE = 45
+local MIN_SWIPE_LENGTH = 10
+
+Touch.DEFAULT_LIMIT_ANGLE = 20
+Touch.DEFAULT_SWIPE_LENGTH = 150
+
+Touch.MOVE_EVENT = MOVE_EVENT
+Touch.SWIPE_EVENT = SWIPE_EVENT
+
+
+--== Functions ==--
+
+
+-- move()
+--
+-- blesses an object to have drag properties
+--
+-- @param obj a Corona-type object
+-- @param params a Lua table with modifiers
+-- @return the object which has been blessed (original), or nil on error
+--
 Touch.move = function( obj, params )
 
 	params = params or {}
 
 	-- sanity check
 	if obj.__dmc and obj.__dmc.touch then
-		print( "WARNING: only initialize move() once !" )
+		print( "WARNING: only initialize Touch once !" )
 		return nil
 	end
 
 	-- create our fancy callback and set event listener
-	local f = createObjectCallback( obj, touchHandler )
+	local f = createObjectCallback( obj, moveTouchHandler )
 	obj:addEventListener( "touch", f )
 
-	-- store special dmc_touch variables
+
+	--== Setup special dmc_touch variables ==--
+
 	if obj.__dmc == nil then obj.__dmc = {} end
 
 	local dmc = {
 		initialX = obj.x,
 		initialY = obj.y,
+		handler = f,
+
+		-- following are filled in by handler
 		offsetX = 0,
-		offsetY = 0,
-		handler = f
+		offsetY = 0
 	}
 	dmc.xBounds = params.xBounds
 	dmc.yBounds = params.yBounds
 	dmc.constrainAngle = params.constrainAngle
+
+	obj.__dmc.touch = dmc
+
+	return obj
+
+end
+
+
+-- swipe()
+--
+-- blesses an object to have swipe properties
+--
+-- @param obj a Corona-type object
+-- @param params a Lua table with modifiers
+-- @return the object which has been blessed (original), or nil on error
+--
+Touch.swipe = function( obj, params )
+
+	params = params or {}
+
+	-- sanity check
+	if obj.__dmc and obj.__dmc.touch then
+		print( "WARNING: only initialize Touch once !" )
+		return nil
+	end
+
+	-- create our fancy callback and set event listener
+	local f = createObjectCallback( obj, swipeTouchHandler )
+	obj:addEventListener( "touch", f )
+
+
+	--== Setup special dmc_touch variables ==--
+
+	if obj.__dmc == nil then obj.__dmc = {} end
+
+	local dmc = {
+		handler = f,
+
+		-- these will be initialized below
+		limitAngle = nil,
+		swipeLength = nil,
+		useStrictBounds = nil
+	}
+
+	-- process the limit angle
+	if params.limitAngle == nil then
+		dmc.limitAngle = Touch.DEFAULT_LIMIT_ANGLE
+	elseif math.abs( params.limitAngle ) > MAX_LIMIT_ANGLE then
+		dmc.limitAngle = MAX_LIMIT_ANGLE
+	else 
+		dmc.limitAngle = math.abs( params.limitAngle )
+	end
+
+	-- process the swipe length
+	if params.swipeLength == nil or params.swipeLength < MIN_SWIPE_LENGTH then
+		dmc.swipeLength = Touch.DEFAULT_SWIPE_LENGTH
+	else
+		dmc.swipeLength = params.swipeLength
+	end
+
+	-- process use of strict bounds
+	if params.useStrictBounds == nil then
+		dmc.useStrictBounds = false
+	else
+		dmc.useStrictBounds = params.useStrictBounds
+	end
 
 	obj.__dmc.touch = dmc
 
