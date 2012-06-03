@@ -35,7 +35,6 @@ end
 -- Setup, Constants
 --===================================================================--
 
-system.activate("multitouch")
 display.setStatusBar( display.HiddenStatusBar )
 
 
