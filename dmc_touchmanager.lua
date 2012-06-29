@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 --===================================================================--
@@ -59,53 +59,51 @@ system.activate("multitouch")
 -- @param obj reference to the object on which to apply the callback (optional)
 -- @return return value of callback, or false if no callback available
 --
-local createObjectTouchHandler = function( mgr, obj )
+local createObjectTouchHandler = function(mgr, obj)
 
-	return function( event )
+    return function(event)
 
-		local t = mgr:_getRegisteredTouch( event.id )
+        local t = mgr:_getRegisteredTouch(event.id)
 
-		if t then
+        if t then
 
-			if not event.target then
-				event.target = t.obj
-			else
-				event.dispatcher = event.target
-				event.target = t.obj
-			end
-			event.isFocused = true
+            if not event.target then
+                event.target = t.obj
+            else
+                event.dispatcher = event.target
+                event.target = t.obj
+            end
+            event.isFocused = true
 
-			if t.handler then
-				return t.handler( event )
-			else
-				return t.obj:touch( event )
-			end
+            if t.handler then
+                return t.handler(event)
+            else
+                return t.obj:touch(event)
+            end
 
-		else
+        else
 
-			local o = mgr:_getRegisteredObject( obj )
+            local o = mgr:_getRegisteredObject(obj)
 
-			if o then
+            if o then
 
-				if not event.target then
-					event.target = o.obj
-				else
-					event.dispatcher = event.target
-					event.target = o.obj
-				end
+                if not event.target then
+                    event.target = o.obj
+                else
+                    event.dispatcher = event.target
+                    event.target = o.obj
+                end
 
-				if o.handler then
-					return o.handler( event )
-				else
-					return o.obj:touch( event )
-				end
+                if o.handler then
+                    return o.handler(event)
+                else
+                    return o.obj:touch(event)
+                end
+            end
+        end
 
-			end
-
-		end			
-
-		return false
-	end
+        return false
+    end
 end
 
 
@@ -125,21 +123,21 @@ TouchManager._touches = {} -- keyed on event.id ; object keys: obj, handler
 
 --== Private Methods ==--
 
-function TouchManager:_getRegisteredObject( obj )
-	return self._objects[ obj ]
+function TouchManager:_getRegisteredObject(obj)
+    return self._objects[obj]
 end
 
-function TouchManager:_setRegisteredObject( obj, value )
-	self._objects[ obj ] = value
+function TouchManager:_setRegisteredObject(obj, value)
+    self._objects[obj] = value
 end
 
 
-function TouchManager:_getRegisteredTouch( event_id )
-	return self._touches[ event_id ]
+function TouchManager:_getRegisteredTouch(event_id)
+    return self._touches[event_id]
 end
 
-function TouchManager:_setRegisteredTouch( event_id, value )
-	self._touches[ event_id ] = value
+function TouchManager:_setRegisteredTouch(event_id, value)
+    self._touches[event_id] = value
 end
 
 
@@ -153,12 +151,12 @@ end
 -- @param obj a Corona-type object
 -- @param handler the function handler for the touch event (optional)
 --
-function TouchManager:register( obj, handler )
-	local r = { obj=obj, handler=handler }
-	r.callback = createObjectTouchHandler( self, obj )
+function TouchManager:register(obj, handler)
+    local r = { obj = obj, handler = handler }
+    r.callback = createObjectTouchHandler(self, obj)
 
-	self:_setRegisteredObject( obj, r )
-	obj:addEventListener( "touch", r.callback )
+    self:_setRegisteredObject(obj, r)
+    obj:addEventListener("touch", r.callback)
 end
 
 -- unregister()
@@ -168,11 +166,12 @@ end
 -- @param obj a Corona-type object
 -- @param handler the function handler for the touch event (optional)
 --
-function TouchManager:unregister( obj, handler )
-	local r = self:_getRegisteredObject( obj )
-
-	self:_setRegisteredObject( obj, nil )
-	obj:removeEventListener( "touch", r.callback )
+function TouchManager:unregister(obj, handler)
+    local r = self:_getRegisteredObject(obj)
+    if r then
+        self:_setRegisteredObject(obj, nil)
+        obj:removeEventListener("touch", r.callback)
+    end
 end
 
 
@@ -183,11 +182,11 @@ end
 -- @param obj a Corona-type object
 -- @param event_id id of the touch event
 --
-function TouchManager:setFocus( obj, event_id )
-	local o = self:_getRegisteredObject( obj )
-	local r = { obj=obj, handler=o.handler }
+function TouchManager:setFocus(obj, event_id)
+    local o = self:_getRegisteredObject(obj)
+    local r = { obj = obj, handler = o.handler }
 
-	self:_setRegisteredTouch( event_id, r )
+    self:_setRegisteredTouch(event_id, r)
 end
 
 -- unsetFocus()
@@ -197,15 +196,15 @@ end
 -- @param obj a Corona-type object
 -- @param event_id id of the touch event
 --
-function TouchManager:unsetFocus( obj, event_id )
-	self:_setRegisteredTouch( event_id, nil )
+function TouchManager:unsetFocus(obj, event_id)
+    self:_setRegisteredTouch(event_id, nil)
 end
 
 
 
 --== puts touch manager in control of global (runtime) touch events ==--
 
-Runtime:addEventListener( "touch", createObjectTouchHandler( TouchManager ) )
+Runtime:addEventListener("touch", createObjectTouchHandler(TouchManager))
 
 
 return TouchManager
