@@ -1,7 +1,7 @@
 --====================================================================--
--- Touch.swipe() Basic
+-- Gesture.swipe() Basic
 --
--- Shows simple use of Touch.swipe()
+-- Shows simple use of Gesture.swipe()
 --
 -- by David McCuskey
 --
@@ -16,7 +16,14 @@ print("---------------------------------------------------")
 -- Imports
 --===================================================================--
 
-local Touch = require( "dmc_touch" )
+local Gesture = require( "dmc_gesture" )
+
+local isSimulator = "simulator" == system.getInfo("environment")
+if isSimulator then
+	ultimote = require "Ultimote"
+	ultimote.connect()
+end
+
 
 --===================================================================--
 -- Setup, Constants
@@ -77,22 +84,23 @@ local main = function()
 	o = display.newRect( 70, 200, 180, 180 )
 	o:setFillColor(255,255,255)
 
+	print( o )
 	-- free movement
-	--Touch.swipe( o )
-	--Touch.swipe( o, { limitAngle=-55 } )
-	Touch.swipe( o, { useStrictBounds=false } )
+	Gesture.activate( o )
+	--Gesture.activate( o, { limitAngle=-55 } )
+	--Gesture.activate( o, { useStrictBounds=false } )
 
 	-- constrained by x bounds only
-	--Touch.move( o, { xBounds = { 120, 200 } } )
-	--Touch.move( o, { xBounds = { 120, nil } } )
-	--Touch.move( o, { xBounds = { nil, 200 } } )
+	--Gesture.move( o, { xBounds = { 120, 200 } } )
+	--Gesture.move( o, { xBounds = { 120, nil } } )
+	--Gesture.move( o, { xBounds = { nil, 200 } } )
 
 	-- constrained by y bounds only
-	--Touch.move( o, { yBounds = { 200, 280 } } )
-	--Touch.move( o, { yBounds = { nil, 280 } } )
-	--Touch.move( o, { yBounds = { 200, nil } } )
+	--Gesture.move( o, { yBounds = { 200, 280 } } )
+	--Gesture.move( o, { yBounds = { nil, 280 } } )
+	--Gesture.move( o, { yBounds = { 200, nil } } )
 
-	o:addEventListener( Touch.SWIPE_EVENT, handler )
+	o:addEventListener( Gesture.SWIPE_EVENT, handler )
 
 
 end

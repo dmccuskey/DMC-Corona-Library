@@ -74,7 +74,7 @@ local main = function()
 	o:setFillColor(255,100,100)
 
 	-- constrained by x & y bounds
-	Touch.move( o, { xBounds = { 120, 200 }, yBounds = { 200, 280 } } )
+	Touch.move( o, { xBounds = { nil, 200 }, yBounds = { 200, 280 } } )
 	--Touch.move( o, { xBounds = { 120, nil }, yBounds = { 200, 280 } } )
 	--Touch.move( o, { xBounds = { 120, 200 }, yBounds = { nil, 280 } } )
 
@@ -94,7 +94,7 @@ local main = function()
 	-- constrain angle w x bounds
 	--Touch.move( o, { constrainAngle = 0, xBounds = { 120, 200 } } )
 	--Touch.move( o, { constrainAngle = 15, xBounds = { 120, 200 } } )
-	Touch.move( o, { constrainAngle = -15, xBounds = { 80, 300 } } )
+	Touch.move( o, { constrainAngle = -20, xBounds = { 80, 240 } } )
 	--Touch.move( o, { constrainAngle = 25, xBounds = { nil, 200 } } )
 
 	-- constrain angle w y bounds
