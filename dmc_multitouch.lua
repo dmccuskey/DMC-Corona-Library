@@ -1186,7 +1186,10 @@ function multitouchTouchHandler( event )
 			e.distanceDelta = calcs.distanceDelta
 			e.xDelta = calcs.xDelta ; e.yDelta = calcs.yDelta
 			e.x = calcs.x ; e.y = calcs.y
-			obj:dispatchEvent( e )
+
+			if obj.dispatchEvent ~= nil then
+				obj:dispatchEvent( e )
+			end
 
 
 			if DEBUG then
@@ -1204,7 +1207,6 @@ function multitouchTouchHandler( event )
 
 		-- if we are in control of this touch ID
 		if event.isFocused then
-
 			touches[ event.id ] = event
 
 			-- process the gesture
@@ -1219,7 +1221,10 @@ function multitouchTouchHandler( event )
 				e.distanceDelta = calcs.distanceDelta
 				e.xDelta = calcs.xDelta ; e.yDelta = calcs.yDelta
 				e.x = calcs.x ; e.y = calcs.y
-				obj:dispatchEvent( e )
+
+				if obj.dispatchEvent ~= nil then
+					obj:dispatchEvent( e )
+				end
 
 				if DEBUG then
 					--print( calcs.angleDelta )
@@ -1251,7 +1256,10 @@ function multitouchTouchHandler( event )
 				e.distanceDelta = calcs.distanceDelta
 				e.xDelta = calcs.xDelta ; e.yDelta = calcs.yDelta
 				e.x = calcs.x ; e.y = calcs.y
-				obj:dispatchEvent( e )
+
+				if obj.dispatchEvent ~= nil then
+					obj:dispatchEvent( e )
+				end
 
 			end
 
