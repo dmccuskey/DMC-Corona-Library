@@ -39,6 +39,9 @@ local RAD_TO_DEG = 180 / math.pi
 -- Imports
 --===================================================================--
 
+local TouchMgr = require( "dmc_touchmanager" )
+
+
 --===================================================================--
 -- Setup, Constants
 --===================================================================--
@@ -90,19 +93,19 @@ local obj
 local debugObjs = {}
 
 -- blue spot over center of main object
-obj = display.newRect( 0, 0, 30, 30 )
+obj = display.newRect( 0, 0, 16, 16 )
 obj:setFillColor(0,0,255)
 obj:toFront()
 debugObjs["objCenter"] = obj
 
 -- green spot over midpoint center
-obj = display.newRect( 0, 0, 16, 16 )
+obj = display.newRect( 0, 0, 10, 10 )
 obj:setFillColor(0,255,0)
 obj:toFront()
 debugObjs["touchCenter"] = obj
 
 -- red spot over calculated center
-obj = display.newRect( 0, 0, 16, 16 )
+obj = display.newRect( 0, 0, 10, 10 )
 obj:setFillColor(255,0,0)
 obj:toFront()
 debugObjs["calcCenter"] = obj
@@ -211,7 +214,7 @@ local function calculateDelta( obj )
 	-- update touch center point
 	cO = debugObjs["touchCenter"]
  	cO.x = dmc.midpointTouch.x ; cO.y = dmc.midpointTouch.y
-	print( dmc.midpointTouch.x, dmc.midpointTouch.y )
+	--print( dmc.midpointTouch.x, dmc.midpointTouch.y )
 
 
 	-- calculate new distance and scale
@@ -232,29 +235,12 @@ local function calculateDelta( obj )
 	local angleDiff = newAngle - dmc.angleTouch -- negative is clockwise
 	local rotation = -( dmc.angleOrig + angleDiff )
 
-	--print( "Angles ", dmc.angleOrig, dmc.angleTouch, newAngle )
-
-
-	--local d2 = dmc.distanceCenter * scale
-	--print( "dco2: ", dmc.scaleOrig, scale, d2 )
-
-
 
 	x = dmc.midpointTouch.x + math.cos( math.rad( -( dmc.angleCenter + angleDiff ) ) ) * ( dmc.distanceCenter * scale )
 	y = dmc.midpointTouch.y + math.sin( math.rad( -( dmc.angleCenter + angleDiff ) ) ) * ( dmc.distanceCenter * scale )
-	print( "x.y: ", x, y )
+	--print( "x.y: ", x, y )
 
---[[
-	print( dmc.angleCenter )
-	print( math.rad( - dmc.angleCenter ) )
-	print( math.rad( dmc.angleCenter ) )
 
-	print( math.asin( math.rad( dmc.angleCenter ) ) )
-	print( math.asin( math.rad( - dmc.angleCenter ) ) )
-	--print( math.asin( 4/4 ) )
-	--print( math.deg( math.asin( 4/4 ) ) )
-	print( "dco2: ", d2 )
---]]
 	cO = debugObjs["calcCenter"]
 	cO.x = x
 	cO.y = y
@@ -290,7 +276,7 @@ function multitouchTouchHandler( obj, event )
 		target = obj
 	}
 
-
+	local cO
 
 
 
@@ -314,14 +300,13 @@ function multitouchTouchHandler( obj, event )
 		--f = createObjectCallback( obj, finishPhaseBegan )
 		--timer.performWithDelay( 1, f )
 
+		print( "began")
 
-
-		if not touches[ event.id ] then
+		if not touches[ event.id ] and #touchStack < 2 then
 
 			touches[ event.id ] = event
+			TouchMgr:setFocus( event.target, event.id )
 			table.insert( touchStack, 1, event.id )
-			--display.getCurrentStage():setFocus( obj, event.id )
-			display.getCurrentStage():setFocus( obj )
 
 			--[[
 			while #touchStack > 2 do
@@ -332,8 +317,13 @@ function multitouchTouchHandler( obj, event )
 
 		--print( "TS ", #touchStack )
 
-		if #touchStack >= 2 and not dmc.distanceTouch then
+		if touches[ event.id ] and #touchStack >= 2 and not dmc.distanceTouch then
 			calculateBase( obj )
+			cO = debugObjs["touchCenter"]
+			cO.isVisible = true
+			cO = debugObjs["calcCenter"]
+			cO.isVisible = true
+
 		end
 
 	elseif event.phase == 'moved' then
@@ -344,34 +334,26 @@ function multitouchTouchHandler( obj, event )
 		e.moveY = obj.y
 		--obj:dispatchEvent( e )
 
-		touches[ event.id ] = event
-		--print( "TS ", #touchStack )
+		if touches[ event.id ] then
+			touches[ event.id ] = event
 
-		if #touchStack >= 2 and dmc.distanceTouch then
-			calcs = calculateDelta( obj )
+			if #touchStack >= 2 and dmc.distanceTouch then
+				calcs = calculateDelta( obj )
 
-			if dmc.doPinch then
-				if calcs.scale > 0.25 and calcs.scale < 15 then
-					obj.xScale = calcs.scale ; obj.yScale = calcs.scale
+				if dmc.doPinch then
+					if calcs.scale > 0.25 and calcs.scale < 15 then
+						obj.xScale = calcs.scale ; obj.yScale = calcs.scale
+					end
 				end
+				obj.rotation = calcs.rotation
+
+				obj.x = calcs.x ; obj.y = calcs.y
+
+				cO = debugObjs["objCenter"]
+				cO.x = obj.x ; cO.y = obj.y
+
 			end
-			obj.rotation = calcs.rotation
-
-			obj.x = calcs.x ; obj.y = calcs.y
-
-			local cO = debugObjs["objCenter"]
-			cO.x = obj.x ; cO.y = obj.y
-
-
 		end
-
-
-		--[[
-		print("DO")
-		for k,v in pairs( touches ) do
-			print( k,v )
-		end
-		--]]
 
 
 	elseif ( event.phase == 'ended' or event.phase == 'canceled' ) then
@@ -381,13 +363,10 @@ function multitouchTouchHandler( obj, event )
 		e.moveY = obj.y
 		--obj:dispatchEvent( e )
 
-		if touches[event.id] then
+		if touches[ event.id ] then
 
-			touches[event.id] = nil
-
-			
-			--display.getCurrentStage():setFocus( obj, nil )
-			display.getCurrentStage():setFocus( nil )
+			touches[ event.id ] = nil
+			TouchMgr:unsetFocus( event.target, event.id )
 
 			local i = 1
 			while touchStack[i] do
@@ -399,22 +378,16 @@ function multitouchTouchHandler( obj, event )
 			end
 		end
 
-
-
-		if #touchStack >= 2 then
+		if touches[ event.id ] and #touchStack >= 2 then
 			calculateBase( obj )
-		else
+		elseif #touchStack < 2 then
+			cO = debugObjs["touchCenter"]
+			cO.isVisible = false
+			cO = debugObjs["calcCenter"]
+			cO.isVisible = false
+
 			dmc.distanceTouch = nil
 		end
-
-		--print( "TS ", #touchStack )
-
-
-		-- using hack as described here:
-		-- http://developer.anscamobile.com/reference/index/objectaddeventlistener
-		--
-		--f = createObjectCallback( obj, finishPhaseEnd )
-		--timer.performWithDelay( 1, f )
 
 	end
 
@@ -458,13 +431,13 @@ MultiTouch.bless = function( obj, params )
 
 	-- sanity check
 	if obj.__dmc and obj.__dmc.multitouch then
-		print( "WARNING: only initialize Touch once !" )
+		print( "WARNING: only initialize MultiTouch once !" )
 		return nil
 	end
 
 	-- create our fancy callback and set event listener
 	local f = createObjectCallback( obj, multitouchTouchHandler )
-	obj:addEventListener( "touch", f )
+	TouchMgr:register( obj, f )
 
 
 	--== Setup special dmc_touch variables ==--
@@ -486,11 +459,23 @@ MultiTouch.bless = function( obj, params )
 		angleCenter = nil
 	}
 	dmc.doPinch = params.doPinch == nil and true or params.doPinch
+	dmc.callback = f
 
 	obj.__dmc.multitouch = dmc
 
 	return obj
 
 end
+
+
+MultiTouch.unbless = function( obj )
+
+	local dmc = obj.__dmc.multitouch
+	obj.__dmc.multitouch = nil
+
+	TouchMgr:unregister( obj, dmc.callback )
+
+end
+
 
 return MultiTouch
