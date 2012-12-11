@@ -2,7 +2,7 @@
 -- dmc_gesture.lua
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_touch.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_gesture.lua
 --===================================================================--
 
 --[[
@@ -228,7 +228,7 @@ end
 
 
 --===================================================================--
--- Touch Object
+-- Gesture Object
 --===================================================================--
 
 
@@ -271,7 +271,7 @@ Gesture.activate = function( obj, params )
 	TouchMgr:register( obj, swipeTouchHandler )
 
 
-	--== Setup special dmc_touch variables ==--
+	--== Setup special dmc_gesture variables ==--
 
 	if obj.__dmc == nil then obj.__dmc = {} end
 
@@ -292,7 +292,7 @@ Gesture.activate = function( obj, params )
 		dmc.limitAngle = math.abs( params.limitAngle )
 	end
 
-	-- process the swipe length
+	-- process the swipe length 
 	if params.swipeLength == nil or params.swipeLength < MIN_SWIPE_LENGTH then
 		dmc.swipeLength = Gesture.DEFAULT_SWIPE_LENGTH
 	else
