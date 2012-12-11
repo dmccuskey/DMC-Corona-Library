@@ -43,6 +43,8 @@ local VERSION = "0.1.0"
 -- Setup, Constants
 --===================================================================--
 
+system.activate("multitouch")
+
 
 --===================================================================--
 -- Support Functions
@@ -173,9 +175,10 @@ end
 --
 function TouchManager:unregister( obj, handler )
 	local r = self:_getRegisteredObject( obj )
-
-	self:_setRegisteredObject( obj, nil )
-	obj:removeEventListener( "touch", r.callback )
+    if r then
+	    self:_setRegisteredObject( obj, nil )
+	    obj:removeEventListener( "touch", r.callback )
+    end
 end
 
 
