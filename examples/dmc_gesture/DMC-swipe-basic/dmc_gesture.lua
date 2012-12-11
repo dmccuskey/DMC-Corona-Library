@@ -313,11 +313,10 @@ Gesture.activate = function( obj, params )
 end
 
 Gesture.deactivate = function( obj )
-
 	local dmc = obj.__dmc.gesture
 	obj.__dmc.gesture = nil
 
-	TouchMgr:unregister( obj, multitouchTouchHandler )
+	TouchMgr:unregister( obj, swipeTouchHandler )
 
 end
 
