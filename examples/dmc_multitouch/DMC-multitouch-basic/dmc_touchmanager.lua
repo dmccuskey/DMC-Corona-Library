@@ -61,7 +61,6 @@ local createObjectTouchHandler = function( mgr, obj )
 
 	return function( event )
 
-	print( "\n\n in handler")
 		local t = mgr:_getRegisteredTouch( event.id )
 
 		if t then
@@ -72,7 +71,7 @@ local createObjectTouchHandler = function( mgr, obj )
 				event.dispatcher = event.target
 				event.target = t.obj
 			end
-			event.isFocus = true
+			event.isFocused = true
 
 			if t.handler then
 				return t.handler( event )
@@ -153,11 +152,16 @@ end
 -- @param handler the function handler for the touch event (optional)
 --
 function TouchManager:register( obj, handler )
-	local r = { obj=obj, handler=handler }
-	r.callback = createObjectTouchHandler( self, obj )
 
-	self:_setRegisteredObject( obj, r )
-	obj:addEventListener( "touch", r.callback )
+	local r
+	-- check to see if obj already registered
+	if not self:_getRegisteredObject( obj ) then
+
+		r = { obj=obj, handler=handler }
+		r.callback = createObjectTouchHandler( self, obj )
+		self:_setRegisteredObject( obj, r )
+		obj:addEventListener( "touch", r.callback )
+	end
 end
 
 -- unregister()
