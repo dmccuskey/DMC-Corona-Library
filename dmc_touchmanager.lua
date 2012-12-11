@@ -73,7 +73,6 @@ local createObjectTouchHandler = function( mgr, obj )
 				event.dispatcher = event.target
 				event.target = t.obj
 			end
-
 			event.isFocused = true
 
 			if t.handler then
@@ -171,9 +170,10 @@ end
 --
 function TouchManager:unregister( obj, handler )
 	local r = self:_getRegisteredObject( obj )
-
-	self:_setRegisteredObject( obj, nil )
-	obj:removeEventListener( "touch", r.callback )
+    if r then
+	    self:_setRegisteredObject( obj, nil )
+	    obj:removeEventListener( "touch", r.callback )
+    end
 end
 
 

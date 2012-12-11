@@ -94,6 +94,24 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 
 
 
+### dmc_touchmanager.lua ###
+
+This module controls how touch events are processed within an application made with the Corona SDK. Unlike the default (broken?) multi-touch behavior in the Corona SDK, it will allow you to track any amount of events and un/set focus any one of them to or from an object.
+
+
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_touchmanager
+
+
+
+**Examples**
+
+There are examples in the folder `examples/dmc_touchmanager/` which show how to use the `dmc_touchmanager` library.
+
+
+
 ### dmc_trajectory.lua ###
 
 The main intent of this module is to provide an easy way to have objects follow ballistic trajectories. The library module has a single, simple method to do this, but it also has other methods which can be used to obtain raw trajectory calculations if desired.
