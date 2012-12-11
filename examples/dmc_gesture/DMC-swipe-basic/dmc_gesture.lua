@@ -142,7 +142,9 @@ function swipeTouchHandler( event )
 		et.x = event.x
 		et.y = event.y
 
-		obj:dispatchEvent( e )
+		if obj.dispatchEvent ~= nil then
+			obj:dispatchEvent( e )
+		end
 
 		return true
 
@@ -167,7 +169,9 @@ function swipeTouchHandler( event )
 			et.x = event.x
 			et.y = event.y
 
-			obj:dispatchEvent( e )
+			if obj.dispatchEvent ~= nil then
+				obj:dispatchEvent( e )
+			end
 
 			return true
 
@@ -179,7 +183,7 @@ function swipeTouchHandler( event )
 
 			TouchMgr:unsetFocus( event.target, event.id )
 
-			if dmc.useStrictBounds then
+			if dmc ~= nil and dmc.useStrictBounds and obj ~= nil then
 				local bounds = obj.contentBounds
 				xDelta = checkBounds( event.x, { bounds.xMin, bounds.xMax } ) - event.xStart
 				yDelta = checkBounds( event.y, { bounds.yMin, bounds.yMax } ) - event.yStart
@@ -206,7 +210,10 @@ function swipeTouchHandler( event )
 			et.x = event.x
 			et.y = event.y
 
-			obj:dispatchEvent( e )
+
+			if obj.dispatchEvent ~= nil then
+				obj:dispatchEvent( e )
+			end
 
 			return true
 
