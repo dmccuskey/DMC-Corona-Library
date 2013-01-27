@@ -72,8 +72,14 @@ Response.ERROR = "io_error"
 Response.SUCCESS = "io_success"
 
 
-local function readFile( file_path )
-	local contents = ""
+-- basic read/write functions in Lua
+-- options.lines = true
+-- options.lines = false
+local function readFile( file_path, options )
+	local opts = options or {}
+	if opts.lines == nil then opts.lines = true end 
+
+	local contents = {}
 	local ret_val = {} -- an array, [ status, content ]
 
 	if file_path == nil then
@@ -81,10 +87,16 @@ local function readFile( file_path )
 	else
 		local fh, reason = io.open( file_path, "r" )
 		if fh then
-			-- read all contents of file into a string
-			local contents = fh:read( "*a" )
+			-- read all contents of file into a table
+			for line in fh:lines() do
+				table.insert( contents, line )
+			end
 			io.close( fh )
-			ret_val = { Response.SUCCESS, contents }
+			if opts.lines == true then
+				ret_val = { Response.SUCCESS, contents }
+			else
+				ret_val = { Response.SUCCESS, table.concat( contents, "" ) }
+			end
 		else
 			print("ERROR: datastore load settings: " .. tostring( reason ) )
 			ret_val = { Response.ERROR, reason }
@@ -356,7 +368,7 @@ function AutoStore:init()
 
 	-- read in config file
 	local file_path = system.pathForFile( self.DEFAULTS.CONFIG_FILE, system.ResourceDirectory )
-	local status, content = readFile( file_path )
+	local status, content = readFile( file_path, { lines=true } )
 
 	if status == Response.SUCCESS then
 		--print( "AutoStore: found config file" )
@@ -388,7 +400,7 @@ function AutoStore:load()
 	--print( "AutoStore:load" )
 
 	local file_path = system.pathForFile( self._config.data_file, system.DocumentsDirectory )
-	local status, content = readFile( file_path )
+	local status, content = readFile( file_path, { lines=false } )
 
 	if status == Response.ERROR then
 		self.is_new_file = true
