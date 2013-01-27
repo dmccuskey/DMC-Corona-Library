@@ -1,3 +1,16 @@
+--====================================================================--
+-- ufo object library
+--
+-- part of AutoStore library Advanced Example 
+--
+-- by David McCuskey
+--
+-- Sample code is MIT licensed, the same license which covers Lua itself
+-- http://en.wikipedia.org/wiki/MIT_License
+-- Copyright (C) 2013 David McCuskey. All Rights Reserved.
+--====================================================================--
+
+
 
 --====================================================================--
 -- Imports and Setup
@@ -69,36 +82,35 @@ function UFO:_init()
 	local uvs = self._ufo_views -- reference
 	local img
 
-	-- setup cool
 	img = display.newImageRect( UFO.COOL_IMG, UFO.IMG_W, UFO.IMG_H )
 	self._dg:insert( img )
 	uvs.cool = img
 	img.isVisible = false
 
-	-- setup warm
 	img = display.newImageRect( UFO.WARM_IMG, UFO.IMG_W, UFO.IMG_H )
 	self._dg:insert( img )
 	uvs.warm = img
 	img.isVisible = false
 
-	-- setup hot
 	img = display.newImageRect( UFO.HOT_IMG, UFO.IMG_W, UFO.IMG_H )
 	self._dg:insert( img )
 	uvs.hot = img
 	img.isVisible = false
 
 
-	-- Setup Actions --
+	-- Setup Event Listeners --
 
 	self._dg:addEventListener( "touch", self )
 
 
 	-- init Complete --
 
+	-- set our position from stored data
 	local d = self._data
 	self._dg.x = d.x
 	self._dg.y = d.y
 
+	-- select our proper view, from stored data
 	self:_selectTempView()
 
 end
@@ -109,6 +121,8 @@ function UFO:_selectNextTemp()
 
 	-- autostore branch
 	local d = self._data
+
+	-- changes to d.temperature will trigger an auto-update to storage !!
 
 	if d.temperature == 'cool' then
 		d.temperature = 'warm'
@@ -122,9 +136,13 @@ function UFO:_selectNextTemp()
 end
 
 
-
+-- _selectTempView()
+--
+-- selects the image to show (temperature) based on our current stored setting
+--
 function UFO:_selectTempView()
 
+	-- look inside 'magic' branch
 	local t = self._data.temperature
 
 	-- turn them all off
@@ -145,7 +163,7 @@ end
 
 -- touch()
 --
--- touch handler
+-- basic Corona touch handler
 --
 function UFO:touch( event )
 	--print( "UFO:touch" )
@@ -157,15 +175,19 @@ function UFO:touch( event )
 
 		self._has_moved = true
 
+		-- let's save into auto storage
 		local d = self._data
 		d.x = event.x
 		d.y = event.y
+
+		-- update the visual image position
 		self._dg.x = d.x
 		self._dg.y = d.y
 
 
 	else
 
+		-- if it was just a 'tap', then change color
 		if self._has_moved == false then
 			self:_selectNextTemp()
 		end

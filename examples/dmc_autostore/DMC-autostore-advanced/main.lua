@@ -34,12 +34,6 @@ display.setStatusBar( display.HiddenStatusBar )
 -- AutoStore Support
 --===================================================================--
 
--- initializeAutoStore()
---
--- check if a we have a new file (first app launch)
--- initialize data structure
--- 
-
 --[[
 our complete app structure is going to look like so:
 
@@ -52,12 +46,18 @@ our complete app structure is going to look like so:
 
 }
 --]]
+
+-- initializeAutoStore()
+--
+-- check if a we have a new file (first app launch)
+-- initialize data structure
+-- 
 local function initializeAutoStore()
 	--print( "initializeAutoStore" )
 
 	if not AutoStore.is_new_file then return end
 
-	--== new data file so let's setup the base storage structure ==--
+	--== new data file, setup the base storage structure ==--
 
 	local data = AutoStore.data
 
