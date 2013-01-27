@@ -231,9 +231,21 @@ end
 
 function TableProxy:ipairs()
 	--print( "TableProxy:ipairs" )
-	local mt = getmetatable( self )
-	local t = mt.__dmc.t
-	return ipairs( t )
+
+	-- custom iterator
+	-- @param tp ref: TableProxy (ie, self)
+	-- @param i integer: index of item to get
+	local f = function( tp, i )
+		i = i+1
+		local v = tp[i]
+		if v ~= nil then
+			return i,v
+		else
+			return nil
+		end
+	end
+
+	return f, self, 0
 end
 
 function TableProxy:pairs()
