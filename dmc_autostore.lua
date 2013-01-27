@@ -60,18 +60,17 @@ local TableProxy
 local createTableProxy
 
 
--- read/write flags
-local Response = {}
-Response.ERROR = "error"
-Response.SUCCESS = "success"
-
 
 
 --====================================================================--
 -- Base File I/O Functions
 --====================================================================--
 
--- basic read/write functions in Lua
+-- read/write flags
+local Response = {}
+Response.ERROR = "io_error"
+Response.SUCCESS = "io_success"
+
 
 local function readFile( file_path )
 	local contents = ""
@@ -323,8 +322,8 @@ AutoStore = {}
 AutoStore.DEFAULTS = {
 	CONFIG_FILE = 'dmc_autostore.cfg',
 	data_file = 'dmc_autostore.json',
-	timer_max = 2000,
-	timer_min = 6000
+	timer_min = 2000,
+	timer_max = 6000
 }
 
 function AutoStore:new()
