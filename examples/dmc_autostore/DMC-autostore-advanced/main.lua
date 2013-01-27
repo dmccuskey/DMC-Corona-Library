@@ -65,7 +65,7 @@ local function initializeAutoStore()
 	data[ 'ufos' ] = {}
 
 	-- to start with something, let's put in a single UFO
-	local ufo = { x=160, y=160, temperature='cool' }
+	local ufo = { x=240, y=160, temperature='cool' }
 
 	data.ufos:insert( ufo )
 
