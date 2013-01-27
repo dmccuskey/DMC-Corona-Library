@@ -380,12 +380,20 @@ function AutoStore:init()
 
 	if status == Response.SUCCESS then
 		--print( "AutoStore: found config file" )
-		for k, v in string.gmatch( content, "([%w_]+)%s*=%s*(%w+)" ) do
-			--print( tostring( k ) .. " = " .. tostring( v ) )
-			v = tonumber( v )
-			if v == nil then v = 0 end
-			k = string.lower( k ) -- use only lowercase inside of module
-			self._config[ k ] = v
+		local is_valid = true
+		for _, line in ipairs( content ) do
+
+			is_valid = ( string.find( line, '--', 1, true ) ~= 1 )
+
+			if is_valid then
+				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*(%w+)" ) do
+					--print( tostring( k ) .. " = " .. tostring( v ) )
+					v = tonumber( v )
+					if v == nil then v = 0 end
+					k = string.lower( k ) -- use only lowercase inside of module
+					self._config[ k ] = v
+				end
+			end
 		end
 	end
 
