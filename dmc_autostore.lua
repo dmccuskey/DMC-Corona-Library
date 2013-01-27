@@ -366,6 +366,14 @@ function AutoStore:init()
 
 	STATE_ACTIVE = false
 
+	-- start with DEFAULTS, cover  if something missing in config
+	for k, v in pairs( AutoStore.DEFAULTS ) do
+		-- if uppercase, then don't include
+		if k == string.lower( k ) then
+			self._config[ k ] = v
+		end
+	end
+
 	-- read in config file
 	local file_path = system.pathForFile( self.DEFAULTS.CONFIG_FILE, system.ResourceDirectory )
 	local status, content = readFile( file_path, { lines=true } )
@@ -381,13 +389,6 @@ function AutoStore:init()
 		end
 	end
 
-	-- add DEFAULTS if something missing, eg config file didn't load
-	for k, v in pairs( AutoStore.DEFAULTS ) do
-		-- if uppercase, then don't include
-		if k == string.lower( k ) then
-			self._config[ k ] = v
-		end
-	end
 
 	-- check
 
