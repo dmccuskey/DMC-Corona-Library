@@ -30,6 +30,11 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "0.1.0"
+
+
 --====================================================================--
 -- Imports
 --====================================================================--
