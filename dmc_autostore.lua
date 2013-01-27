@@ -364,6 +364,7 @@ function AutoStore:init()
 			--print( tostring( k ) .. " = " .. tostring( v ) )
 			v = tonumber( v )
 			if v == nil then v = 0 end
+			k = string.lower( k ) -- use only lowercase inside of module
 			self._config[ k ] = v
 		end
 	end
