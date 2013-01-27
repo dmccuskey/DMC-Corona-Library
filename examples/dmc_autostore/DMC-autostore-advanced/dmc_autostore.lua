@@ -40,7 +40,6 @@ local VERSION = "0.1.0"
 --====================================================================--
 
 local json = require ( "json" )
---local Utils = require( "dmc_utils" )
 
 
 
@@ -62,21 +61,26 @@ local TableProxy
 local createTableProxy
 
 
--- read/write flags
-local Response = {}
-Response.ERROR = "error"
-Response.SUCCESS = "success"
-
 
 
 --====================================================================--
 -- Base File I/O Functions
 --====================================================================--
 
--- basic read/write functions in Lua
+-- read/write flags
+local Response = {}
+Response.ERROR = "io_error"
+Response.SUCCESS = "io_success"
 
-local function readFile( file_path )
-	local contents = ""
+
+-- basic read/write functions in Lua
+-- options.lines = true
+-- options.lines = false
+local function readFile( file_path, options )
+	local opts = options or {}
+	if opts.lines == nil then opts.lines = true end 
+
+	local contents = {}
 	local ret_val = {} -- an array, [ status, content ]
 
 	if file_path == nil then
@@ -84,10 +88,16 @@ local function readFile( file_path )
 	else
 		local fh, reason = io.open( file_path, "r" )
 		if fh then
-			-- read all contents of file into a string
-			local contents = fh:read( "*a" )
+			-- read all contents of file into a table
+			for line in fh:lines() do
+				table.insert( contents, line )
+			end
 			io.close( fh )
-			ret_val = { Response.SUCCESS, contents }
+			if opts.lines == true then
+				ret_val = { Response.SUCCESS, contents }
+			else
+				ret_val = { Response.SUCCESS, table.concat( contents, "" ) }
+			end
 		else
 			print("ERROR: datastore load settings: " .. tostring( reason ) )
 			ret_val = { Response.ERROR, reason }
@@ -325,8 +335,8 @@ AutoStore = {}
 AutoStore.DEFAULTS = {
 	CONFIG_FILE = 'dmc_autostore.cfg',
 	data_file = 'dmc_autostore.json',
-	timer_max = 2000,
-	timer_min = 6000
+	timer_min = 2000,
+	timer_max = 6000
 }
 
 function AutoStore:new()
@@ -357,28 +367,37 @@ function AutoStore:init()
 
 	STATE_ACTIVE = false
 
-	-- read in config file
-	local file_path = system.pathForFile( self.DEFAULTS.CONFIG_FILE, system.ResourceDirectory )
-	local status, content = readFile( file_path )
-
-	if status == Response.SUCCESS then
-		--print( "AutoStore: found config file" )
-		for k, v in string.gmatch( content, "([%w_]+)%s*=%s*(%w+)" ) do
-			--print( tostring( k ) .. " = " .. tostring( v ) )
-			v = tonumber( v )
-			if v == nil then v = 0 end
-			k = string.lower( k ) -- use only lowercase inside of module
-			self._config[ k ] = v
-		end
-	end
-
-	-- add DEFAULTS if something missing, eg config file didn't load
+	-- start with DEFAULTS, cover  if something missing in config
 	for k, v in pairs( AutoStore.DEFAULTS ) do
 		-- if uppercase, then don't include
 		if k == string.lower( k ) then
 			self._config[ k ] = v
 		end
 	end
+
+	-- read in config file
+	local file_path = system.pathForFile( self.DEFAULTS.CONFIG_FILE, system.ResourceDirectory )
+	local status, content = readFile( file_path, { lines=true } )
+
+	if status == Response.SUCCESS then
+		--print( "AutoStore: found config file" )
+		local is_valid = true
+		for _, line in ipairs( content ) do
+
+			is_valid = ( string.find( line, '--', 1, true ) ~= 1 )
+
+			if is_valid then
+				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*(%w+)" ) do
+					--print( tostring( k ) .. " = " .. tostring( v ) )
+					v = tonumber( v )
+					if v == nil then v = 0 end
+					k = string.lower( k ) -- use only lowercase inside of module
+					self._config[ k ] = v
+				end
+			end
+		end
+	end
+
 
 	-- check
 
@@ -391,7 +410,7 @@ function AutoStore:load()
 	--print( "AutoStore:load" )
 
 	local file_path = system.pathForFile( self._config.data_file, system.DocumentsDirectory )
-	local status, content = readFile( file_path )
+	local status, content = readFile( file_path, { lines=false } )
 
 	if status == Response.ERROR then
 		self.is_new_file = true
@@ -405,7 +424,7 @@ function AutoStore:load()
 end
 
 function AutoStore:save()
-	print( "AutoStore:save" )
+	--print( "AutoStore:save" )
 
 	local file_path = system.pathForFile( self._config.data_file, system.DocumentsDirectory )
 	local json = json.encode( self.data:__data() )
@@ -427,7 +446,10 @@ function AutoStore:isDirty()
 
 	-- setup minimum timer
 	f = function()
-		if self._timer_max ~= nil then timer.cancel( self._timer_max ) end
+		if self._timer_max ~= nil then
+			timer.cancel( self._timer_max )
+			self._timer_max = nil
+		end
 		self._timer_min = nil
 		self:save()
 	end
@@ -436,7 +458,10 @@ function AutoStore:isDirty()
 	-- setup maximum timer
 	if self._timer_max == nil then
 		f = function()
-			if self._timer_min ~= nil then timer.cancel( self._timer_min ) end
+			if self._timer_min ~= nil then
+				timer.cancel( self._timer_min )
+				self._timer_min = nil
+			end
 			self._timer_max = nil
 			self:save()
 		end
