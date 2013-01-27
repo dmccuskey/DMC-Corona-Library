@@ -360,6 +360,7 @@ function AutoStore:init()
 	local status, content = readFile( file_path )
 
 	if status == Response.SUCCESS then
+		--print( "AutoStore: found config file" )
 		for k, v in string.gmatch( content, "([%w_]+)%s*=%s*(%w+)" ) do
 			--print( tostring( k ) .. " = " .. tostring( v ) )
 			v = tonumber( v )
@@ -380,7 +381,6 @@ function AutoStore:init()
 	-- check
 
 	-- timer_min can't be <= timer_max
-		--print( "AutoStore: found config file" )
 	-- TODO: sanity check on timers
 
 end
