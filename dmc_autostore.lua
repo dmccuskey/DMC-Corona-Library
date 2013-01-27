@@ -54,6 +54,8 @@ local autostore_singleton = nil
 local TableProxy
 local createTableProxy
 
+
+-- read/write flags
 local Response = {}
 Response.ERROR = "error"
 Response.SUCCESS = "success"
@@ -64,6 +66,7 @@ Response.SUCCESS = "success"
 -- Base File I/O Functions
 --====================================================================--
 
+-- basic read/write functions in Lua
 
 local function readFile( file_path )
 	local contents = ""
@@ -114,10 +117,10 @@ end
 
 
 -- addPixieDust()
---
+-- 
 --
 addPixieDust = function( obj, parent )
-	--print( "ading pixie dust: " .. tostring( obj ) )
+	--print( "adding pixie dust: " .. tostring( obj ) )
 
 	-- hiding our info on the metatable
 	local proxy = createTableProxy( obj )
@@ -127,7 +130,8 @@ addPixieDust = function( obj, parent )
 	}
 	setmetatable( obj, mt )
 
-	-- look to see if any children need some magic dust
+
+	-- check children to make sure they all have magic pixie dust
 
 	local p
 	if type( obj ) == "table" then
@@ -203,6 +207,16 @@ function TableProxy:__data()
 	return mt.__dmc.t
 end
 
+
+-- The following are methods to interface with the table library 
+-- since the table library doesn't "eat its own dogfood"
+
+
+-- len()
+--
+-- get the length of the table
+-- replacement for table.len( tbl )
+--
 function TableProxy:len()
 	--print( "TableProxy:len" )
 	local mt = getmetatable( self )
@@ -287,12 +301,13 @@ end
 
 AutoStore = {}
 
--- defaults with upper case names are not copied
+-- NOTE: defaults with upper case names are not copied !!!
+--
 AutoStore.DEFAULTS = {
 	CONFIG_FILE = 'dmc_autostore.cfg',
 	data_file = 'dmc_autostore.json',
-	timer_min = 2000,
-	timer_max = 6000
+	timer_max = 2000,
+	timer_min = 6000
 }
 
 function AutoStore:new()
@@ -347,6 +362,7 @@ function AutoStore:init()
 	-- check
 
 	-- timer_min can't be <= timer_max
+		--print( "AutoStore: found config file" )
 	-- TODO: sanity check on timers
 
 end
