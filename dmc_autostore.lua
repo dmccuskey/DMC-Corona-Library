@@ -445,7 +445,10 @@ function AutoStore:isDirty()
 
 	-- setup minimum timer
 	f = function()
-		if self._timer_max ~= nil then timer.cancel( self._timer_max ) end
+		if self._timer_max ~= nil then
+			timer.cancel( self._timer_max )
+			self._timer_max = nil
+		end
 		self._timer_min = nil
 		self:save()
 	end
@@ -454,7 +457,10 @@ function AutoStore:isDirty()
 	-- setup maximum timer
 	if self._timer_max == nil then
 		f = function()
-			if self._timer_min ~= nil then timer.cancel( self._timer_min ) end
+			if self._timer_min ~= nil then
+				timer.cancel( self._timer_min )
+				self._timer_min = nil
+			end
 			self._timer_max = nil
 			self:save()
 		end
