@@ -69,17 +69,8 @@ local function initializeAutoStore()
 	-- to start with something, let's put in a single UFO
 	local ufo = { x=240, y=160, temperature='cool' }
 
-	data.ufos:insert( ufo )
-
+	createNewUFO( ufo )
 end
-
-
---===================================================================--
--- Main
---===================================================================--
-
-
-
 
 
 -- createExistingUFOs()
@@ -93,18 +84,45 @@ local function createExistingUFOs()
 	local o -- ufo object ref
 
 	-- loop through 'ufos' container and create objects
-	for _, data in ufos:ipairs() do
+	for id, data in ufos:pairs() do
 
 		-- data is a reference to a "magic" part of the storage tree
 		-- the object will keep a reference to it and
 		-- read or update values with it
-		o = UFOFactory.create( data )
+		o = UFOFactory.create( id, data )
 	end
 
 end
 
+
+-- data is table, { x, y }
+local function createNewUFO( data )
+	--print( "createNewUFO" )
+
+	data.temperature = 'cool'
+
+	local ufos, magic, o
+
+	local id = system.getTimer()
+
+	-- save our new UFO data first, retrieve magic branch
+	ufos = AutoStore.data.ufos -- get small branch of storage tree
+	ufos[ id ] = data
+
+	-- create our new UFO, get magic data data
+	o = UFOFactory.create( id, ufos[ id ] )
+
+end
+
+
+
+--===================================================================--
+-- Main
+--===================================================================--
+
+
 local function doDataSavedDisplay()
-	print( "doDataSavedDisplay" )
+	--print( "doDataSavedDisplay" )
 
 		saved_text.xScale=1 ; saved_text.yScale=1
 		saved_text.alpha = 1
@@ -113,24 +131,43 @@ local function doDataSavedDisplay()
 end
 
 local function autostoreEventHandler( event )
-	print( 'autostoreEventHandler' )
+	--print( 'autostoreEventHandler' )
 
-	print( event.name )
-	print( event.type )
-	print( event.time )
 	if event.type == AutoStore.DATA_SAVED then
 		doDataSavedDisplay()
+
 	elseif event.type == AutoStore.START_MIN_TIMER then
 		min_bar:start( event.time )
+
 	elseif event.type == AutoStore.STOP_MIN_TIMER then
 		min_bar:stop()
+
 	elseif event.type == AutoStore.START_MAX_TIMER then
 		max_bar:start( event.time )
+
 	elseif event.type == AutoStore.STOP_MAX_TIMER then
 		max_bar:stop()
 	end
+
 end
 
+local function backgroundTouchHandler( e )
+	--print( "backgroundTouchHandler" )
+
+	local y, data
+
+	if e.phase == 'ended' then
+		y = e.y
+		data = {
+			x=e.x,
+			y=e.y,
+		}
+
+		createNewUFO( data )
+	end
+
+	return true
+end
 
 
 -- initializeApp()
@@ -140,6 +177,11 @@ local function initializeApp()
 	--print( "initializeApp" )
 
 	local o
+
+	o = display.newImageRect( "assets/space_bg.png", 480, 320 )
+	o.x = 240 ; o.y = 160
+
+	o:addEventListener( "touch", backgroundTouchHandler )
 
 	-- MIN label & progress bar 
 	o = display.newText( "Min", 15, -2, nil, 14 )
@@ -160,6 +202,7 @@ local function initializeApp()
 	saved_text = o
 
 	AutoStore:addEventListener( AutoStore.AUTOSTORE_EVENT, autostoreEventHandler )
+
 end
 
 
@@ -173,7 +216,6 @@ local main = function()
 	initializeAutoStore()
 
 	createExistingUFOs()
-
 
 end
 

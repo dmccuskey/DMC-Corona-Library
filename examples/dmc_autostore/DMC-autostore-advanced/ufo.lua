@@ -43,7 +43,7 @@ UFO.IMG_H = 65
 
 --==  Class constructor  ==--
 
-function UFO:new( data )
+function UFO:new( id, data )
 	--print( "UFO:new" )
 
 	local o = {}
@@ -52,6 +52,7 @@ function UFO:new( data )
 	}
 	setmetatable( o, mt )
 
+	o._id = id
 	o._data = data -- this is the autostore 'magic' branch for this object
 
 	o:_init()
@@ -104,18 +105,24 @@ function UFO:_init()
 
 
 	-- init Complete --
-
-	-- set our position from stored data
-	local d = self._data
-	self._dg.x = d.x
-	self._dg.y = d.y
+	self:_position()
 
 	-- select our proper view, from stored data
 	self:_selectTempView()
 
 end
 
+function UFO:_position()
 
+	-- set our position from stored data
+	local d = self._data
+
+	if d.y < 50 then d.y = 50 end
+
+	self._dg.x = d.x
+	self._dg.y = d.y
+
+end
 
 function UFO:_selectNextTemp()
 
@@ -170,22 +177,24 @@ function UFO:touch( event )
 
 	if event.phase == 'began' then
 
+		self._dg:toFront()
+
 
 	elseif event.phase == 'moved' then
 
 		self._has_moved = true
 
 		-- let's save into auto storage
+
 		local d = self._data
 		d.x = event.x
 		d.y = event.y
 
 		-- update the visual image position
-		self._dg.x = d.x
-		self._dg.y = d.y
+		self:_position()
 
 
-	else
+	elseif event.phase == 'ended' then
 
 		-- if it was just a 'tap', then change color
 		if self._has_moved == false then
@@ -196,6 +205,7 @@ function UFO:touch( event )
 
 	end
 
+	return true
 
 end
 
@@ -208,8 +218,8 @@ end
 
 local UFOFactory = {}
 
-function UFOFactory.create( data )
-	return UFO:new( data )
+function UFOFactory.create( id, data )
+	return UFO:new( id, data )
 end
 
 return UFOFactory
