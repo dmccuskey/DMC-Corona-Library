@@ -64,6 +64,43 @@ local createTableProxy
 
 
 --====================================================================--
+-- Support Methods
+--====================================================================--
+
+
+-- extend()
+-- copied from DMC Utils
+-- only used during event dispatch
+--
+function extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+
+
+--====================================================================--
 -- Base File I/O Functions
 --====================================================================--
 
@@ -328,7 +365,7 @@ end
 -- Auto Store Class
 --====================================================================--
 
-AutoStore = {}
+local AutoStore = {}
 
 -- NOTE: defaults with upper case names are not copied !!!
 --
@@ -338,6 +375,22 @@ AutoStore.DEFAULTS = {
 	timer_min = 2000,
 	timer_max = 6000
 }
+
+
+-- keyed on callback function
+AutoStore._eventListeners = {}
+
+
+-- Event Name
+AutoStore.AUTOSTORE_EVENT = 'autostore_event'
+
+-- Event Types
+AutoStore.START_MIN_TIMER = 'start_min_timer'
+AutoStore.STOP_MIN_TIMER = 'stop_min_timer'
+AutoStore.START_MAX_TIMER = 'start_max_timer'
+AutoStore.STOP_MAX_TIMER = 'stop_max_timer'
+AutoStore.DATA_SAVED = 'data_saved'
+
 
 function AutoStore:new()
 	--print( "AutoStore:new" )
@@ -399,6 +452,10 @@ function AutoStore:init()
 	end
 
 
+	-- container for event listeners
+	self._eventListeners[ AutoStore.AUTOSTORE_EVENT ] = {}
+
+
 	-- check
 
 	-- timer_min can't be <= timer_max
@@ -432,6 +489,8 @@ function AutoStore:save()
 
 	self.is_new_file = false
 
+	self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.DATA_SAVED )
+
 end
 
 function AutoStore:isDirty()
@@ -442,33 +501,74 @@ function AutoStore:isDirty()
 	-- end any current timer
 	if self._timer_min ~= nil then
 		timer.cancel( self._timer_min )
+		self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MIN_TIMER )
+
 	end
 
 	-- setup minimum timer
 	f = function()
 		if self._timer_max ~= nil then
 			timer.cancel( self._timer_max )
+			self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MAX_TIMER )
 			self._timer_max = nil
 		end
 		self._timer_min = nil
 		self:save()
 	end
 	self._timer_min = timer.performWithDelay( self._config.timer_min, f )
+	self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.START_MIN_TIMER, { time=self._config.timer_min } )
 
 	-- setup maximum timer
 	if self._timer_max == nil then
 		f = function()
 			if self._timer_min ~= nil then
 				timer.cancel( self._timer_min )
+				self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MIN_TIMER )
 				self._timer_min = nil
 			end
 			self._timer_max = nil
 			self:save()
 		end
 		self._timer_max = timer.performWithDelay( self._config.timer_max, f )
+		self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.START_MAX_TIMER, { time=self._config.timer_max } )
 	end
 end
 
+
+function AutoStore:dispatchEvent( event, type, data )
+	print( "AutoStore:dispatchEvent" )
+	print( type )
+
+	local et = self._eventListeners[ event ]
+
+	local e = {
+		name=event,
+		type=type
+	}
+
+	if data ~= nil then e = extend( data, e ) end
+
+	for _, data in pairs( et ) do
+		print( _ )
+		print( data[1] )
+		print( data[2] )
+		data[2]( e )
+	end
+
+end
+
+function AutoStore:addEventListener( type, callback )
+	print( "AutoStore:addEventListener" )
+	print( callback )
+
+	local o = self._eventListeners[ type ]
+	if self._eventListeners[ type ] == nil then
+		print( "ERROR")
+	else
+		o[ callback ] = { type, callback }
+	end
+
+end
 
 
 if autostore_singleton == nil then

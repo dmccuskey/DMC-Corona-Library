@@ -30,7 +30,7 @@ local ProgressBar = require( "progress_bar" )
 display.setStatusBar( display.HiddenStatusBar )
 
 
-local min_bar, max_bar
+local min_bar, max_bar, saved_text
 
 --===================================================================--
 -- AutoStore Support
@@ -80,26 +80,7 @@ end
 
 
 
--- initializeProgressBars()
---
---
-local function initializeProgressBars()
 
-	local o
-
-	-- MIN label & progress bar 
-	o = display.newText( "Min", 15, -2, nil, 14 )
-
-	o = ProgressBar.create( { x=60, y=10, width=400, height=8, color='orange' } )
-	min_bar = o
-
-	-- MAX label & progress bar
-	o = display.newText( "Max", 15, 18, nil, 14 )
-
-	o = ProgressBar.create( { x=60, y=30, width=400, height=8, color='red' } )
-	max_bar = o
-
-end
 
 -- createExistingUFOs()
 --
@@ -122,15 +103,77 @@ local function createExistingUFOs()
 
 end
 
+local function doDataSavedDisplay()
+	print( "doDataSavedDisplay" )
+
+		saved_text.xScale=1 ; saved_text.yScale=1
+		saved_text.alpha = 1
+		transition.to( saved_text, { xScale=2, yScale=2, alpha=0, time=750 } )
+
+end
+
+local function autostoreEventHandler( event )
+	print( 'autostoreEventHandler' )
+
+	print( event.name )
+	print( event.type )
+	print( event.time )
+	if event.type == AutoStore.DATA_SAVED then
+		doDataSavedDisplay()
+	elseif event.type == AutoStore.START_MIN_TIMER then
+		min_bar:start( event.time )
+	elseif event.type == AutoStore.STOP_MIN_TIMER then
+		min_bar:stop()
+	elseif event.type == AutoStore.START_MAX_TIMER then
+		max_bar:start( event.time )
+	elseif event.type == AutoStore.STOP_MAX_TIMER then
+		max_bar:stop()
+	end
+end
+
+
+
+-- initializeApp()
+--
+-- 
+local function initializeApp()
+	--print( "initializeApp" )
+
+	local o
+
+	-- MIN label & progress bar 
+	o = display.newText( "Min", 15, -2, nil, 14 )
+
+	o = ProgressBar.create( { x=60, y=10, width=400, height=8, color='orange' } )
+	min_bar = o
+
+	-- MAX label & progress bar
+	o = display.newText( "Max", 15, 17, nil, 14 )
+
+	o = ProgressBar.create( { x=60, y=30, width=400, height=8, color='red' } )
+	max_bar = o
+
+	-- "Data Saved" display
+	o = display.newText( "Data Saved !!", 160, 100, native.systemFontBold, 24 )
+	o:setTextColor(255, 0, 0)
+	o.alpha = 0
+	saved_text = o
+
+	AutoStore:addEventListener( AutoStore.AUTOSTORE_EVENT, autostoreEventHandler )
+end
+
 
 
 -- main()
 --
 local main = function()
 
+	initializeApp()
+
 	initializeAutoStore()
-	initializeProgressBars()
+
 	createExistingUFOs()
+
 
 end
 
