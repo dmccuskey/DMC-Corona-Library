@@ -275,7 +275,7 @@ function TableProxy:len()
 	--print( "TableProxy:len" )
 	local mt = getmetatable( self )
 	local t = mt.__dmc.t
-	
+
 	return #t
 end
 
@@ -551,8 +551,7 @@ end
 
 
 function AutoStore:dispatchEvent( event, type, data )
-	print( "AutoStore:dispatchEvent" )
-	print( type )
+	--print( "AutoStore:dispatchEvent" )
 
 	local et = self._eventListeners[ event ]
 
@@ -564,17 +563,13 @@ function AutoStore:dispatchEvent( event, type, data )
 	if data ~= nil then e = extend( data, e ) end
 
 	for _, data in pairs( et ) do
-		print( _ )
-		print( data[1] )
-		print( data[2] )
 		data[2]( e )
 	end
 
 end
 
 function AutoStore:addEventListener( type, callback )
-	print( "AutoStore:addEventListener" )
-	print( callback )
+	--print( "AutoStore:addEventListener" )
 
 	local o = self._eventListeners[ type ]
 	if self._eventListeners[ type ] == nil then
