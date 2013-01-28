@@ -19,6 +19,7 @@ print("---------------------------------------------------")
 
 local AutoStore = require( "dmc_autostore" )
 local UFOFactory = require( "ufo" )
+local ProgressBar = require( "progress_bar" )
 
 
 
@@ -29,6 +30,7 @@ local UFOFactory = require( "ufo" )
 display.setStatusBar( display.HiddenStatusBar )
 
 
+local min_bar, max_bar
 
 --===================================================================--
 -- AutoStore Support
@@ -77,7 +79,29 @@ end
 --===================================================================--
 
 
--- createObjects()
+
+-- initializeProgressBars()
+--
+--
+local function initializeProgressBars()
+
+	local o
+
+	-- MIN label & progress bar 
+	o = display.newText( "Min", 15, -2, nil, 14 )
+
+	o = ProgressBar.create( { x=60, y=10, width=400, height=8, color='orange' } )
+	min_bar = o
+
+	-- MAX label & progress bar
+	o = display.newText( "Max", 15, 18, nil, 14 )
+
+	o = ProgressBar.create( { x=60, y=30, width=400, height=8, color='red' } )
+	max_bar = o
+
+end
+
+-- createExistingUFOs()
 --
 -- app start, so let's read our data and create any UFOs
 --
