@@ -103,16 +103,20 @@ end
 
 -- createExistingUFOs()
 --
--- app start, so let's read our data and create any UFOs
+-- app start, get our stored data and create any UFOs
 --
-local function createObjects()
-	--print( "createObjects" )
+local function createExistingUFOs()
+	--print( "createExistingUFOs" )
 
-	local ufos = AutoStore.data.ufos
+	local ufos = AutoStore.data.ufos -- get small branch of storage tree
 	local o -- ufo object ref
 
 	-- loop through 'ufos' container and create objects
 	for _, data in ufos:ipairs() do
+
+		-- data is a reference to a "magic" part of the storage tree
+		-- the object will keep a reference to it and
+		-- read or update values with it
 		o = UFOFactory.create( data )
 	end
 
@@ -125,7 +129,8 @@ end
 local main = function()
 
 	initializeAutoStore()
-	createObjects()
+	initializeProgressBars()
+	createExistingUFOs()
 
 end
 
