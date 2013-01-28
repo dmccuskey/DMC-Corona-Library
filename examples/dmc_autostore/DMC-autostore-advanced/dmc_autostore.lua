@@ -275,6 +275,7 @@ function TableProxy:len()
 	--print( "TableProxy:len" )
 	local mt = getmetatable( self )
 	local t = mt.__dmc.t
+	
 	return #t
 end
 
@@ -299,9 +300,23 @@ end
 
 function TableProxy:pairs()
 	--print( "TableProxy:pairs" )
+
 	local mt = getmetatable( self )
 	local t = mt.__dmc.t
-	return pairs( t )
+
+	-- custom iterator
+	-- @param tp ref: TableProxy (ie, self)
+	-- @param key string: key of previous item
+	local f = function( tp, k )
+		local key,_ = next( t, k )
+		if key ~= nil then
+			return key,tp[key]
+		else
+			return nil
+		end
+	end
+
+	return f, self, nil
 end
 
 function TableProxy:insert( value, pos )
