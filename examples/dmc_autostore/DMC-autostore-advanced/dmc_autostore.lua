@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
 
 
 --====================================================================--
