@@ -31,18 +31,92 @@ display.setStatusBar( display.HiddenStatusBar )
 
 
 local min_bar, max_bar, saved_text
+local dg_bg, dg_ufo, dg_fg
+
+
 
 --===================================================================--
 -- AutoStore Support
 --===================================================================--
 
 --[[
-our complete app structure is going to look like so:
+
+Anything in this area has something to do with AutoStore.
+You'll find examples to initialize a new, empty AutoStore data structure,
+or adding new items, or looping through existing data
+
+--]]
+
+
+-- createNewUFO
+--
+-- create a new UFO object based on the data parameter
+-- @param data table: coordinates for UFO location, eg { x=33, y=209 }
+local function createNewUFO( data )
+	--print( "createNewUFO" )
+
+	data.temperature = 'cool'
+
+	local id = system.getTimer() -- key for our new UFO
+	local ufos, magic, o
+
+
+	--== AutoStore functionality ==--
+	-- save our new UFO data first
+	-- then retrieve "magic" branch AFTER
+	--
+	ufos = AutoStore.data.ufos -- get small branch of storage tree
+	ufos[ id ] = data  -- add in our new data
+	data = ufos[ id ]  -- retrieve the "magic" data branch
+
+
+	-- now create our new UFO object, passing in our "magic" data branch
+	o = UFOFactory.create( id, data )
+	dg_ufo:insert( o._dg )
+
+end
+
+
+
+-- createExistingUFOs()
+--
+-- app start, get our stored data and create any UFOs
+--
+local function createExistingUFOs()
+	--print( "createExistingUFOs" )
+
+	local ufos
+	local o -- ufo object ref
+
+
+	--== AutoStore functionality ==--
+	-- get the UFO branch from the data tree
+	-- loop through 'ufos' container and create objects
+	-- Note: we're calling pairs() as a method ON our branch
+	--
+	ufos = AutoStore.data.ufos -- get small branch of storage tree
+	for id, data in ufos:pairs() do
+
+		-- data is a reference to a "magic" part of the storage tree
+		-- we are passing THAT into the object
+		-- the object will keep a reference to it and use this ref
+		-- to read or update its values
+		--
+		o = UFOFactory.create( id, data )
+		dg_ufo:insert( o._dg )
+	end
+
+end
+
+
+
+--[[
+our complete data structure is going to look like so:
 
 {
 	ufos = {
-		{ x=22, y=55, temp='cool' },
-		{ x=30, y=100, temp='hot' },
+		{ x=22, y=55, temperature='cool' },
+		{ x=30, y=100, temperature='hot' },
 		...
 	}
 
@@ -61,56 +135,16 @@ local function initializeAutoStore()
 
 	--== new data file, setup the base storage structure ==--
 
+  -- grab the root of the magic tree
+  -- right now 'data' is a reference to an empty, "magic" table, eg {}
 	local data = AutoStore.data
 
-	-- create container for for the objects
+	-- add empty container to the tree in which to store our UFO objects
 	data[ 'ufos' ] = {}
 
 	-- to start with something, let's put in a single UFO
 	local ufo = { x=240, y=160, temperature='cool' }
-
 	createNewUFO( ufo )
-end
-
-
--- createExistingUFOs()
---
--- app start, get our stored data and create any UFOs
---
-local function createExistingUFOs()
-	--print( "createExistingUFOs" )
-
-	local ufos = AutoStore.data.ufos -- get small branch of storage tree
-	local o -- ufo object ref
-
-	-- loop through 'ufos' container and create objects
-	for id, data in ufos:pairs() do
-
-		-- data is a reference to a "magic" part of the storage tree
-		-- the object will keep a reference to it and
-		-- read or update values with it
-		o = UFOFactory.create( id, data )
-	end
-
-end
-
-
--- data is table, { x, y }
-local function createNewUFO( data )
-	--print( "createNewUFO" )
-
-	data.temperature = 'cool'
-
-	local ufos, magic, o
-
-	local id = system.getTimer()
-
-	-- save our new UFO data first, retrieve magic branch
-	ufos = AutoStore.data.ufos -- get small branch of storage tree
-	ufos[ id ] = data
-
-	-- create our new UFO, get magic data data
-	o = UFOFactory.create( id, ufos[ id ] )
 
 end
 
@@ -119,6 +153,14 @@ end
 --===================================================================--
 -- Main
 --===================================================================--
+
+
+--[[
+
+Anything below here doesn't have anything to do with AutoStore
+the code is just to make the demo look nice
+
+--]]
 
 
 local function doDataSavedDisplay()
@@ -151,19 +193,32 @@ local function autostoreEventHandler( event )
 
 end
 
+
 local function backgroundTouchHandler( e )
 	--print( "backgroundTouchHandler" )
 
-	local y, data
+	if e.phase == 'began' then
+		createNewUFO( { x=e.x, y=e.y } )
+	end
+
+	return true
+end
+
+
+local function clearButtonTouchHandler( e )
+	--print( "clearButtonTouchHandler" )
 
 	if e.phase == 'ended' then
-		y = e.y
-		data = {
-			x=e.x,
-			y=e.y,
-		}
 
-		createNewUFO( data )
+		if dg_ufo.numChildren > 0 then
+
+			AutoStore.data.ufos = {}
+
+			for i = dg_ufo.numChildren, 1, -1 do
+				dg_ufo:remove( i )
+			end
+
+		end
 	end
 
 	return true
@@ -178,30 +233,58 @@ local function initializeApp()
 
 	local o
 
+	dg_bg = display.newGroup()
+	dg_ufo = display.newGroup()
+	dg_fg = display.newGroup()
+
+
 	o = display.newImageRect( "assets/space_bg.png", 480, 320 )
 	o.x = 240 ; o.y = 160
 
 	o:addEventListener( "touch", backgroundTouchHandler )
+	dg_bg:insert( o )
+
+	-- clear button
+
+	o = display.newRoundedRect( 395, 5, 70, 30, 4 )
+	o.strokeWidth = 2
+	o:setStrokeColor( 255, 100, 100 )
+	o:setFillColor( 200, 200, 200 )
+	o:addEventListener( "touch", clearButtonTouchHandler )
+
+	dg_fg:insert( o )
+
+	o = display.newText( "Clear", 407, 6, nil, 18 )
+	o:setTextColor( 0, 0, 0 )
+	dg_fg:insert( o )
 
 	-- MIN label & progress bar 
 	o = display.newText( "Min", 15, -2, nil, 14 )
+	dg_bg:insert( o )
 
-	o = ProgressBar.create( { x=60, y=10, width=400, height=8, color='orange' } )
+	o = ProgressBar.create( { x=60, y=10, width=310, height=8, color='orange' } )
 	min_bar = o
+	dg_bg:insert( o._dg )
+
 
 	-- MAX label & progress bar
 	o = display.newText( "Max", 15, 17, nil, 14 )
+	dg_bg:insert( o )
 
-	o = ProgressBar.create( { x=60, y=30, width=400, height=8, color='red' } )
+	o = ProgressBar.create( { x=60, y=30, width=310, height=8, color='red' } )
 	max_bar = o
+	dg_bg:insert( o._dg )
+
 
 	-- "Data Saved" display
 	o = display.newText( "Data Saved !!", 160, 100, native.systemFontBold, 24 )
 	o:setTextColor(255, 0, 0)
 	o.alpha = 0
 	saved_text = o
+	dg_fg:insert( o )
 
 	AutoStore:addEventListener( AutoStore.AUTOSTORE_EVENT, autostoreEventHandler )
+
 
 end
 

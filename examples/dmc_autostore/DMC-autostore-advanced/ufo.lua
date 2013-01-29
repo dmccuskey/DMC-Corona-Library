@@ -17,8 +17,6 @@
 --====================================================================--
 
 
-
-
 --====================================================================--
 -- UFO base class
 --====================================================================--
@@ -125,6 +123,7 @@ function UFO:_position()
 end
 
 function UFO:_selectNextTemp()
+	--print( "UFO:_selectNextTemp" )
 
 	-- autostore branch
 	local d = self._data
@@ -148,6 +147,7 @@ end
 -- selects the image to show (temperature) based on our current stored setting
 --
 function UFO:_selectTempView()
+	--print( "UFO:_selectTempView" )
 
 	-- look inside 'magic' branch
 	local t = self._data.temperature
@@ -168,6 +168,7 @@ function UFO:_selectTempView()
 
 end
 
+
 -- touch()
 --
 -- basic Corona touch handler
@@ -185,7 +186,6 @@ function UFO:touch( event )
 		self._has_moved = true
 
 		-- let's save into auto storage
-
 		local d = self._data
 		d.x = event.x
 		d.y = event.y
@@ -200,13 +200,11 @@ function UFO:touch( event )
 		if self._has_moved == false then
 			self:_selectNextTemp()
 		end
-
 		self._has_moved = false
 
 	end
 
 	return true
-
 end
 
 
