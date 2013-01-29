@@ -12,19 +12,21 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 ### dmc_autostore.lua ###
 
-This module contains a data-storage manager which makes saving data painlessly easy because it doesn't have an API! Instead, it automatically saves any modifications when the data structure has changed. `dmc_autostore` has these features:
+This module contains a data-storage manager which makes saving application data painlessly easy simply because it doesn't have an API! Instead, any modifications which you make to your data structure will trigger the save mechanism. Super simple!!
+
+`dmc_autostore` has these features:
 
 * **allows saving of structured data (ie, JSON), not just key/value pairs**
 
-	Saving application or game data gets ugly with key/value storage. `dmc_autostore` saves data with a flexible JSON structure which can be modified on-the-fly.
+	Saving application or game data can get ugly with key/value storage. `dmc_autostore` saves data with a flexible JSON structure which can be modified on-the-fly.
 
 * **simplicity in data storage -- there is NO API !!**
 
-	`dmc_autostore` saves modifications to data *automatically*. There is no API to learn in order to load or save data.
+	`dmc_autostore` saves modifications to data *automatically*. There is no API to learn in order to load or save data. Any change to your data structure will trigger the save mechanism.
 
 * **AutoStore is configurable**
 
-	There are several parameters available to configure.
+	There are several parameters available to configure, the most important are the two timers which regulate how quickly data modifications will be written to storage.
 
 
 **Documentation**
