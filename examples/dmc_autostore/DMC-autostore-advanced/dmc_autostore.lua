@@ -386,9 +386,9 @@ local AutoStore = {}
 --
 AutoStore.DEFAULTS = {
 	CONFIG_FILE = 'dmc_autostore.cfg',
-	data_file = 'dmc_autostore.json',
-	timer_min = 2000,
-	timer_max = 6000
+	data_filename = { type='string', value='dmc_autostore' }, -- '.json' appended later
+	timer_min = { type='integer', value=1000 },
+	timer_max = { type='integer', value=4000 }
 }
 
 
@@ -439,7 +439,7 @@ function AutoStore:init()
 	for k, v in pairs( AutoStore.DEFAULTS ) do
 		-- if uppercase, then don't include
 		if k == string.lower( k ) then
-			self._config[ k ] = v
+			self._config[ k ] = v.value
 		end
 	end
 
@@ -455,11 +455,14 @@ function AutoStore:init()
 			is_valid = ( string.find( line, '--', 1, true ) ~= 1 )
 
 			if is_valid then
-				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*(%w+)" ) do
+				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*([%w_]+)" ) do
 					--print( tostring( k ) .. " = " .. tostring( v ) )
-					v = tonumber( v )
-					if v == nil then v = 0 end
+
 					k = string.lower( k ) -- use only lowercase inside of module
+					if AutoStore.DEFAULTS[ k ].type == 'integer' then
+						v = tonumber( v )
+						if v == nil then v = 0 end
+					end
 					self._config[ k ] = v
 				end
 			end
@@ -472,7 +475,6 @@ function AutoStore:init()
 
 
 	-- check
-
 	-- timer_min can't be <= timer_max
 	-- TODO: sanity check on timers
 
@@ -481,7 +483,7 @@ end
 function AutoStore:load()
 	--print( "AutoStore:load" )
 
-	local file_path = system.pathForFile( self._config.data_file, system.DocumentsDirectory )
+	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
 	local status, content = readFile( file_path, { lines=false } )
 
 	if status == Response.ERROR then
@@ -498,7 +500,7 @@ end
 function AutoStore:save()
 	--print( "AutoStore:save" )
 
-	local file_path = system.pathForFile( self._config.data_file, system.DocumentsDirectory )
+	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
 	local json = json.encode( self.data:__data() )
 	local status, content = saveFile( file_path, json )
 
