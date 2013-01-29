@@ -39,7 +39,7 @@ local VERSION = "1.0.0"
 -- Imports
 --====================================================================--
 
-local json = require ( "json" )
+local json = require( "json" )
 
 
 
@@ -59,7 +59,6 @@ local AutoStore
 local autostore_singleton = nil
 local TableProxy
 local createTableProxy
-
 
 
 
@@ -374,6 +373,7 @@ createTableProxy = function( table_obj )
 
 	return o
 end
+
 
 
 --====================================================================--
