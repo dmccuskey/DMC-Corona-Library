@@ -725,82 +725,82 @@ CoronaPhysics.NAME = "Corona Physics"
 
 -- angularDamping()
 --
-function CoronaBase.__getters:angularDamping()
+function CoronaPhysics.__getters:angularDamping()
 	return self.display.angularDamping
 end
-function CoronaBase.__setters:angularDamping( value )
+function CoronaPhysics.__setters:angularDamping( value )
 	self.display.angularDamping = value
 end
 -- angularVelocity()
 --
-function CoronaBase.__getters:angularVelocity()
+function CoronaPhysics.__getters:angularVelocity()
 	return self.display.angularVelocity
 end
-function CoronaBase.__setters:angularVelocity( value )
+function CoronaPhysics.__setters:angularVelocity( value )
 	self.display.angularVelocity = value
 end
 -- bodyType()
 --
-function CoronaBase.__getters:bodyType()
+function CoronaPhysics.__getters:bodyType()
 	return self.display.bodyType
 end
-function CoronaBase.__setters:bodyType( value )
+function CoronaPhysics.__setters:bodyType( value )
 	self.display.bodyType = value
 end
 -- isAwake()
 --
-function CoronaBase.__getters:isAwake()
+function CoronaPhysics.__getters:isAwake()
 	return self.display.isAwake
 end
-function CoronaBase.__setters:isAwake( value )
+function CoronaPhysics.__setters:isAwake( value )
 	self.display.isAwake = value
 end
 -- isBodyActive()
 --
-function CoronaBase.__getters:isBodyActive()
+function CoronaPhysics.__getters:isBodyActive()
 	return self.display.isBodyActive
 end
-function CoronaBase.__setters:isBodyActive( value )
+function CoronaPhysics.__setters:isBodyActive( value )
 	self.display.isBodyActive = value
 end
 -- isBullet()
 --
-function CoronaBase.__getters:isBullet()
+function CoronaPhysics.__getters:isBullet()
 	return self.display.isBullet
 end
-function CoronaBase.__setters:isBullet( value )
+function CoronaPhysics.__setters:isBullet( value )
 	self.display.isBullet = value
 end
 -- isFixedRotation()
 --
-function CoronaBase.__getters:isFixedRotation()
+function CoronaPhysics.__getters:isFixedRotation()
 	return self.display.isFixedRotation
 end
-function CoronaBase.__setters:isFixedRotation( value )
+function CoronaPhysics.__setters:isFixedRotation( value )
 	self.display.isFixedRotation = value
 end
 -- isSensor()
 --
-function CoronaBase.__getters:isSensor()
+function CoronaPhysics.__getters:isSensor()
 	return self.display.isSensor
 end
-function CoronaBase.__setters:isSensor( value )
+function CoronaPhysics.__setters:isSensor( value )
 	self.display.isSensor = value
 end
 -- isSleepingAllowed()
 --
-function CoronaBase.__getters:isSleepingAllowed()
+function CoronaPhysics.__getters:isSleepingAllowed()
 	return self.display.isSleepingAllowed
 end
-function CoronaBase.__setters:isSleepingAllowed( value )
+function CoronaPhysics.__setters:isSleepingAllowed( value )
 	self.display.isSleepingAllowed = value
 end
 -- linearDamping()
 --
-function CoronaBase.__getters:linearDamping()
+function CoronaPhysics.__getters:linearDamping()
 	return self.display.linearDamping
 end
-function CoronaBase.__setters:linearDamping( value )
+function CoronaPhysics.__setters:linearDamping( value )
 	self.display.linearDamping = value
 end
 
@@ -809,37 +809,37 @@ end
 
 -- applyAngularImpulse( appliedForce )
 --
-function CoronaBase:applyAngularImpulse( ... )
+function CoronaPhysics:applyAngularImpulse( ... )
 	self.display:applyAngularImpulse( ... )
 end
 -- applyForce( xForce, yForce, bodyX, bodyY )
 --
-function CoronaBase:applyForce( ... )
+function CoronaPhysics:applyForce( ... )
 	self.display:applyForce( ... )
 end
 -- applyLinearImpulse( xForce, yForce, bodyX, bodyY )
 --
-function CoronaBase:applyLinearImpulse( ... )
+function CoronaPhysics:applyLinearImpulse( ... )
 	self.display:applyLinearImpulse( ... )
 end
 -- applyTorque( appliedForce )
 --
-function CoronaBase:applyTorque( ... )
+function CoronaPhysics:applyTorque( ... )
 	self.display:applyTorque( ... )
 end
 -- getLinearVelocity()
 --
-function CoronaBase:getLinearVelocity()
+function CoronaPhysics:getLinearVelocity()
 	return self.display:getLinearVelocity()
 end
 -- resetMassData()
 --
-function CoronaBase:resetMassData()
+function CoronaPhysics:resetMassData()
 	self.display:resetMassData()
 end
 -- setLinearVelocity( xVelocity, yVelocity )
 --
-function CoronaBase:setLinearVelocity( ... )
+function CoronaPhysics:setLinearVelocity( ... )
 	self.display:setLinearVelocity( ... )
 end
 
