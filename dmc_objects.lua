@@ -335,6 +335,12 @@ function CoronaBase:_init( options )
 	self:_setDisplay( display.newGroup() )
 
 end
+-- _undoInit()
+-- remove items added during _init()
+--
+function CoronaBase:_undoInit( options )
+	-- OVERRIDE THIS
+end
 
 
 -- _createView()
@@ -342,6 +348,12 @@ end
 -- they are then put into the Corona display object
 --
 function CoronaBase:_createView()
+	-- OVERRIDE THIS
+end
+-- _undoCreateView()
+-- remove any items added during _createView()
+--
+function CoronaBase:_undoCreateView()
 	-- OVERRIDE THIS
 end
 
@@ -352,6 +364,12 @@ end
 function CoronaBase:_initComplete()
 	-- OVERRIDE THIS
 end
+-- _undoInitComplete()
+-- remove any items added during _initComplete()
+--
+function CoronaBase:_undoInitComplete()
+	-- OVERRIDE THIS
+end
 
 
 -- _setDisplay( displayObject )
@@ -360,9 +378,11 @@ end
 --
 function CoronaBase:_setDisplay( displayObject )
 	if rawget( self, 'display' ) ~= nil then
+		if self.display.__dmc_ref then self.display.__dmc_ref = nil end
 		self.display:removeSelf()
 	end
 	self.display = displayObject
+	self.display.__dmc_ref = self
 end
 
 
@@ -635,8 +655,21 @@ end
 -- removeSelf()
 --
 function CoronaBase:removeSelf()
-	print( "\nOVERRIDE: removeSelf()\n" );
-	--self.display:removeSelf()
+	--print( "\nOVERRIDE: removeSelf()\n" );
+
+	if self.display.__dmc_ref then
+		self.display.__dmc_ref = nil
+	end
+
+	self:_undoInitComplete()
+	self:_undoCreateView()
+	self:_undoInit()
+
+	if self.display ~= nil then
+		self.display:removeSelf()
+		self.display = nil
+	end
+
 end
 -- rotate( deltaAngle )
 --
