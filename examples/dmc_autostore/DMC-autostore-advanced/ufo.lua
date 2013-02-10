@@ -22,12 +22,9 @@
 --====================================================================--
 
 local UFO = {}
-
--- setup OO for Class
-local mt = {
+local UFO_meta = {
 	__index = UFO
 }
-setmetatable( UFO, mt )
 
 
 --==  Class constants  ==--
@@ -45,10 +42,7 @@ function UFO:new( id, data )
 	--print( "UFO:new" )
 
 	local o = {}
-	local mt = {
-		__index = UFO
-	}
-	setmetatable( o, mt )
+	setmetatable( o, UFO_meta )
 
 	o._id = id
 	o._data = data -- this is the autostore 'magic' branch for this object
