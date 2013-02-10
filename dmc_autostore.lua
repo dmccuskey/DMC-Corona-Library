@@ -345,13 +345,14 @@ function TableProxy:remove( pos )
 	local root = mt.__dmc.root
 	local t = mt.__dmc.t
 
+	if STATE_ACTIVE == true then root:isDirty() end
+
 	if pos == nil then
-		table.remove( t )
+		return table.remove( t )
 	else
-		table.remove( t, pos )
+		return table.remove( t, pos )
 	end
 
-	if STATE_ACTIVE == true then root:isDirty() end
 end
 
 -- createTableProxy()
