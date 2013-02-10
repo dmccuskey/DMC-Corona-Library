@@ -166,7 +166,6 @@ end
 --====================================================================--
 
 -- functionality for each table node in the data structure
--- this is primarily to override when accessing Table as Array
 
 
 -- addPixieDust()
