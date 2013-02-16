@@ -157,11 +157,14 @@ function ButtonBase:_createView()
 		self:insert( group, true )
 		group:addEventListener( "touch", self )
 
-
 		-- setup image
-		img = display.newImageRect( grp_info.source,
+		if grp_info.sheet then
+			img = display.newImage( grp_info.sheet, grp_info.index )
+		else
+			img = display.newImageRect( grp_info.source,
 					grp_info.width,
 					grp_info.height )
+		end
 		if img == nil then
 			print("\nERROR: image rect source '" .. tostring( grp_info.source ) .. "'\n\n" )
 		end
@@ -311,6 +314,19 @@ function PushButton:_init( options )
 	end
 	if options.downSrc then
 		img_info.down.source = options.downSrc
+	end
+	if options.sheet then
+		img_info.up.sheet = options.sheet
+		img_info.down.sheet = options.sheet
+	end
+	if options.defaultIndex then
+		img_info.up.index = options.defaultIndex
+	end
+	if options.upIndex then
+		img_info.up.index = options.upIndex
+	end
+	if options.downIndex then
+		img_info.down.index = options.downIndex
 	end
 
 	if options.style then
@@ -500,7 +516,20 @@ function BinaryButton:_init( options )
 	if options.activeSrc then
 		img_info.active.source = options.activeSrc
 	end
-
+	if options.sheet then
+		img_info.up.sheet = options.sheet
+		img_info.down.sheet = options.sheet
+	end
+	if options.defaultIndex then
+		img_info.up.index = options.defaultIndex
+	end
+	if options.upIndex then
+		img_info.up.index = options.upIndex
+	end
+	if options.downIndex then
+		img_info.down.index = options.downIndex
+	end
+	
 	if options.style then
 		Utils.extend( options.style, img_info.active.style )
 		Utils.extend( options.style, img_info.inactive.style )
