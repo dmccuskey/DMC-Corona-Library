@@ -33,7 +33,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.8.1"
+local VERSION = "0.8.2"
 
 
 -- =====================================================
@@ -321,6 +321,7 @@ function PushButton:_init( options )
 	end
 	if options.defaultIndex then
 		img_info.up.index = options.defaultIndex
+		img_info.down.index = options.defaultIndex
 	end
 	if options.upIndex then
 		img_info.up.index = options.upIndex
@@ -517,17 +518,18 @@ function BinaryButton:_init( options )
 		img_info.active.source = options.activeSrc
 	end
 	if options.sheet then
-		img_info.up.sheet = options.sheet
-		img_info.down.sheet = options.sheet
+		img_info.active.sheet = options.sheet
+		img_info.inactive.sheet = options.sheet
 	end
 	if options.defaultIndex then
-		img_info.up.index = options.defaultIndex
+		img_info.active.index = options.defaultIndex
+		img_info.inactive.index = options.defaultIndex
 	end
-	if options.upIndex then
-		img_info.up.index = options.upIndex
+	if options.activeIndex then
+		img_info.active.index = options.activeIndex
 	end
-	if options.downIndex then
-		img_info.down.index = options.downIndex
+	if options.inactiveIndex then
+		img_info.inactive.index = options.inactiveIndex
 	end
 	
 	if options.style then
