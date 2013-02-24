@@ -165,8 +165,14 @@ function ButtonBase:_createView()
 					grp_info.width,
 					grp_info.height )
 		end
+		if grp_info.fillColor then
+			local color = grp_info.fillColor
+			img:setFillColor(color[1], color[2], color[3])
+		end
 		if img == nil then
 			print("\nERROR: image rect source '" .. tostring( grp_info.source ) .. "'\n\n" )
+		else
+			img.x, img.y = grp_info.xOffset, grp_info.yOffset
 		end
 		group:insert( img )
 
@@ -275,7 +281,6 @@ function PushButton:_init( options )
 	local options = options or {}
 	local img_info, img_data = self._img_info, self._img_data
 
-
 	-- == define our properties ====================
 
 	-- these are display objects
@@ -328,6 +333,11 @@ function PushButton:_init( options )
 	end
 	if options.downIndex then
 		img_info.down.index = options.downIndex
+	end
+
+	if options.fillColor then
+		img_info.up.fillColor = options.fillColor
+		img_info.down.fillColor = options.fillColor
 	end
 
 	if options.style then
@@ -532,6 +542,11 @@ function BinaryButton:_init( options )
 		img_info.inactive.index = options.inactiveIndex
 	end
 	
+	if options.fillColor then
+		img_info.active.fillColor = options.fillColor
+		img_info.inactive.fillColor = options.fillColor
+	end
+
 	if options.style then
 		Utils.extend( options.style, img_info.active.style )
 		Utils.extend( options.style, img_info.inactive.style )
@@ -664,7 +679,6 @@ function BinaryButton:touch( e )
 end
 
 function BinaryButton:_setButtonState( value )
-
 	-- no need to update if the same state
 	if self.state == value then return end
 
