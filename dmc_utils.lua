@@ -133,7 +133,7 @@ end
 --
 function Utils.createObjectCallback( object, method )
 	return function( ... )
-		method( object, ... )
+		return method( object, ... )
 	end
 end
 
