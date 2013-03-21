@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.0.1"
 
 
 -- =========================================================
@@ -130,6 +130,11 @@ local function inheritsFrom( baseClass, options, constructor )
 	local constructor = constructor
 	local o
 
+	-- flag to indicate this is a subclass object
+	-- will be set in the constructor
+	options = options or {}
+	options.__setIntermediate = true
+
 	-- get default constructor
 	if baseClass and constructor == nil then
 		constructor = baseClass['new']	-- assuming new
@@ -172,6 +177,7 @@ local function inheritsFrom( baseClass, options, constructor )
 
 		return b_isa
 	end
+
 
 	return o
 end
@@ -313,9 +319,20 @@ CoronaBase.NAME = "Corona Base"
 function CoronaBase:new( options )
 
 	local o = self:_bless()
+
+	-- set flag if this is an Intermediate class
+	if options.__setIntermediate == true then
+		o.__isIntermediate = true
+		options.__setIntermediate = nil
+	end
+
 	o:_init( options )
-	o:_createView()
-	o:_initComplete()
+
+	-- skip these if we're an intermediate class (eg, subclass)
+	if rawget( o, '__isIntermediate' ) == nil then
+		o:_createView()
+		o:_initComplete()
+	end
 
 	return o
 end
@@ -661,8 +678,12 @@ function CoronaBase:removeSelf()
 		self.display.__dmc_ref = nil
 	end
 
-	self:_undoInitComplete()
-	self:_undoCreateView()
+	-- skip these if we're an intermediate class (eg, subclass)
+	if rawget( self, '__isIntermediate' ) == nil then
+		self:_undoInitComplete()
+		self:_undoCreateView()
+	end
+
 	self:_undoInit()
 
 	if self.display ~= nil then
