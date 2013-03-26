@@ -318,6 +318,8 @@ CoronaBase.NAME = "Corona Base"
 --
 function CoronaBase:new( options )
 
+	options = options or {}
+
 	local o = self:_bless()
 
 	-- set flag if this is an Intermediate class
