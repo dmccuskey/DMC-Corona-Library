@@ -132,6 +132,9 @@ end
 -- @param method the method to call
 --
 function Utils.createObjectCallback( object, method )
+	if object == nil or method == nil then
+		print( "WARNING: nil or missing parameter in createObjectCallback()" )
+	end
 	return function( ... )
 		return method( object, ... )
 	end
