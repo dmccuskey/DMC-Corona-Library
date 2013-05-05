@@ -8,7 +8,7 @@
 
 --[[
 
-Copyright (C) 2011 David McCuskey. All Rights Reserved.
+Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -28,6 +28,11 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 DEALINGS IN THE SOFTWARE.
 
 --]]
+
+
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "1.0.0"
 
 
 -- =========================================================
@@ -330,6 +335,12 @@ function CoronaBase:_init( options )
 	self:_setDisplay( display.newGroup() )
 
 end
+-- _undoInit()
+-- remove items added during _init()
+--
+function CoronaBase:_undoInit( options )
+	-- OVERRIDE THIS
+end
 
 
 -- _createView()
@@ -337,6 +348,12 @@ end
 -- they are then put into the Corona display object
 --
 function CoronaBase:_createView()
+	-- OVERRIDE THIS
+end
+-- _undoCreateView()
+-- remove any items added during _createView()
+--
+function CoronaBase:_undoCreateView()
 	-- OVERRIDE THIS
 end
 
@@ -347,6 +364,12 @@ end
 function CoronaBase:_initComplete()
 	-- OVERRIDE THIS
 end
+-- _undoInitComplete()
+-- remove any items added during _initComplete()
+--
+function CoronaBase:_undoInitComplete()
+	-- OVERRIDE THIS
+end
 
 
 -- _setDisplay( displayObject )
@@ -355,9 +378,11 @@ end
 --
 function CoronaBase:_setDisplay( displayObject )
 	if rawget( self, 'display' ) ~= nil then
+		if self.display.__dmc_ref then self.display.__dmc_ref = nil end
 		self.display:removeSelf()
 	end
 	self.display = displayObject
+	self.display.__dmc_ref = self
 end
 
 
@@ -630,8 +655,21 @@ end
 -- removeSelf()
 --
 function CoronaBase:removeSelf()
-	print( "\nOVERRIDE: removeSelf()\n" );
-	--self.display:removeSelf()
+	--print( "\nOVERRIDE: removeSelf()\n" );
+
+	if self.display.__dmc_ref then
+		self.display.__dmc_ref = nil
+	end
+
+	self:_undoInitComplete()
+	self:_undoCreateView()
+	self:_undoInit()
+
+	if self.display ~= nil then
+		self.display:removeSelf()
+		self.display = nil
+	end
+
 end
 -- rotate( deltaAngle )
 --
@@ -640,8 +678,8 @@ function CoronaBase:rotate( ... )
 end
 -- scale( sx, sy )
 --
-function CoronaBase:scale( x, y )
-	self.display:scale( x, y )
+function CoronaBase:scale( ... )
+	self.display:scale( ... )
 end
 function CoronaBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
@@ -687,82 +725,82 @@ CoronaPhysics.NAME = "Corona Physics"
 
 -- angularDamping()
 --
-function CoronaBase.__getters:angularDamping()
+function CoronaPhysics.__getters:angularDamping()
 	return self.display.angularDamping
 end
-function CoronaBase.__setters:angularDamping( value )
+function CoronaPhysics.__setters:angularDamping( value )
 	self.display.angularDamping = value
 end
 -- angularVelocity()
 --
-function CoronaBase.__getters:angularVelocity()
+function CoronaPhysics.__getters:angularVelocity()
 	return self.display.angularVelocity
 end
-function CoronaBase.__setters:angularVelocity( value )
+function CoronaPhysics.__setters:angularVelocity( value )
 	self.display.angularVelocity = value
 end
 -- bodyType()
 --
-function CoronaBase.__getters:bodyType()
+function CoronaPhysics.__getters:bodyType()
 	return self.display.bodyType
 end
-function CoronaBase.__setters:bodyType( value )
+function CoronaPhysics.__setters:bodyType( value )
 	self.display.bodyType = value
 end
 -- isAwake()
 --
-function CoronaBase.__getters:isAwake()
+function CoronaPhysics.__getters:isAwake()
 	return self.display.isAwake
 end
-function CoronaBase.__setters:isAwake( value )
+function CoronaPhysics.__setters:isAwake( value )
 	self.display.isAwake = value
 end
 -- isBodyActive()
 --
-function CoronaBase.__getters:isBodyActive()
+function CoronaPhysics.__getters:isBodyActive()
 	return self.display.isBodyActive
 end
-function CoronaBase.__setters:isBodyActive( value )
+function CoronaPhysics.__setters:isBodyActive( value )
 	self.display.isBodyActive = value
 end
 -- isBullet()
 --
-function CoronaBase.__getters:isBullet()
+function CoronaPhysics.__getters:isBullet()
 	return self.display.isBullet
 end
-function CoronaBase.__setters:isBullet( value )
+function CoronaPhysics.__setters:isBullet( value )
 	self.display.isBullet = value
 end
 -- isFixedRotation()
 --
-function CoronaBase.__getters:isFixedRotation()
+function CoronaPhysics.__getters:isFixedRotation()
 	return self.display.isFixedRotation
 end
-function CoronaBase.__setters:isFixedRotation( value )
+function CoronaPhysics.__setters:isFixedRotation( value )
 	self.display.isFixedRotation = value
 end
 -- isSensor()
 --
-function CoronaBase.__getters:isSensor()
+function CoronaPhysics.__getters:isSensor()
 	return self.display.isSensor
 end
-function CoronaBase.__setters:isSensor( value )
+function CoronaPhysics.__setters:isSensor( value )
 	self.display.isSensor = value
 end
 -- isSleepingAllowed()
 --
-function CoronaBase.__getters:isSleepingAllowed()
+function CoronaPhysics.__getters:isSleepingAllowed()
 	return self.display.isSleepingAllowed
 end
-function CoronaBase.__setters:isSleepingAllowed( value )
+function CoronaPhysics.__setters:isSleepingAllowed( value )
 	self.display.isSleepingAllowed = value
 end
 -- linearDamping()
 --
-function CoronaBase.__getters:linearDamping()
+function CoronaPhysics.__getters:linearDamping()
 	return self.display.linearDamping
 end
-function CoronaBase.__setters:linearDamping( value )
+function CoronaPhysics.__setters:linearDamping( value )
 	self.display.linearDamping = value
 end
 
@@ -771,37 +809,37 @@ end
 
 -- applyAngularImpulse( appliedForce )
 --
-function CoronaBase:applyAngularImpulse( ... )
+function CoronaPhysics:applyAngularImpulse( ... )
 	self.display:applyAngularImpulse( ... )
 end
 -- applyForce( xForce, yForce, bodyX, bodyY )
 --
-function CoronaBase:applyForce( ... )
+function CoronaPhysics:applyForce( ... )
 	self.display:applyForce( ... )
 end
 -- applyLinearImpulse( xForce, yForce, bodyX, bodyY )
 --
-function CoronaBase:applyLinearImpulse( ... )
+function CoronaPhysics:applyLinearImpulse( ... )
 	self.display:applyLinearImpulse( ... )
 end
 -- applyTorque( appliedForce )
 --
-function CoronaBase:applyTorque( ... )
+function CoronaPhysics:applyTorque( ... )
 	self.display:applyTorque( ... )
 end
 -- getLinearVelocity()
 --
-function CoronaBase:getLinearVelocity()
+function CoronaPhysics:getLinearVelocity()
 	return self.display:getLinearVelocity()
 end
 -- resetMassData()
 --
-function CoronaBase:resetMassData()
+function CoronaPhysics:resetMassData()
 	self.display:resetMassData()
 end
 -- setLinearVelocity( xVelocity, yVelocity )
 --
-function CoronaBase:setLinearVelocity( ... )
+function CoronaPhysics:setLinearVelocity( ... )
 	self.display:setLinearVelocity( ... )
 end
 

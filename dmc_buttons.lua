@@ -9,7 +9,7 @@
 
 --[[
 
-Copyright (C) 2011 David McCuskey. All Rights Reserved.
+Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -30,6 +30,10 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
+
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "0.8.1"
 
 
 -- =====================================================

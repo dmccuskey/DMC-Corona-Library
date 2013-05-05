@@ -25,12 +25,9 @@
 
 
 local Progress = {}
-
--- setup OO for Class
-local mt = {
+local Progress_meta = {
 	__index = Progress
 }
-setmetatable( Progress, mt )
 
 
 --==  Class constants  ==--
@@ -54,10 +51,7 @@ function Progress:new( data )
 	--print( "Progress:new" )
 
 	local o = {}
-	local mt = {
-		__index = Progress
-	}
-	setmetatable( o, mt )
+	setmetatable( o, Progress_meta )
 
 	o._data = data
 

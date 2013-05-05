@@ -7,7 +7,7 @@
 
 --[[
 
-Copyright (C) 2012 David McCuskey. All Rights Reserved.
+Copyright (C) 2012-2013 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -170,9 +170,10 @@ end
 --
 function TouchManager:unregister( obj, handler )
 	local r = self:_getRegisteredObject( obj )
-
-	self:_setRegisteredObject( obj, nil )
-	obj:removeEventListener( "touch", r.callback )
+    if r then
+	    self:_setRegisteredObject( obj, nil )
+	    obj:removeEventListener( "touch", r.callback )
+    end
 end
 
 

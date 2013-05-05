@@ -31,7 +31,7 @@ This module contains a data-storage manager which makes saving application data 
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_autostore
+http://docs.davidmccuskey.com/display/docs/dmc_autostore.lua
 
 
 **Examples**
