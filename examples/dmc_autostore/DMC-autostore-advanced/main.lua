@@ -133,10 +133,11 @@ local function initializeAutoStore()
 
 	if not AutoStore.is_new_file then return end
 
-	--== new data file, setup the base storage structure ==--
 
-  -- grab the root of the magic tree
-  -- right now 'data' is a reference to an empty, "magic" table, eg {}
+	--== new data file, initialize the data structure ==--
+
+	-- get a reference to the root of the data structure
+	-- right now 'data' is an empty, "magic" table, eg {}
 	local data = AutoStore.data
 
 	-- add empty container to the tree in which to store our UFO objects
@@ -291,6 +292,7 @@ end
 
 
 -- main()
+-- bootstrap the application
 --
 local main = function()
 
