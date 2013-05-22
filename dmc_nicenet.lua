@@ -32,15 +32,15 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.8.0"
+local VERSION = "0.9.0"
 
 
 --====================================================================--
 -- Imports
 --====================================================================--
 
-local Objects = require( "lib.dmc_objects" )
-local Utils = require( "lib.dmc_utils" )
+local Objects = require( "dmc_objects" )
+local Utils = require( "dmc_utils" )
 
 
 
@@ -192,20 +192,24 @@ function NetworkCommand:execute()
 	local t = self._type
 	local p = self._command
 
-	-- Setup basic network callback
+	-- Setup basic Corona network.* callback
 
 	local callback = function( event )
-		-- do upstream callback first
-		if p.listener then p.listener( event ) end
-		-- then set our state
+
+		-- set Command Object next state
 		if event.isError then
 			self.state = self.STATE_REJECTED
 		else
 			self.state = self.STATE_RESOLVED
 		end
+
+		-- do upstream callback
+		if p.listener then p.listener( event ) end
+
 	end
 
-	-- Set our active state and call appropriate network command
+	-- Set Command Object active state and
+	-- call appropriate Corona network.* function
 
 	self.state = self.STATE_UNFULFILLED
 
@@ -216,7 +220,8 @@ function NetworkCommand:execute()
 		network.download( p.url, p.method, callback, p.params, p.filename, p.basedir )
 
 	elseif t == self.TYPE_UPLOAD then
-		network.download( p.url, p.method, callback, p.params, p.filename, p.basedir,  p.contenttype )
+		network.upload( p.url, p.method, callback, p.params, p.filename, p.basedir,  p.contenttype )
+
 	end
 
 end
@@ -238,16 +243,15 @@ end
 --
 function NetworkCommand:_dispatchEvent( e_type, data )
 	--print( "NetworkCommand:_dispatchEvent" )
-
-	params = params or {}
 	
 	-- setup custom event
 	local e = {
 		name = NetworkCommand.EVENT,
 		type = e_type,
-		target = self
+
+		target = self,
+		data = data
 	}
-	e.data = data
 
 	self:dispatchEvent( e )
 end
@@ -355,11 +359,7 @@ function NiceNetwork:request( url, method, listener, params )
 		priority=self._default_priority
 	}
 
-	-- create new command object
-	o = NetworkCommand:new( p )
-	self:_insertCommand( o )
-
-	return o
+	return self:_insertCommand( p )
 end
 
 
@@ -383,11 +383,7 @@ function NiceNetwork:download( url, method, listener, params, filename, basedir 
 		priority=self._default_priority
 	}
 
-	-- create new command object
-	o = NetworkCommand:new( p )
-	self:_insertCommand( o )
-
-	return o
+	return self:_insertCommand( p )
 end
 
 
@@ -398,12 +394,24 @@ end
 
 
 
-function NiceNetwork:_insertCommand( command )
+function NiceNetwork:_insertCommand( params )
 	--print( "NiceNetwork:_insertCommand ", command.type )
-	local aq, pq = self._active_queue, self._pending_queue
 
+	local command = NetworkCommand:new( params )
 	command:addEventListener( command.EVENT, self )
-	pq[ command.key ] = command
+	self._pending_queue[ command.key ] = command
+
+	self:_processQueue()
+
+	return command 
+end
+
+function NiceNetwork:_removeCommand( command )
+	--print( "NiceNetwork:_insertCommand ", command.type )
+
+	self._active_queue[ command.key ] = nil
+	command:removeEventListener( command.EVENT, self )
+	command:removeSelf()
 
 	self:_processQueue()
 end
@@ -482,12 +490,8 @@ function NiceNetwork:network_command_event( event )
 	elseif event.type == cmd.STATE_UPDATED then
 
 		if cmd.state == cmd.STATE_REJECTED or cmd.state == cmd.STATE_RESOLVED then
-			-- remove from active queue
-			self._active_queue[ cmd.key ] = nil
-			cmd:removeEventListener( cmd.EVENT, self )
-			cmd:removeSelf()
-
-			self:_processQueue()
+			-- remove from Active queue
+			self:_removeCommand( cmd )
 		end
 	end 
 end
@@ -502,15 +506,14 @@ end
 --
 function NiceNetwork:_dispatchEvent( e_type, data )
 	--print( "NiceNetwork:_dispatchEvent" )
-
-	params = params or {}
 	
 	-- setup custom event
 	local e = {
 		name = NiceNetwork.EVENT,
-		type = e_type
+		type = e_type,
+
+		data = data
 	}
-	e.data = data
 
 	self:dispatchEvent( e )
 end
