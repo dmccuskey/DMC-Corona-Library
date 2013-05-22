@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.10.0"
+local VERSION = "0.10.1"
 
 
 --====================================================================--
@@ -105,7 +105,7 @@ function NetworkCommand:_init( params )
 	self._params = params
 	self._type = params.type
 	self._state = self.STATE_PENDING
-	self._priority = params.priority or self.MEDIUM
+	self._priority = params.priority or self.LOW
 
 	self._command = params.command
 	-- url
