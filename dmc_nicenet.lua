@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.10.1"
+local VERSION = "0.11.0"
 
 
 --====================================================================--
@@ -82,6 +82,7 @@ NetworkCommand.STATE_PENDING = 'state_pending' -- not yet active
 NetworkCommand.STATE_UNFULFILLED = 'state_unfulfilled'
 NetworkCommand.STATE_RESOLVED = 'state_resolved'
 NetworkCommand.STATE_REJECTED = 'state_rejected'
+NetworkCommand.STATE_CANCELLED = 'state_cancelled'
 
 
 --== Event Constants
@@ -113,6 +114,7 @@ function NetworkCommand:_init( params )
 	-- listener
 	-- params
 
+	self._net_id = nil -- id from network.* call, can use to cancel
 
 	--== Display Groups ==--
 
@@ -214,19 +216,32 @@ function NetworkCommand:execute()
 	self.state = self.STATE_UNFULFILLED
 
 	if t == self.TYPE_REQUEST then
-		network.request( p.url, p.method, callback, p.params )
+		self._net_id = network.request( p.url, p.method, callback, p.params )
 
 	elseif t == self.TYPE_DOWNLOAD then
-		network.download( p.url, p.method, callback, p.params, p.filename, p.basedir )
+		self._net_id = network.download( p.url, p.method, callback, p.params, p.filename, p.basedir )
 
 	elseif t == self.TYPE_UPLOAD then
-		network.upload( p.url, p.method, callback, p.params, p.filename, p.basedir,  p.contenttype )
+		self._net_id = network.upload( p.url, p.method, callback, p.params, p.filename, p.basedir, p.contenttype )
 
 	end
 
 end
 
 
+
+-- cancel
+-- cancel the network call
+--
+function NetworkCommand:cancel()
+	--print( "NetworkCommand:cancel" )
+	if self._net_id ~= nil then
+		network.cancel( self._net_id )
+		self._net_id = nil
+	end
+
+	self.state = self.STATE_CANCELLED
+end
 
 
 --== Private Methods
@@ -418,7 +433,52 @@ end
 
 --== Private Methods
 
+-- this is a replacement for Corona network.upload()
+--[[
+network.upload( url, method, listener [, params], filename [, baseDirectory] [, contentType] )
+--]]
+function NiceNetwork:upload( url, method, listener, params, filename, basedir, contenttype )
 
+	--== Process optional parameters
+
+	-- network params
+	if params and type(params) ~= 'table' then
+		contenttype = basedir
+		basedir = filename
+		filename = params
+		params = nil
+	end
+
+	-- base directory
+	if basedir and type(basedir) ~= 'userdata' then
+		contenttype = basedir
+		basedir = nil
+	end
+
+
+	--== Setup and create Command object
+
+	local net_params, cmd_params
+
+	-- save parameters for Corona network.* call
+	net_params = {
+		url=url,
+		method=method,
+		listener=listener,
+		params=params,
+		filename=filename,
+		basedir=basedir,
+		contenttype=contenttype
+	}
+	-- save parameters for NiceNet Command object
+	cmd_params = {
+		command=net_params,
+		type=NetworkCommand.TYPE_DOWNLOAD,
+		priority=self._default_priority
+	}
+
+	return self:_insertCommand( cmd_params )
+end
 
 function NiceNetwork:_insertCommand( params )
 	--print( "NiceNetwork:_insertCommand ", command.type )
@@ -522,7 +582,7 @@ function NiceNetwork:network_command_event( event )
 
 	elseif event.type == cmd.STATE_UPDATED then
 
-		if cmd.state == cmd.STATE_REJECTED or cmd.state == cmd.STATE_RESOLVED then
+		if cmd.state == cmd.STATE_REJECTED or cmd.state == cmd.STATE_RESOLVED or cmd.state == cmd.STATE_CANCELLED then
 			-- remove from Active queue
 			self:_removeCommand( cmd )
 		end
