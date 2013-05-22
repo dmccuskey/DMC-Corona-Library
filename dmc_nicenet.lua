@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.11.1"
+local VERSION = "0.11.2"
 
 
 --====================================================================--
@@ -317,10 +317,10 @@ function NiceNetwork:_init( params )
 	--== Create Properties ==--
 
 	self._params = params
-	self._default_priority = params.default_priority or NetworkCommand.MEDIUM 
+	self._default_priority = params.default_priority or NiceNetwork.LOW 
 
 	-- TODO: hook this up to params
-	self._active_limit = self.DEFAULT_ACTIVE_QUEUE_LIMIT
+	self._active_limit = params.active_queue_limit or self.DEFAULT_ACTIVE_QUEUE_LIMIT
 
  	-- dict of Active Command Objects, keyed on object raw id
  	self._active_queue = nil
