@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.11.0"
+local VERSION = "0.11.1"
 
 
 --====================================================================--
@@ -371,23 +371,26 @@ network.request( url, method, listener [, params] )
 --]]
 function NiceNetwork:request( url, method, listener, params )
 	--print( "NiceNetwork:request ", url, method )
-	local command, p, o 
+
+	--== Setup and create Command object
+
+	local net_params, cmd_params
 
 	-- save parameters for Corona network.* call
-	command = {
+	net_params = {
 		url=url,
 		method=method,
 		listener=listener,
 		params=params
 	}
 	-- save parameters for NiceNet Command object
-	p = {
-		command=command,
+	cmd_params = {
+		command=net_params,
 		type=NetworkCommand.TYPE_REQUEST,
 		priority=self._default_priority
 	}
 
-	return self:_insertCommand( p )
+	return self:_insertCommand( cmd_params )
 end
 
 
@@ -398,18 +401,22 @@ network.download( url, method, listener [, params], filename [, baseDirectory] )
 function NiceNetwork:download( url, method, listener, params, filename, basedir )
 	--print( "NiceNetwork:download ", url, filename )
 
-	-- process incoming parameters
-	local tmp
-	if params and type(params) == 'string' then
-		tmp = params ; params = nil
+	--== Process optional parameters
+
+	-- network params
+	if params and type(params) ~= 'table' then
 		basedir = filename
-		filename = tmp
+		filename = params
+		params = nil
 	end
 
-	local command, p, o 
+
+	--== Setup and create Command object
+
+	local net_params, cmd_params 
 
 	-- save parameters for Corona network.* call
-	command = {
+	net_params = {
 		url=url,
 		method=method,
 		listener=listener,
@@ -418,20 +425,15 @@ function NiceNetwork:download( url, method, listener, params, filename, basedir 
 		basedir=basedir
 	}
 	-- save parameters for NiceNet Command object
-	p = {
-		command=command,
+	cmd_params = {
+		command=net_params,
 		type=NetworkCommand.TYPE_DOWNLOAD,
 		priority=self._default_priority
 	}
 
-	return self:_insertCommand( p )
+	return self:_insertCommand( cmd_params )
 end
 
-
-
-
-
---== Private Methods
 
 -- this is a replacement for Corona network.upload()
 --[[
@@ -479,6 +481,11 @@ function NiceNetwork:upload( url, method, listener, params, filename, basedir, c
 
 	return self:_insertCommand( cmd_params )
 end
+
+
+--== Private Methods
+
+
 
 function NiceNetwork:_insertCommand( params )
 	--print( "NiceNetwork:_insertCommand ", command.type )
