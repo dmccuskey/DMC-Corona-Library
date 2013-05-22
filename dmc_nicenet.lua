@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.9.0"
+local VERSION = "0.9.1"
 
 
 --====================================================================--
@@ -141,11 +141,18 @@ end
 
 
 function NetworkCommand.__getters:key()
-	--print( "NetworkCommand.__getters:priority" )
+	--print( "NetworkCommand.__getters:key" )
 	return tostring( self )
 end
 
 
+
+-- getter/setter, command type
+--
+function NetworkCommand.__getters:type()
+	--print( "NetworkCommand.__getters:type" )
+	return self._type
+end
 
 -- getter/setter, command priority
 --
@@ -160,13 +167,6 @@ function NetworkCommand.__setters:priority( value )
 	if tmp ~= value then
 		self:_dispatchEvent( NetworkCommand.PRIORITY_UPDATED )
 	end
-end
-
--- getter/setter, command type
---
-function NetworkCommand.__getters:type()
-	--print( "NetworkCommand.__getters:type" )
-	return self._type
 end
 
 -- getter/setter, command state
@@ -184,7 +184,7 @@ function NetworkCommand.__setters:state( value )
 end
 
 -- execute
--- start the netowrk process
+-- start the network call
 --
 function NetworkCommand:execute()
 	--print( "NetworkCommand:execute" )
@@ -228,7 +228,12 @@ end
 
 
 
+
 --== Private Methods
+
+-- none
+
+
 
 
 --== Event Methods
@@ -299,10 +304,13 @@ function NiceNetwork:_init( params )
 	self._params = params
 	self._default_priority = params.default_priority or NetworkCommand.MEDIUM 
 
+	-- TODO: hook this up to params
 	self._active_limit = self.DEFAULT_ACTIVE_QUEUE_LIMIT
 
-	self._active_queue = nil -- dict of active commands, keyed on object raw id
-	self._pending_queue = nil -- dict of active commands, keyed on object raw id
+ 	-- dict of Active Command Objects, keyed on object raw id
+ 	self._active_queue = nil
+ 	-- dict of Pending Command Objects, keyed on object raw id
+ 	self._pending_queue = nil
 
 	--== Display Groups ==--
 
@@ -318,6 +326,7 @@ function NiceNetwork:_initComplete()
 	self:superCall( "_initComplete" )
 	--==--
 
+	-- create data structure
 	self._active_queue = {}
 	self._pending_queue = {}
 
@@ -326,6 +335,7 @@ end
 function NiceNetwork:_undoInitComplete()
 	--print( "NiceNetwork:_undoInitComplete" )
 
+	-- remove data structure
 	self._active_queue = nil
 	self._pending_queue = nil
 
@@ -340,19 +350,22 @@ end
 --== Public Methods
 
 
-
+-- this is a replacement for Corona network.request()
+--[[
+network.request( url, method, listener [, params] )
+--]]
 function NiceNetwork:request( url, method, listener, params )
 	--print( "NiceNetwork:request ", url, method )
 	local command, p, o 
 
-	-- save network parameters
+	-- save parameters for Corona network.* call
 	command = {
 		url=url,
 		method=method,
 		listener=listener,
 		params=params
 	}
-	-- save command params
+	-- save parameters for NiceNet Command object
 	p = {
 		command=command,
 		type=NetworkCommand.TYPE_REQUEST,
@@ -376,7 +389,7 @@ function NiceNetwork:download( url, method, listener, params, filename, basedir 
 		filename=filename,
 		basedir=basedir
 	}
-	-- save command params
+	-- save parameters for NiceNet Command object
 	p = {
 		command=command,
 		type=NetworkCommand.TYPE_DOWNLOAD,
@@ -448,6 +461,9 @@ function NiceNetwork:_processQueue()
 end
 
 
+-- provide list of commands in queue for each priority
+-- easy to get count of each type from a list
+--
 function NiceNetwork:_checkStatus( queue )
 
 	local status = {}
@@ -475,10 +491,14 @@ function NiceNetwork:_broadcastStatus()
 end
 
 
+
+
 --== Event Methods
 
 
-
+-- this is the network command event handler
+-- using name of the event as method name
+--
 function NiceNetwork:network_command_event( event )
 	--print( "NiceNetwork:network_command_event ", event.type )
 	local cmd = event.target
