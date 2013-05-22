@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.9.1"
+local VERSION = "0.10.0"
 
 
 --====================================================================--
@@ -376,11 +376,24 @@ function NiceNetwork:request( url, method, listener, params )
 end
 
 
+-- this is a replacement for Corona network.download()
+--[[
+network.download( url, method, listener [, params], filename [, baseDirectory] )
+--]]
 function NiceNetwork:download( url, method, listener, params, filename, basedir )
 	--print( "NiceNetwork:download ", url, filename )
+
+	-- process incoming parameters
+	local tmp
+	if params and type(params) == 'string' then
+		tmp = params ; params = nil
+		basedir = filename
+		filename = tmp
+	end
+
 	local command, p, o 
 
-	-- save network parameters
+	-- save parameters for Corona network.* call
 	command = {
 		url=url,
 		method=method,
