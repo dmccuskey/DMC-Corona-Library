@@ -230,4 +230,20 @@ end
 
 
 
+
+-- calculates size of table, mostly used as a dictionary
+--
+function Utils.tableSize( t1 )
+	local size = 0
+	for _,v in pairs( t1 ) do
+		size = size + 1
+	end
+	return size
+end
+
+
+
+
+
+
 return Utils
