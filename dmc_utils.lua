@@ -293,5 +293,18 @@ end
 
 
 
+function Utils.getTransitionCompleteFunc( count, callback )
+	local total = 0
+	local func = function(...)
+		total = total + 1
+		if total >= count then callback(...) end
+	end
+	return func
+end
+
+
+
+
+
 
 return Utils
