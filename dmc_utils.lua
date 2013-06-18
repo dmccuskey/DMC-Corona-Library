@@ -305,6 +305,21 @@ end
 
 
 
+-- volume, channel
+function Utils.getAudioChannel( opts )
+
+	opts = opts == nil and {} or opts
+	opts.volume = opts.volume == nil and 1.0 or opts.volume
+	opts.channel = opts.channel == nil and 1 or opts.channel
+
+	local ac = audio.findFreeChannel( opts.channel )
+	audio.setVolume( opts.volume, { channel=ac } )
+
+	return ac
+
+end
+
+
 
 
 return Utils
