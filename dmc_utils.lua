@@ -86,16 +86,14 @@ end
 -- propertyIn()
 -- Determines whether a property is within a list of items in a table (acting as an array)
 --
--- @param table the table with *list* of properties
+-- @param list the table with *list* of properties
 -- @param property the name of the property to search for
 --
-function Utils.propertyIn( table, property )
-
-	for _, v in pairs( table ) do
-		if v == property then return true end
+function Utils.propertyIn( list, property )
+	for i = 1, #list do
+		if list[i] == property then return true end
 	end
 	return false
-
 end
 
 
