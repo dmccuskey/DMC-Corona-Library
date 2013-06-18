@@ -419,7 +419,6 @@ function AutoStore:new()
 
 	-- public
 	o.data = nil
-	o.data = nil
 	o.is_new_file = false
 
 	-- private
