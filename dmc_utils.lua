@@ -123,22 +123,6 @@ function Utils.destroy( table )
 end
 
 
--- createObjectCallback()
--- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
---
--- @param object the object which has the method
--- @param method the method to call
---
-function Utils.createObjectCallback( object, method )
-	if object == nil or method == nil then
-		print( "WARNING: nil or missing parameter in createObjectCallback()" )
-	end
-	return function( ... )
-		return method( object, ... )
-	end
-end
-
-
 -- print()
 -- print out the keys contained within a table.
 -- by default, does not process items with underscore '_'
@@ -288,6 +272,22 @@ function Utils.getUniqueRandom( include, exclude )
 	end
 
 	return item
+end
+
+
+-- createObjectCallback()
+-- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
+--
+-- @param object the object which has the method
+-- @param method the method to call
+--
+function Utils.createObjectCallback( object, method )
+	if object == nil or method == nil then
+		print( "WARNING: nil or missing parameter in createObjectCallback()" )
+	end
+	return function( ... )
+		return method( object, ... )
+	end
 end
 
 
