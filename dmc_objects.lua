@@ -417,6 +417,13 @@ end
 
 
 
+-- TODO: method can be a string or method reference
+function Object:createCallback( method )
+	return function( ... )
+		method( self, ... )
+	end
+end
+
 
 -- =========================================================
 -- CoronaBase Class
