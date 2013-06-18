@@ -595,9 +595,10 @@ function AutoStore:addEventListener( type, callback )
 
 	local o = self._eventListeners[ type ]
 	if self._eventListeners[ type ] == nil then
-		print( "ERROR")
+		print( "ERROR Autostore: event type not given")
 	else
-		o[ callback ] = { type, callback }
+		local key = tostring( callback )
+		o[ key ] = { type, callback }
 	end
 
 end
