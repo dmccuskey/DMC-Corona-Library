@@ -377,4 +377,66 @@ end
 
 
 
+--====================================================================--
+-- Memory Monitor
+--====================================================================--
+
+local memoryWatcherCallback = nil
+
+
+-- Memory Monitor function
+
+function Utils.memoryMonitor()
+
+	collectgarbage()
+
+	local memory = collectgarbage("count") 
+	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
+
+	print( "M: " .. memory, " T: " .. texture )
+
+end
+
+
+-- watchMemory()
+-- prints out current memory values
+--
+-- value (boolean:
+-- if true, start memory watching every frame
+-- if false, stop current memory watching
+-- if number, start memory watching every Number of milliseconds
+--
+function Utils.watchMemory( value )
+
+	local f
+
+	if value == true then
+		-- setup constant, frame rate memory watch
+
+		Runtime:addEventListener( "enterFrame", Utils.memoryMonitor )
+
+		memoryWatcherCallback = function()
+			Runtime:removeEventListener( "enterFrame", Utils.memoryMonitor )
+			memoryWatcherCallback = nil
+		end
+
+	elseif type( value ) == "number" and value > 0 then
+
+		local timer = timer.performWithDelay( value, Utils.memoryMonitor, 0 )
+
+		memoryWatcherCallback = function()
+			timer.cancel( timer )
+			memoryWatcherCallback = nil
+		end
+
+	elseif value == false and memoryWatcherCallback ~= nil then
+		-- stop watching memory
+		memoryWatcherCallback()
+	end
+
+end
+
+
+
+
 return Utils
