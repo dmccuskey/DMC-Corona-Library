@@ -455,17 +455,17 @@ end
 
 
 -- _init()
--- initialize the object - setting the display
+-- initialize the object - setting the view
 --
 function CoronaBase:_init( options )
+	-- OVERRIDE THIS
 
-	-- == Create Properties ==
+	--== Create Properties ==--
+	--== Display Groups ==--
+	--== Object References ==--
 
-	-- has-a - Corona display object
-	self.display = nil
-
-	-- create our class display container
-	self:_setDisplay( display.newGroup() )
+	-- create our class view container
+	self:_setView( display.newGroup() )
 
 end
 -- _undoInit()
@@ -473,12 +473,12 @@ end
 --
 function CoronaBase:_undoInit( options )
 	-- OVERRIDE THIS
+	self:_unsetView()
 end
 
 
 -- _createView()
 -- create any visual items specific to object
--- they are then put into the Corona display object
 --
 function CoronaBase:_createView()
 	-- OVERRIDE THIS
@@ -505,34 +505,54 @@ function CoronaBase:_undoInitComplete()
 end
 
 
--- _setDisplay( displayObject )
--- set the display property to incoming display object
+-- _setView( viewObject )
+-- set the view property to incoming view object
 -- remove current if already set, only check direct property, not hierarchy
 --
-function CoronaBase:_setDisplay( displayObject )
-	if rawget( self, 'display' ) ~= nil then
-		if self.display.__dmc_ref then self.display.__dmc_ref = nil end
-		self.display:removeSelf()
+function CoronaBase:_setView( viewObject )
+	self:_unsetView()
+
+	self.view = viewObject
+	self.display = self.view
+	-- save ref of our Lua object on Corona element
+	-- in case we need to get back to the object
+	self.view.__dmc_ref = self
+end
+-- _unsetView()
+-- remove the view property
+--
+function CoronaBase:_unsetView()
+	if rawget( self, 'view' ) ~= nil then
+		local view = self.view
+
+		if view.__dmc_ref then view.__dmc_ref = nil end
+
+		if view.numChildren ~= nil then
+			for i = view.numChildren, 1, -1 do
+				local o = view[i]
+				o.parent:remove( o )
+			end		
+		end
+		view:removeSelf()
+		self.view = nil
+		self.display = nil
 	end
-	self.display = displayObject
-	self.display.__dmc_ref = self
 end
 
 
 -- destroy()
--- remove the display object from the stage
+-- remove the view object from the stage
 --
 function CoronaBase:destroy()
-	self.display:removeSelf()
-	self.display = nil
+	self:removeSelf()
 end
 
 
 function CoronaBase:show()
-	self.display.isVisible = true
+	self.view.isVisible = true
 end
 function CoronaBase:hide()
-	self.display.isVisible = false
+	self.view.isVisible = false
 end
 
 
@@ -546,7 +566,7 @@ end
 -- numChildren
 --
 function CoronaBase.__getters:numChildren()
-	return self.display.numChildren
+	return self.view.numChildren
 end
 
 
@@ -555,12 +575,12 @@ end
 -- insert( [index,] child, [, resetTransform]  )
 --
 function CoronaBase:insert( ... )
-	self.display:insert( ... )
+	self.view:insert( ... )
 end
 -- remove( indexOrChild )
 --
 function CoronaBase:remove( ... )
-	self.display:remove( ... )
+	self.view:remove( ... )
 end
 
 
@@ -572,188 +592,188 @@ end
 -- alpha
 --
 function CoronaBase.__getters:alpha()
-	return self.display.alpha
+	return self.view.alpha
 end
 function CoronaBase.__setters:alpha( value )
-	self.display.alpha = value
+	self.view.alpha = value
 end
 -- contentBounds
 --
 function CoronaBase.__getters:contentBounds()
-	return self.display.contentBounds
+	return self.view.contentBounds
 end
 -- contentHeight
 --
 function CoronaBase.__getters:contentHeight()
-	return self.display.contentHeight
+	return self.view.contentHeight
 end
 -- contentWidth
 --
 function CoronaBase.__getters:contentWidth()
-	return self.display.contentWidth
+	return self.view.contentWidth
 end
 -- height
 --
 function CoronaBase.__getters:height()
-	return self.display.height
+	return self.view.height
 end
 function CoronaBase.__setters:height( value )
-	self.display.height = value
+	self.view.height = value
 end
 -- isHitTestMasked
 --
 function CoronaBase.__getters:isHitTestMasked()
-	return self.display.isHitTestMasked
+	return self.view.isHitTestMasked
 end
 function CoronaBase.__setters:isHitTestMasked( value )
-	self.display.isHitTestMasked = value
+	self.view.isHitTestMasked = value
 end
 -- isHitTestable
 --
 function CoronaBase.__getters:isHitTestable()
-	return self.display.isHitTestable
+	return self.view.isHitTestable
 end
 function CoronaBase.__setters:isHitTestable( value )
-	self.display.isHitTestable = value
+	self.view.isHitTestable = value
 end
 -- isVisible
 --
 function CoronaBase.__getters:isVisible()
-	return self.display.isVisible
+	return self.view.isVisible
 end
 function CoronaBase.__setters:isVisible( value )
-	self.display.isVisible = value
+	self.view.isVisible = value
 end
 -- maskRotation
 --
 function CoronaBase.__getters:maskRotation()
-	return self.display.maskRotation
+	return self.view.maskRotation
 end
 function CoronaBase.__setters:maskRotation( value )
-	self.display.maskRotation = value
+	self.view.maskRotation = value
 end
 -- maskScaleX
 --
 function CoronaBase.__getters:maskScaleX()
-	return self.display.maskScaleX
+	return self.view.maskScaleX
 end
 function CoronaBase.__setters:maskScaleX( value )
-	self.display.maskScaleX = value
+	self.view.maskScaleX = value
 end
 -- maskScaleY
 --
 function CoronaBase.__getters:maskScaleY()
-	return self.display.maskScaleY
+	return self.view.maskScaleY
 end
 function CoronaBase.__setters:maskScaleY( value )
-	self.display.maskScaleY = value
+	self.view.maskScaleY = value
 end
 -- maskX
 --
 function CoronaBase.__getters:maskX()
-	return self.display.maskX
+	return self.view.maskX
 end
 function CoronaBase.__setters:maskX( value )
-	self.display.maskX = value
+	self.view.maskX = value
 end
 -- maskY
 --
 function CoronaBase.__getters:maskY()
-	return self.display.maskY
+	return self.view.maskY
 end
 function CoronaBase.__setters:maskY( value )
-	self.display.maskY = value
+	self.view.maskY = value
 end
 -- parent
 --
 function CoronaBase.__getters:parent()
-	return self.display.parent
+	return self.view.parent
 end
 -- rotation
 --
 function CoronaBase.__getters:rotation()
-	return self.display.rotation
+	return self.view.rotation
 end
 function CoronaBase.__setters:rotation( value )
-	self.display.rotation = value
+	self.view.rotation = value
 end
 -- stageBounds
 --
 function CoronaBase.__getters:stageBounds()
 	print( "\nDEPRECATED: object.stageBounds - use object.contentBounds\n" )
-	return self.display.stageBounds
+	return self.view.stageBounds
 end
 -- width
 --
 function CoronaBase.__getters:width()
-	return self.display.width
+	return self.view.width
 end
 function CoronaBase.__setters:width( value )
-	self.display.width = value
+	self.view.width = value
 end
 -- x
 --
 function CoronaBase.__getters:x()
-	return self.display.x
+	return self.view.x
 end
 function CoronaBase.__setters:x( value )
-	self.display.x = value
+	self.view.x = value
 end
 -- xOrigin
 --
 function CoronaBase.__getters:xOrigin()
-	return self.display.xOrigin
+	return self.view.xOrigin
 end
 function CoronaBase.__setters:xOrigin( value )
-	self.display.xOrigin = value
+	self.view.xOrigin = value
 end
 -- xReference
 --
 function CoronaBase.__getters:xReference()
-	return self.display.xReference
+	return self.view.xReference
 end
 function CoronaBase.__setters:xReference( value )
-	self.display.xReference = value
+	self.view.xReference = value
 end
 -- xScale
 --
 function CoronaBase.__getters:xScale()
-	return self.display.xScale
+	return self.view.xScale
 end
 function CoronaBase.__setters:xScale( value )
-	self.display.xScale = value
+	self.view.xScale = value
 end
 -- y
 --
 function CoronaBase.__getters:y()
-	return self.display.y
+	return self.view.y
 end
 function CoronaBase.__setters:y( value )
-	self.display.y = value
+	self.view.y = value
 end
 -- yOrigin
 --
 function CoronaBase.__getters:yOrigin()
-	return self.display.yOrigin
+	return self.view.yOrigin
 end
 function CoronaBase.__setters:yOrigin( value )
-	self.display.yOrigin = value
+	self.view.yOrigin = value
 end
 -- yReference
 --
 function CoronaBase.__getters:yReference()
-	return self.display.yReference
+	return self.view.yReference
 end
 function CoronaBase.__setters:yReference( value )
-	self.display.yReference = value
+	self.view.yReference = value
 end
 -- yScale
 --
 function CoronaBase.__getters:yScale()
-	return self.display.yScale
+	return self.view.yScale
 end
 function CoronaBase.__setters:yScale( value )
-	self.display.yScale = value
+	self.view.yScale = value
 end
 
 
@@ -763,36 +783,32 @@ end
 -- addEventListener( eventName, listener )
 --
 function CoronaBase:addEventListener( ... )
-	self.display:addEventListener( ... )
+	self.view:addEventListener( ... )
 end
 -- contentToLocal( x_content, y_content )
 --
 function CoronaBase:contentToLocal( ... )
-	self.display:contentToLocal( ... )
+	self.view:contentToLocal( ... )
 end
 -- dispatchEvent( event )
 --
 function CoronaBase:dispatchEvent( ... )
-	self.display:dispatchEvent( ... )
+	self.view:dispatchEvent( ... )
 end
 -- localToContent( x, y )
 --
 function CoronaBase:localToContent( ... )
-	self.display:localToContent( ... )
+	self.view:localToContent( ... )
 end
 -- removeEventListener( eventName, listener )
 --
 function CoronaBase:removeEventListener( ... )
-	self.display:removeEventListener( ... )
+	self.view:removeEventListener( ... )
 end
 -- removeSelf()
 --
 function CoronaBase:removeSelf()
 	--print( "\nOVERRIDE: removeSelf()\n" );
-
-	if self.display.__dmc_ref then
-		self.display.__dmc_ref = nil
-	end
 
 	-- skip these if we're an intermediate class (eg, subclass)
 	if rawget( self, '__isIntermediate' ) == nil then
@@ -801,46 +817,40 @@ function CoronaBase:removeSelf()
 	end
 
 	self:_undoInit()
-
-	if self.display ~= nil then
-		self.display:removeSelf()
-		self.display = nil
-	end
-
 end
 -- rotate( deltaAngle )
 --
 function CoronaBase:rotate( ... )
-	self.display:rotate( ... )
+	self.view:rotate( ... )
 end
 -- scale( sx, sy )
 --
 function CoronaBase:scale( ... )
-	self.display:scale( ... )
+	self.view:scale( ... )
 end
 function CoronaBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
-	self.display:setMask( ... )
+	self.view:setMask( ... )
 end
 -- setReferencePoint( referencePoint )
 --
 function CoronaBase:setReferencePoint( ... )
-	self.display:setReferencePoint( ... )
+	self.view:setReferencePoint( ... )
 end
 -- toBack()
 --
 function CoronaBase:toBack()
-	self.display:toBack()
+	self.view:toBack()
 end
 -- toFront()
 --
 function CoronaBase:toFront()
-	self.display:toFront()
+	self.view:toFront()
 end
 -- translate( deltaX, deltaY )
 --
 function CoronaBase:translate( ... )
-	self.display:translate( ... )
+	self.view:translate( ... )
 end
 
 
@@ -863,82 +873,82 @@ CoronaPhysics.NAME = "Corona Physics"
 -- angularDamping()
 --
 function CoronaPhysics.__getters:angularDamping()
-	return self.display.angularDamping
+	return self.view.angularDamping
 end
 function CoronaPhysics.__setters:angularDamping( value )
-	self.display.angularDamping = value
+	self.view.angularDamping = value
 end
 -- angularVelocity()
 --
 function CoronaPhysics.__getters:angularVelocity()
-	return self.display.angularVelocity
+	return self.view.angularVelocity
 end
 function CoronaPhysics.__setters:angularVelocity( value )
-	self.display.angularVelocity = value
+	self.view.angularVelocity = value
 end
 -- bodyType()
 --
 function CoronaPhysics.__getters:bodyType()
-	return self.display.bodyType
+	return self.view.bodyType
 end
 function CoronaPhysics.__setters:bodyType( value )
-	self.display.bodyType = value
+	self.view.bodyType = value
 end
 -- isAwake()
 --
 function CoronaPhysics.__getters:isAwake()
-	return self.display.isAwake
+	return self.view.isAwake
 end
 function CoronaPhysics.__setters:isAwake( value )
-	self.display.isAwake = value
+	self.view.isAwake = value
 end
 -- isBodyActive()
 --
 function CoronaPhysics.__getters:isBodyActive()
-	return self.display.isBodyActive
+	return self.view.isBodyActive
 end
 function CoronaPhysics.__setters:isBodyActive( value )
-	self.display.isBodyActive = value
+	self.view.isBodyActive = value
 end
 -- isBullet()
 --
 function CoronaPhysics.__getters:isBullet()
-	return self.display.isBullet
+	return self.view.isBullet
 end
 function CoronaPhysics.__setters:isBullet( value )
-	self.display.isBullet = value
+	self.view.isBullet = value
 end
 -- isFixedRotation()
 --
 function CoronaPhysics.__getters:isFixedRotation()
-	return self.display.isFixedRotation
+	return self.view.isFixedRotation
 end
 function CoronaPhysics.__setters:isFixedRotation( value )
-	self.display.isFixedRotation = value
+	self.view.isFixedRotation = value
 end
 -- isSensor()
 --
 function CoronaPhysics.__getters:isSensor()
-	return self.display.isSensor
+	return self.view.isSensor
 end
 function CoronaPhysics.__setters:isSensor( value )
-	self.display.isSensor = value
+	self.view.isSensor = value
 end
 -- isSleepingAllowed()
 --
 function CoronaPhysics.__getters:isSleepingAllowed()
-	return self.display.isSleepingAllowed
+	return self.view.isSleepingAllowed
 end
 function CoronaPhysics.__setters:isSleepingAllowed( value )
-	self.display.isSleepingAllowed = value
+	self.view.isSleepingAllowed = value
 end
 -- linearDamping()
 --
 function CoronaPhysics.__getters:linearDamping()
-	return self.display.linearDamping
+	return self.view.linearDamping
 end
 function CoronaPhysics.__setters:linearDamping( value )
-	self.display.linearDamping = value
+	self.view.linearDamping = value
 end
 
 
@@ -947,37 +957,37 @@ end
 -- applyAngularImpulse( appliedForce )
 --
 function CoronaPhysics:applyAngularImpulse( ... )
-	self.display:applyAngularImpulse( ... )
+	self.view:applyAngularImpulse( ... )
 end
 -- applyForce( xForce, yForce, bodyX, bodyY )
 --
 function CoronaPhysics:applyForce( ... )
-	self.display:applyForce( ... )
+	self.view:applyForce( ... )
 end
 -- applyLinearImpulse( xForce, yForce, bodyX, bodyY )
 --
 function CoronaPhysics:applyLinearImpulse( ... )
-	self.display:applyLinearImpulse( ... )
+	self.view:applyLinearImpulse( ... )
 end
 -- applyTorque( appliedForce )
 --
 function CoronaPhysics:applyTorque( ... )
-	self.display:applyTorque( ... )
+	self.view:applyTorque( ... )
 end
 -- getLinearVelocity()
 --
 function CoronaPhysics:getLinearVelocity()
-	return self.display:getLinearVelocity()
+	return self.view:getLinearVelocity()
 end
 -- resetMassData()
 --
 function CoronaPhysics:resetMassData()
-	self.display:resetMassData()
+	self.view:resetMassData()
 end
 -- setLinearVelocity( xVelocity, yVelocity )
 --
 function CoronaPhysics:setLinearVelocity( ... )
-	self.display:setLinearVelocity( ... )
+	self.view:setLinearVelocity( ... )
 end
 
 
