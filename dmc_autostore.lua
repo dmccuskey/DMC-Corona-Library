@@ -580,8 +580,10 @@ function AutoStore:dispatchEvent( event, type, data )
 		type=type
 	}
 
+	-- integrate the data into our custom event
 	if data ~= nil then e = extend( data, e ) end
 
+	-- dispatch out event to listeners
 	for _, data in pairs( et ) do
 		data[2]( e )
 	end
