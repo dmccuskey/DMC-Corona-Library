@@ -39,13 +39,127 @@ local VERSION = "1.0.2"
 -- Imports
 -- =========================================================
 
-local Utils = require( "dmc_utils" )
 
 
 
 -- =========================================================
 -- Class Support Functions
 -- =========================================================
+
+
+-- propertyIn()
+-- Determines whether a property is within a list of items in a table (acting as an array)
+--
+-- @param table the table with *list* of properties
+-- @param property the name of the property to search for
+--
+local function propertyIn( list, property )
+  for i = 1, #list do
+    if list[i] == property then return true end
+  end
+  return false
+end
+
+
+-- extend()
+-- Copy key/values from one table to another
+-- Will deep copy any value from first table which is itself a table.
+--
+-- @param fromTable the table (object) from which to take key/value pairs
+-- @param toTable the table (object) in which to copy key/value pairs
+-- @return table the table (object) that received the copied items
+--
+local function extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+
+
+-- printObject()
+-- print out the keys contained within a table.
+-- by default, does not process items with underscore '_'
+--
+-- @param table the table (object) to print
+-- @param include a list of names to include
+-- @param exclude a list of names to exclude
+--
+local function printObject( table, include, exclude, params )
+	local indent = ""
+	local step = 0
+	local include = include or {}
+	local exclude = exclude or {}
+	local params = params or {}
+	local options = {
+		limit = 10,
+	}
+	opts = extend( params, options )
+
+	--print("Printing object table =============================")
+	function _print( t, ind, s )
+
+		-- limit number of rounds
+		if s > options.limit then return end
+
+		for k, v in pairs( t ) do
+			local ok_to_process = true
+
+			if propertyIn( include, k ) then
+				ok_to_process = true
+			elseif type( t[k] ) == "function" or
+				propertyIn( exclude, k ) or
+				type( k ) == "string" and k:sub(1,1) == '_' then
+				ok_to_process = false
+			end
+
+			if ok_to_process then
+
+				if type( t[ k ] ) == "table" then
+					local  o = t[ k ]
+					local address = tostring( o )
+					local items = #o
+					print ( ind .. k .. " --> " .. address .. " w " .. items .. " items" )
+					_print( t[ k ], ( ind .. "  " ), ( s + 1 ) )
+
+				else
+					if type( v ) == "string" then
+						print ( ind ..  k .. " = '" .. v .. "'" )
+					else
+						print ( ind ..  k .. " = " .. tostring( v ) )
+					end
+
+				end
+			end
+
+		end
+	end
+
+	-- start printing process
+	_print( table, indent, step + 1 )
+
+end
+
 
 --
 -- indexFunc()
@@ -117,8 +231,8 @@ local function bless( base, obj )
 	o.__getters = {}
 	if base then
 		-- we have a parent, so let's copy down all its getters/setters
-		o.__getters = Utils.extend( base.__getters, o.__getters )
-		o.__setters = Utils.extend( base.__setters, o.__setters )
+		o.__getters = extend( base.__getters, o.__getters )
+		o.__setters = extend( base.__setters, o.__setters )
 	end
 
 	return o
@@ -181,6 +295,7 @@ local function inheritsFrom( baseClass, options, constructor )
 
 	return o
 end
+
 
 
 
@@ -262,13 +377,12 @@ end
 
 
 -- print
--- convenience method to interface with Utils.print
 --
 function Object:print( include, exclude )
 	local include = include or self._PRINT_INCLUDE
 	local exclude = exclude or self._PRINT_EXCLUDE
 
-	Utils.print( self, include, exclude )
+	printObject( self, include, exclude )
 end
 
 
