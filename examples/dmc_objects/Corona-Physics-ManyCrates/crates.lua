@@ -4,61 +4,81 @@
 -- =====================================================
 
 local Objects = require( "dmc_objects" )
+
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
+-- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
 
 
-
 -- =====================================================
--- CRATE BASE CLASS
+-- Crate Base Class
 -- =====================================================
-
 
 local CrateBase = inheritsFrom( CoronaBase )
 CrateBase.IMAGE_SRC = nil
 
 
--- don't actually need to have our constructor because
--- functionality comes from CoronaBase
---
-function CrateBase:new()
+--== Start: Setup DMC Objects
 
-	local o = self:_bless()
-	o:_init()
-	o:_createView()
-	o:_initComplete()
-
-	return o
-end
-
-
+-- do basic object init()
 function CrateBase:_init()
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	self.density = nil
 	self.friction = nil
 	self.bounce = nil
 
 end
+-- reverse init() setup
+function CrateBase:_undoInit()
+	self.density = nil
+	self.friction = nil
+	self.bounce = nil
 
-
-function CrateBase:_createView()
-
-	-- subclassing instantiates CrateBase, which has no image
-	-- so test to make sure we have an image
-
-	if self.IMAGE_SRC then
-
-		-- since we only have a single image, let's replace the
-		-- display group with the image object
-		local d  = display.newImage( self.IMAGE_SRC );
-		self:_setDisplay( d )
-	end
-
+	--==--
+	self:superCall( "_undoInit" )
 end
+
+-- create basic object view
+function CrateBase:_createView()
+	self:superCall( "_createView" )
+	--==--
+
+	local o -- object tmp
+
+	o  = display.newImage( self.IMAGE_SRC )
+	--self:insert( o )
+	--self:setReferencePoint(display.CenterReferencePoint)
+
+	-- here we use our image for our view instead of default display group
+	-- physics works better this way
+	self:_setView( o )
+end
+
+--[[
+if our setup was more complex than just Corona elements, 
+we could specifically tear down the object's view here.
+however, dmc_objects will automatically remove pure-Corona elements automatically
+function Shape:_undoCreateView()
+	--==--
+	self:superCall( "_undoCreateView" )
+end
+--]]
+
+
+--== END: Setup DMC Objects
+
+
+
+--== Public Methods
 
 
 function CrateBase:getPhysicsProps()
@@ -74,6 +94,12 @@ end
 
 
 
+--== Private Methods
+
+-- none
+
+
+
 -- =====================================================
 -- LARGE CRATE CLASS
 -- =====================================================
@@ -83,10 +109,10 @@ LargeCrate.IMAGE_SRC = "assets/crateB.png"
 
 
 function LargeCrate:_init()
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	self.density = 1.4
 	self.friction = 0.3
@@ -106,10 +132,10 @@ MediumCrate.IMAGE_SRC = "assets/crate.png"
 
 
 function MediumCrate:_init()
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	self.density = 0.9
 	self.friction = 0.3
@@ -129,10 +155,10 @@ SmallCrate.IMAGE_SRC = "assets/crateC.png"
 
 
 function SmallCrate:_init()
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	self.density = 0.3
 	self.friction = 0.2
