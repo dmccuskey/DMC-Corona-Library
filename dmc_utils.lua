@@ -31,6 +31,17 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "0.8.0"
+
+
+
+--====================================================================--
+-- Setup
+--====================================================================--
+
+
 local Utils = {}
 
 
@@ -86,16 +97,14 @@ end
 -- propertyIn()
 -- Determines whether a property is within a list of items in a table (acting as an array)
 --
--- @param table the table with *list* of properties
+-- @param list the table with *list* of properties
 -- @param property the name of the property to search for
 --
-function Utils.propertyIn( table, property )
-
-	for _, v in pairs( table ) do
-		if v == property then return true end
+function Utils.propertyIn( list, property )
+	for i = 1, #list do
+		if list[i] == property then return true end
 	end
 	return false
-
 end
 
 
@@ -122,19 +131,6 @@ function Utils.destroy( table )
 	-- start destruction process
 	_destroy( table )
 
-end
-
-
--- createObjectCallback()
--- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
---
--- @param object the object which has the method
--- @param method the method to call
---
-function Utils.createObjectCallback( object, method )
-	return function( ... )
-		return method( object, ... )
-	end
 end
 
 
@@ -200,6 +196,247 @@ function Utils.print( table, include, exclude, params )
 	_print( table, indent, step + 1 )
 
 end
+
+
+
+
+-- http://snippets.luacode.org/snippets/Table_Slice_116
+function Utils.tableSlice( values, i1, i2 )
+	local res = {}
+	local n = #values
+	-- default values for range
+	i1 = i1 or 1
+	i2 = i2 or n
+	if i2 < 0 then
+		i2 = n + i2 + 1
+	elseif i2 > n then
+		i2 = n
+	end
+	if i1 < 1 or i1 > n then
+		return {}
+	end
+	local k = 1
+	for i = i1,i2 do
+		res[k] = values[i]
+		k = k + 1
+	end
+	return res
+end
+
+
+
+
+-- calculates size of table, mostly used as a dictionary
+--
+function Utils.tableSize( t1 )
+	local size = 0
+	for _,v in pairs( t1 ) do
+		size = size + 1
+	end
+	return size
+end
+
+
+
+
+function Utils.getUniqueRandom( include, exclude )
+	--print( "Utils.getUniqueRandom" )
+
+	include = include or {}
+	if #include == 0 then return end
+
+	exclude = exclude or {}
+	local exclude_hash = {} -- used as dict
+	local pruned_list = {}
+	local item
+
+
+	math.randomseed( os.time() )
+
+	-- process as normal if no exclusions
+	if #exclude == 0 then
+		item = include[ math.random( #include ) ]
+
+	else
+
+		-- make a hash for quicker lookup when creating pruned list
+		for _, name in ipairs( exclude ) do
+			exclude_hash[ name ] = true
+		end
+
+		-- create our pruned list
+		for _, name in ipairs( include ) do
+			if exclude_hash[ name ] ~= true then
+				table.insert( pruned_list, name )
+			end
+		end
+
+		-- Sanity Check
+		if #pruned_list == 0 then
+			print( "WARNING: Utils.getUniqueRandom()" )
+			print( "The 'exclude' list is equal to the 'include' list" )
+			return nil
+		end
+
+		-- get our item
+		item = pruned_list[ math.random( #pruned_list ) ]
+	end
+
+	return item
+end
+
+
+-- createObjectCallback()
+-- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
+--
+-- @param object the object which has the method
+-- @param method the method to call
+--
+function Utils.createObjectCallback( object, method )
+	if object == nil or method == nil then
+		print( "WARNING: nil or missing parameter in createObjectCallback()" )
+	end
+	return function( ... )
+		return method( object, ... )
+	end
+end
+
+
+
+
+function Utils.getTransitionCompleteFunc( count, callback )
+	local total = 0
+	local func = function(...)
+		total = total + 1
+		if total >= count then callback(...) end
+	end
+	return func
+end
+
+
+
+
+-- volume, channel
+function Utils.getAudioChannel( opts )
+
+	opts = opts == nil and {} or opts
+	opts.volume = opts.volume == nil and 1.0 or opts.volume
+	opts.channel = opts.channel == nil and 1 or opts.channel
+
+	local ac = audio.findFreeChannel( opts.channel )
+	audio.setVolume( opts.volume, { channel=ac } )
+
+	return ac
+
+end
+
+
+
+--====================================================================--
+-- Time Marker
+--====================================================================--
+
+local firstTimeMarker = nil
+local lastTimeMarker = nil
+local timeMarks = {}
+
+local function calculateTime()
+
+end
+function Utils.markTime( marker, params )
+	local t = system.getTimer()
+	local precision = 100000
+	local delta = 0
+	params = params or {}
+	if params.reset == true then lastTimeMarker = nil end
+	if params.print == nil then params.print = true end
+
+	if firstTimeMarker == nil then 
+		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
+		firstTimeMarker = t 
+	end
+	if lastTimeMarker == nil then lastTimeMarker = t end
+
+	if params.print then
+		delta = math.floor((t-lastTimeMarker)*precision)/precision
+		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
+	end
+
+	lastTimeMarker = t
+	if marker then timeMarks[ marker ] = t end
+end
+
+function Utils.markTimeDiff( marker1, marker2 )
+	local precision = 100000
+	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
+	local delta = math.floor((t1-t2 )*precision)/precision
+
+	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
+end
+
+
+
+
+--====================================================================--
+-- Memory Monitor
+--====================================================================--
+
+local memoryWatcherCallback = nil
+
+
+-- Memory Monitor function
+
+function Utils.memoryMonitor()
+
+	collectgarbage()
+
+	local memory = collectgarbage("count") 
+	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
+
+	print( "M: " .. memory, " T: " .. texture )
+
+end
+
+
+-- watchMemory()
+-- prints out current memory values
+--
+-- value (boolean:
+-- if true, start memory watching every frame
+-- if false, stop current memory watching
+-- if number, start memory watching every Number of milliseconds
+--
+function Utils.watchMemory( value )
+
+	local f
+
+	if value == true then
+		-- setup constant, frame rate memory watch
+
+		Runtime:addEventListener( "enterFrame", Utils.memoryMonitor )
+
+		memoryWatcherCallback = function()
+			Runtime:removeEventListener( "enterFrame", Utils.memoryMonitor )
+			memoryWatcherCallback = nil
+		end
+
+	elseif type( value ) == "number" and value > 0 then
+
+		local timer = timer.performWithDelay( value, Utils.memoryMonitor, 0 )
+
+		memoryWatcherCallback = function()
+			timer.cancel( timer )
+			memoryWatcherCallback = nil
+		end
+
+	elseif value == false and memoryWatcherCallback ~= nil then
+		-- stop watching memory
+		memoryWatcherCallback()
+	end
+
+end
+
+
 
 
 return Utils

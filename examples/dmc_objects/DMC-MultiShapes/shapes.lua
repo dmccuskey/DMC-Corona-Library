@@ -6,9 +6,15 @@
 -- import DMC Objects file
 local Objects = require( "dmc_objects" )
 
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
+
 
 
 --====================================================================--
@@ -24,48 +30,72 @@ Shape.P_LIST1 = nil
 Shape.P_LIST2 = nil
 
 
--- Shape constructor
+--== Start: Setup DMC Objects
 
-function Shape:new( options )
-
-	local o = self:_bless()
-	o:_init( options )
-	o:_createView()
-	o:_initComplete()
-
-	return o
-end
 
 function Shape:_init()
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	local rand = math.random
 	self.color = { rand(255), rand(255), rand(255) }
 
 end
 
---== Methods
--- methods work for point-base shapes
--- override for general functions
+-- reverse init() setup
+function Shape:_undoInit()
+	self.color = nil
 
+	--==--
+	self:superCall( "_undoInit" )
+end
+
+-- this method works for point-base shapes
+-- we will override for general functions
 function Shape:_createView()
+	self:superCall( "_createView" )
+	--==--
 
 	local p_list1 = self.P_LIST1
 	local p_list2 = self.P_LIST2
 
-	if p_list1 and p_list2 then
-		local d = display.newLine( unpack( p_list1 ) )
-		d:append( unpack( p_list2 ) )
-		self:_setDisplay( d )
+	local o -- object tmp
 
-		d:setColor( unpack( self.color ) )
-		d.width = self.STROKE_WIDTH
-	end
+	-- create a display element
+	o = display.newLine( unpack( p_list1 ) )
+	o:append( unpack( p_list2 ) )
+	o:setColor( unpack( self.color ) )
+	o.width = self.STROKE_WIDTH
+
+	-- save in our object view, which is a display group
+	self:insert( o )
 
 end
+
+--[[
+if our setup was more complex than just Corona elements, 
+we could specifically tear down the object's view here.
+however, dmc_objects will automatically remove pure-Corona elements automatically
+function Shape:_undoCreateView()
+	--==--
+	self:superCall( "_undoCreateView" )
+end
+--]]
+
+
+--== END: Setup DMC Objects
+
+
+--== Public Methods
+-- none
+
+--== Private Methods
+-- none
+
+--== Event Handlers
+-- none
 
 
 
@@ -81,13 +111,16 @@ Square.P_LIST1 = { 0, 0, 40, 40 }
 -- we could make this from points, but just showing an override
 function Square:_createView()
 
-	local d = display.newRect( unpack( self.P_LIST1 ) )
-	self:_setDisplay( d )
+	local o -- object tmp
 
-	d:setStrokeColor( unpack( self.color ) )
-	d:setFillColor( unpack( Shape.TRANSPARENT ) )
-	d.strokeWidth = self.STROKE_WIDTH
+	-- create a display element
+	o = display.newRect( unpack( self.P_LIST1 ) )
+	o:setStrokeColor( unpack( self.color ) )
+	o:setFillColor( unpack( Shape.TRANSPARENT ) )
+	o.strokeWidth = self.STROKE_WIDTH
 
+	-- save in our object view, display group
+	self:insert( o )
 end
 
 
@@ -105,13 +138,16 @@ Circle.P_LIST1 = { 0, 0, 20 }
 -- using Corona native circle method
 function Circle:_createView()
 
-	local d = display.newCircle( unpack( self.P_LIST1 ) )
-	self:_setDisplay( d )
+	local o -- object tmp
 
-	d:setFillColor( unpack( Shape.TRANSPARENT ) )
-	d:setStrokeColor( unpack( self.color ) )
-	d.strokeWidth = self.STROKE_WIDTH
+	-- create a display element
+	o = display.newCircle( unpack( self.P_LIST1 ) )
+	o:setFillColor( unpack( Shape.TRANSPARENT ) )
+	o:setStrokeColor( unpack( self.color ) )
+	o.strokeWidth = self.STROKE_WIDTH
 
+	-- save in our object view, display group
+	self:insert( o )
 end
 
 
