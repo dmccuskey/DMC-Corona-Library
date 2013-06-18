@@ -426,6 +426,10 @@ function AutoStore:new()
 	o._timer_min = nil
 	o._timer_max = nil
 
+	o._plugins = nil
+	o._preSave_f = nil
+	o._postRead_f = nil
+
 	return o
 end
 
@@ -433,6 +437,7 @@ function AutoStore:init()
 	--print( "AutoStore:init" )
 
 	STATE_ACTIVE = false
+	local plugin
 
 	-- start with DEFAULTS, cover  if something missing in config
 	for k, v in pairs( AutoStore.DEFAULTS ) do
@@ -454,11 +459,11 @@ function AutoStore:init()
 			is_valid = ( string.find( line, '--', 1, true ) ~= 1 )
 
 			if is_valid then
-				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*([%w_]+)" ) do
+				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*\'?([%w_.]+)\'?" ) do
 					--print( tostring( k ) .. " = " .. tostring( v ) )
 
 					k = string.lower( k ) -- use only lowercase inside of module
-					if AutoStore.DEFAULTS[ k ].type == 'integer' then
+					if AutoStore.DEFAULTS[ k ] and AutoStore.DEFAULTS[ k ].type == 'integer' then
 						v = tonumber( v )
 						if v == nil then v = 0 end
 					end
@@ -473,23 +478,36 @@ function AutoStore:init()
 	self._eventListeners[ AutoStore.AUTOSTORE_EVENT ] = {}
 
 
+	-- check for plugin file
+	if self._config[ 'plugin_file' ] ~= nil then
+		plugin = require( self._config[ 'plugin_file' ] )
+		if plugin.preSaveFunction then self._preSave_f = plugin.preSaveFunction end
+		if plugin.postReadFunction then self._postRead_f = plugin.postReadFunction end
+		self._plugins = plugin
+	end
+
+
 	-- check
 	-- timer_min can't be <= timer_max
 	-- TODO: sanity check on timers
 
 end
 
+
 function AutoStore:load()
 	--print( "AutoStore:load" )
 
 	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
 	local status, content = readFile( file_path, { lines=false } )
+	local data
 
 	if status == Response.ERROR then
 		self.is_new_file = true
 		self.data = addPixieDust( {} )
 	else
-		self.data = addPixieDust( json.decode( content ) )
+		if self._postRead_f then content = self._postRead_f( content ) end
+		data = json.decode( content )
+		self.data = addPixieDust( data )
 	end
 
 	STATE_ACTIVE = true
@@ -500,8 +518,9 @@ function AutoStore:save()
 	--print( "AutoStore:save" )
 
 	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
-	local json = json.encode( self.data:__data() )
-	local status, content = saveFile( file_path, json )
+	local content = json.encode( self.data:__data() )
+	if self._preSave_f then content = self._preSave_f( content ) end
+	local status, content = saveFile( file_path, content )
 
 	self.is_new_file = false
 
