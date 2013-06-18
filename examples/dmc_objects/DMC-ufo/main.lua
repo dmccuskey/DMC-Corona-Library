@@ -8,6 +8,8 @@
 -- Copyright (C) 2011 David McCuskey. All Rights Reserved.
 --====================================================================--
 
+print(" ------------------------------------------------ ")
+
 
 --====================================================================--
 -- Imports
@@ -24,7 +26,9 @@ local seed = os.time();
 math.randomseed( seed )
 local rand = math.random
 
-display.setStatusBar( display.HiddenStatusBar )
+if system.getInfo("environment") ~= 'simulator' then
+	display.setStatusBar( display.HiddenStatusBar )
+end
 
 
 -- setup our space background
@@ -40,7 +44,6 @@ BG.x, BG.y = 160, 240
 
 local ufo = UFOFactory.create()
 ufo.x, ufo.y = rand(10, 300), rand(10, 470)
-
+ 
 local ufo2 = UFOFactory.create()
 ufo2.x, ufo2.y = rand(10, 300), rand(10, 470)
-

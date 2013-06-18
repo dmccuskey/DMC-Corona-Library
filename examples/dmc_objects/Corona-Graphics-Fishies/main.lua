@@ -15,7 +15,9 @@ local FishTank = require( "fish_tank" )
 local seed = os.time();
 math.randomseed( seed )
 
-display.setStatusBar( display.HiddenStatusBar )
+if system.getInfo("environment") ~= 'simulator' then
+	display.setStatusBar( display.HiddenStatusBar )
+end
 
 -- how many fish in the tank
 

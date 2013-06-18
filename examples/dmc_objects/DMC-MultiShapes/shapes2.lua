@@ -6,9 +6,15 @@
 -- import DMC Objects file
 local Objects = require( "dmc_objects" )
 
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
+
 
 
 --====================================================================--
@@ -17,45 +23,52 @@ local CoronaBase = Objects.CoronaBase
 
 local Shape = inheritsFrom( CoronaBase )
 Shape.NAME = "Shape Base"
+
+--== Class Constants
+
 Shape.IMAGE = ""
 Shape.IMAGE_W = 0
 Shape.IMAGE_H = 0
 
 
--- Shape constructor
 
-function Shape:new( options )
-
-	local o = self:_bless()
-	o:_init()
-
-	-- we don't want to run _createView() when instantiating
-	-- Shape Base used for OO inheritance
-	-- so, check existance of options - that's the flag we're using
-	if options then o:_createView() end
-
-	return o
-end
+--== Start: Setup DMC Objects
 
 
 function Shape:_init()
-
-	-- == get Super Properties ==
-
 	self:superCall( "_init" )
+	--==--
 
-	-- == Create Properties ==
+	--== Create Properties ==--
 
 	self.rotation = 0
 
 end
+-- reverse init() setup
+function Shape:_undoInit()
+
+	--==--
+	self:superCall( "_undoInit" )
+end
 
 function Shape:_createView()
 
-	local d = display.newImageRect( self.IMAGE, self.IMAGE_W, self.IMAGE_H )
-	self:_setDisplay( d )
+	local o -- object tmp
+
+	o = display.newImageRect( self.IMAGE, self.IMAGE_W, self.IMAGE_H )
+	self:insert( o )
 
 end
+
+--[[
+if our setup was more complex than just Corona elements, 
+we could specifically tear down the object's view here.
+dmc_objects will remove pure-Corona elements automatically
+function Shape:_undoCreateView()
+	--==--
+	self:superCall( "_undoCreateView" )
+end
+--]]
 
 
 --====================================================================--

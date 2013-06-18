@@ -17,7 +17,9 @@ physics.start()
 local seed = os.time();
 math.randomseed( seed )
 
-display.setStatusBar( display.HiddenStatusBar )
+if system.getInfo("environment") ~= 'simulator' then
+	display.setStatusBar( display.HiddenStatusBar )
+end
 
 
 --====================================================================--
