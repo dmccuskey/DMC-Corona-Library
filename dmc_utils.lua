@@ -239,6 +239,22 @@ end
 
 
 
+--
+-- http://rosettacode.org/wiki/Knuth_shuffle#Lua
+--
+function Utils.shuffle( t )
+	local n = #t
+	while n > 1 do
+		local k = math.random(n)
+		t[n], t[k] = t[k], t[n]
+		n = n - 1
+	end
+	return t
+end
+
+
+
+
 function Utils.getUniqueRandom( include, exclude )
 	--print( "Utils.getUniqueRandom" )
 
