@@ -31,6 +31,17 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "0.8.0"
+
+
+
+--====================================================================--
+-- Setup
+--====================================================================--
+
+
 local Utils = {}
 
 
