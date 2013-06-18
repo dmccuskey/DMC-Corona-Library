@@ -244,6 +244,54 @@ end
 
 
 
+function Utils.getUniqueRandom( include, exclude )
+	--print( "Utils.getUniqueRandom" )
+
+	include = include or {}
+	if #include == 0 then return end
+
+	exclude = exclude or {}
+	local exclude_hash = {} -- used as dict
+	local pruned_list = {}
+	local item
+
+
+	math.randomseed( os.time() )
+
+	-- process as normal if no exclusions
+	if #exclude == 0 then
+		item = include[ math.random( #include ) ]
+
+	else
+
+		-- make a hash for quicker lookup when creating pruned list
+		for _, name in ipairs( exclude ) do
+			exclude_hash[ name ] = true
+		end
+
+		-- create our pruned list
+		for _, name in ipairs( include ) do
+			if exclude_hash[ name ] ~= true then
+				table.insert( pruned_list, name )
+			end
+		end
+
+		-- Sanity Check
+		if #pruned_list == 0 then
+			print( "WARNING: Utils.getUniqueRandom()" )
+			print( "The 'exclude' list is equal to the 'include' list" )
+			return nil
+		end
+
+		-- get our item
+		item = pruned_list[ math.random( #pruned_list ) ]
+	end
+
+	return item
+end
+
+
+
 
 
 return Utils
