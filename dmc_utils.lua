@@ -332,5 +332,49 @@ end
 
 
 
+--====================================================================--
+-- Time Marker
+--====================================================================--
+
+local firstTimeMarker = nil
+local lastTimeMarker = nil
+local timeMarks = {}
+
+local function calculateTime()
+
+end
+function Utils.markTime( marker, params )
+	local t = system.getTimer()
+	local precision = 100000
+	local delta = 0
+	params = params or {}
+	if params.reset == true then lastTimeMarker = nil end
+	if params.print == nil then params.print = true end
+
+	if firstTimeMarker == nil then 
+		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
+		firstTimeMarker = t 
+	end
+	if lastTimeMarker == nil then lastTimeMarker = t end
+
+	if params.print then
+		delta = math.floor((t-lastTimeMarker)*precision)/precision
+		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
+	end
+
+	lastTimeMarker = t
+	if marker then timeMarks[ marker ] = t end
+end
+
+function Utils.markTimeDiff( marker1, marker2 )
+	local precision = 100000
+	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
+	local delta = math.floor((t1-t2 )*precision)/precision
+
+	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
+end
+
+
+
 
 return Utils
