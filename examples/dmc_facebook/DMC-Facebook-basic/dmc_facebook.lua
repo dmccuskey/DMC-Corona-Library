@@ -179,7 +179,7 @@ Facebook.GET_PERMISSIONS = 'get_permissions_query'
 Facebook.REQUEST_PERMISSIONS = 'request_permissions_query'
 Facebook.REMOVE_PERMISSIONS = 'remove_permissions_query'
 Facebook.POST_MESSAGE = 'post_message_query'
-Facebook.POST_PHOTO = 'post_photo_query'
+Facebook.POST_LINK = 'post_link_query'
 Facebook.LOGOUT = 'logout_query'
 
 Facebook.POST_MESSAGE_PATH = 'me/feed'
@@ -397,8 +397,8 @@ function Facebook:removePermission( permission, params )
 end
 
 
-function Facebook:postPhoto( link, params )
-	-- print( "Facebook:postPhoto", link, params )
+function Facebook:postLink( link, params )
+	-- print( "Facebook:postLink", link, params )
 
 	params = params or {}
 	params.link = link
@@ -409,22 +409,22 @@ function Facebook:postPhoto( link, params )
 	local success_f, error_f
 
 	success_f = function( data )
-		-- print( "postPhoto: Success Handler" )
+		-- print( "postLink: Success Handler" )
 		local evt = {
 			params = params,
 			data = data
 		}
-		self:_dispatchEvent( Facebook.POST_PHOTO, evt )
+		self:_dispatchEvent( Facebook.POST_LINK, evt )
 	end
 
 	error_f = function( response, net_params )
-		-- print( "postPhoto: Error Handler" )
+		-- print( "postLink: Error Handler" )
 		local evt = {
 			params = params,
 			isError = true,
 			data = response
 		}
-		self:_dispatchEvent( Facebook.POST_PHOTO, evt )
+		self:_dispatchEvent( Facebook.POST_LINK, evt )
 	end
 
 	self:_makeFacebookGraphRequest( 'me/feed', 'POST', params, success_f, error_f )

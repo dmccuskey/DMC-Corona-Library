@@ -25,7 +25,7 @@ local Facebook = require( "dmc_facebook" )
 -- Setup, Constants
 --====================================================================--
 
--- these should be set to your application
+-- USE *YOUR* FACEBOOK APPLICATION INFO FOR THESE SETTINGS !!
 --
 local APP_ID = '236229049738744'
 local APP_URL = 'http://m.davidmccuskey.com'
@@ -82,11 +82,11 @@ local function facebookHandler( event )
 		end
 
 
-	elseif event.type == Facebook.POST_PHOTO then
+	elseif event.type == Facebook.POST_LINK then
 		if event.isError then
-			showAlert( "Error posting photo: " .. data.message )
+			showAlert( "Error posting link: " .. data.message )
 		else
-			showAlert( "Photo successfully posted" )
+			showAlert( "Link successfully posted" )
 		end
 
 
@@ -122,7 +122,7 @@ local function buttonHandler( event )
 		local msg = "Test message post @ " .. tostring( os.time() )
 		Facebook:postMessage( msg )
 
-	elseif button.id == 'post_photo' then
+	elseif button.id == 'post_link' then
 		local link = 'http://m.davidmccuskey.com/'
 		local params = {
 			picture='http://developer.coronalabs.com/demo/Corona90x90.png',
@@ -131,13 +131,12 @@ local function buttonHandler( event )
 			description='This is the description for the link post.',
 			actions={ { name = "Learn More", link = "http://docs.davidmccuskey.com" } }
 		}
-		Facebook:postPhoto( link, params )
+		Facebook:postLink( link, params )
 
 	end
 
 	return true
 end
-
 
 local function setupUI()
 
@@ -171,9 +170,9 @@ local function setupUI()
 	params.top = 200
 	btn_post = widget.newButton( params )
 
-	-- post photo button
-	params.label = 'post photo'
-	params.id = 'post_photo'
+	-- post link button
+	params.label = 'post link'
+	params.id = 'post_link'
 	params.top = 275
 	btn_post = widget.newButton( params )
 
