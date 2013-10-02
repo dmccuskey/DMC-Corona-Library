@@ -6,11 +6,6 @@
 print("---------------------------------------------------")
 
 
--- TODO: put this setup in dmc library config
-_G.__dmc_library = {
-	dmc_library = { location='' }
-}
-
 --===================================================================--
 -- Imports
 --===================================================================--
@@ -19,7 +14,6 @@ local widget = require( "widget" )
 local Utils = require( 'dmc_utils' )
 
 local Facebook = require( "dmc_facebook" )
-
 
 --====================================================================--
 -- Setup, Constants
@@ -47,11 +41,9 @@ local function toggleLoginLogoutButtons()
 	if Facebook.has_login then
 		btn_login.isVisible = false
 		btn_logout.isVisible = true
-
 	else
 		btn_login.isVisible = true
 		btn_logout.isVisible = false
-
 	end
 
 end

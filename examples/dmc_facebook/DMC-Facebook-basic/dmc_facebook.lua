@@ -36,23 +36,182 @@ local VERSION = "1.0.0"
 
 
 --====================================================================--
--- DMC Library Setup
+-- Setup DMC Library Config
 --====================================================================--
 
--- TODO: add reading of dmc library config
+local Utils = {} -- make copying from dmc_utils easier
 
-local Utils = {} -- make copying from Utils easier
+--== Start dmc_utils copies ==--
 
+Utils.IO_ERROR = "io_error"
+Utils.IO_SUCCESS = "io_success"
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+function Utils.readFile( file_path, options )
+	-- print( "Utils.readFile", file_path )
+
+	options = options or {}
+	if options.lines == nil then options.lines = true end
+
+	local contents -- either string or table of strings
+	local ret_val = {} -- an array, [ status, content ]
+
+	if file_path == nil then
+		local ret_val = { Utils.IO_ERROR, "file path is NIL" }
+
+	else
+		local fh, reason = io.open( file_path, "r" )
+		if fh == nil then
+			print("ERROR: datastore load settings: " .. tostring( reason ) )
+			ret_val = { Utils.IO_ERROR, reason }
+
+		else
+			if options.lines == false then
+				-- read contents in one big string
+				contents = fh:read( '*all' )
+
+			else
+				-- read all contents of file into a table
+				contents = {}
+				for line in fh:lines() do
+					table.insert( contents, line )
+				end
+
+			end
+
+			ret_val = { Utils.IO_SUCCESS, contents }
+			io.close( fh )
+
+		end  -- fh == nil
+	end  -- file_path == nil
+
+	return ret_val[1], ret_val[2]
+end
+
+function Utils.readConfigFile( file_path, options )
+	-- print( "Utils.readConfigFile", file_path )
+
+	options = options or {}
+	options.lines = true
+	options.default_section = options.default_section or nil -- no default here
+
+	local status, contents = Utils.readFile( file_path, options )
+
+	if status == Utils.IO_ERROR then return nil end
+
+	local data = {}
+	local curr_section = options.default_section
+	if curr_section ~= nil and not data[curr_section] then
+		data[curr_section]={}
+	end
+
+	local function processSectionLine( line )
+		local key
+		key = line:match( "%[([%w_]+)%]" )
+		key = string.lower( key ) -- use only lowercase inside of module
+		return key
+	end
+
+	local function processKeyLine( line )
+		local k, v, key, val
+		-- print( line )
+		k, v = line:match( "([%w_]+)%s*=%s*([%w_]+)" )
+		-- print( tostring( k ) .. " = " .. tostring( v ) )
+		key = string.lower( k ) -- use only lowercase inside of module
+		val = tonumber( v )
+		if val == nil then val = v end
+		return key, val
+	end
+
+	local is_valid = true
+	local is_section
+	local key, val
+	for _, line in ipairs( contents ) do
+		-- print( line )
+		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
+		is_key = ( string.find( line, '%w', 1, false ) == 1 )
+		-- print( is_section, is_key )
+
+		if is_section then
+			curr_section = processSectionLine( line )
+			if not data[curr_section] then data[curr_section]={} end
+		elseif is_key and curr_section ~= nil then
+			key, val = processKeyLine( line )
+			data[curr_section][key] = val
+		end
+	end
+
+	return data
+end
+
+--== End dmc_utils copies ==--
+
+local DMC_LIBRARY_DEFAULTS = {
+	location = ''
+}
 local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
-dmc_lib_data = _G.__dmc_library or {}
-dmc_lib_info = dmc_lib_data.dmc_library or {}
+-- no module has yet tried to read in a config file
+if _G.__dmc_library == nil then
+	local config_file, file_path, config_data
+	config_file = 'dmc_library.cfg'
+	file_path = system.pathForFile( config_file, system.ResourceDirectory )
+	config_data = Utils.readConfigFile( file_path, { default_section='dmc_library' } )
+	if config_data == nil then
+		_G.__dmc_library = {}
+	else
+		_G.__dmc_library = config_data
+	end
+	dmc_lib_data = _G.__dmc_library
 
-if dmc_lib_info.location ~= nil and dmc_lib_info.location ~= ''  then
-	dmc_lib_location = dmc_lib_info.location .. '.'
-else
-	dmc_lib_location = ''
+	dmc_lib_info = dmc_lib_data.dmc_library or {}
+	if dmc_lib_info.location ~= nil and dmc_lib_info.location ~= ''  then
+		dmc_lib_location = dmc_lib_info.location .. '.'
+	else
+		dmc_lib_location = ''
+	end
 end
+
+dmc_lib_data = dmc_lib_data or _G.__dmc_library
+dmc_lib_info = dmc_lib_info or dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_location or dmc_lib_info.location
+
+
+
+--====================================================================--
+-- Setup DMC Facebook Config
+--====================================================================--
+
+local DMC_FACEBOOK_DEFAULTS = {
+}
+local dmc_facebook_data = dmc_lib_data.dmc_facebook or {}
+
+dmc_facebook_data = Utils.extend( dmc_facebook_data, DMC_FACEBOOK_DEFAULTS )
+
 
 
 --====================================================================--
@@ -65,7 +224,8 @@ local json = require( 'json' )
 local Objects = require( dmc_lib_location .. 'dmc_objects' )
 
 -- only needed for debugging
-Utils = require( dmc_lib_location .. 'dmc_utils' )
+-- Utils = require( dmc_lib_location .. 'dmc_utils' )
+
 
 
 --====================================================================--
@@ -77,6 +237,8 @@ local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
 
 local Facebook_Singleton -- ref to our singleton
+
+
 
 --====================================================================--
 -- Support Methods
@@ -107,7 +269,9 @@ end
 
 -- parse_query()
 -- splits an HTTP query string (eg, 'one=1&two=2' ) into its components
--- returns a table with the key/value pairs
+--
+-- @param  str  string containing url-type key/value pairs
+-- @returns a table with the key/value pairs
 --
 function parse_query(str)
 	local t = {}
@@ -127,6 +291,7 @@ function create_query( tbl )
 	end
 	return str
 end
+
 
 
 --====================================================================--
