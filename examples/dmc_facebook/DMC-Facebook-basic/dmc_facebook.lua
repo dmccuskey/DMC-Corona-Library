@@ -199,6 +199,7 @@ function Facebook:_init( params )
 	self._params = params
 
 	self._view_type = ''  -- the type of login view to request
+	self._view_params = nil  -- the parameters for the web view
 
 	self._app_id = nil  -- the ID of the Facebook app, string
 	self._app_url = nil  -- the URL for the Facebook app, string
@@ -248,7 +249,7 @@ function Facebook:init( app_id, app_url, params )
 	if params.view_params == nil then params.view_params = Facebook.VIEW_PARAMS end
 
 	self._view_type = params.view_type
-	self.view_params = params.view_params
+	self._view_params = params.view_params
 
 	self._app_id = app_id
 	self._app_url = app_url
