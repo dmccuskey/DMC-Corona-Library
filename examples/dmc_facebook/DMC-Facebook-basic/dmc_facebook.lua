@@ -63,7 +63,6 @@ local UrlLib = require( 'socket.url' )
 local json = require( 'json' )
 
 local Objects = require( dmc_lib_location .. 'dmc_objects' )
--- local States = require( dmc_lib_location .. 'dmc_states' )
 
 -- only needed for debugging
 Utils = require( dmc_lib_location .. 'dmc_utils' )
