@@ -36,23 +36,182 @@ local VERSION = "1.0.0"
 
 
 --====================================================================--
--- DMC Library Setup
+-- Setup DMC Library Config
 --====================================================================--
 
--- TODO: add reading of dmc library config
+local Utils = {} -- make copying from dmc_utils easier
 
-local Utils = {} -- make copying from Utils easier
+--== Start dmc_utils copies ==--
 
+Utils.IO_ERROR = "io_error"
+Utils.IO_SUCCESS = "io_success"
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+function Utils.readFile( file_path, options )
+	-- print( "Utils.readFile", file_path )
+
+	options = options or {}
+	if options.lines == nil then options.lines = true end
+
+	local contents -- either string or table of strings
+	local ret_val = {} -- an array, [ status, content ]
+
+	if file_path == nil then
+		local ret_val = { Utils.IO_ERROR, "file path is NIL" }
+
+	else
+		local fh, reason = io.open( file_path, "r" )
+		if fh == nil then
+			print("ERROR: datastore load settings: " .. tostring( reason ) )
+			ret_val = { Utils.IO_ERROR, reason }
+
+		else
+			if options.lines == false then
+				-- read contents in one big string
+				contents = fh:read( '*all' )
+
+			else
+				-- read all contents of file into a table
+				contents = {}
+				for line in fh:lines() do
+					table.insert( contents, line )
+				end
+
+			end
+
+			ret_val = { Utils.IO_SUCCESS, contents }
+			io.close( fh )
+
+		end  -- fh == nil
+	end  -- file_path == nil
+
+	return ret_val[1], ret_val[2]
+end
+
+function Utils.readConfigFile( file_path, options )
+	-- print( "Utils.readConfigFile", file_path )
+
+	options = options or {}
+	options.lines = true
+	options.default_section = options.default_section or nil -- no default here
+
+	local status, contents = Utils.readFile( file_path, options )
+
+	if status == Utils.IO_ERROR then return nil end
+
+	local data = {}
+	local curr_section = options.default_section
+	if curr_section ~= nil and not data[curr_section] then
+		data[curr_section]={}
+	end
+
+	local function processSectionLine( line )
+		local key
+		key = line:match( "%[([%w_]+)%]" )
+		key = string.lower( key ) -- use only lowercase inside of module
+		return key
+	end
+
+	local function processKeyLine( line )
+		local k, v, key, val
+		-- print( line )
+		k, v = line:match( "([%w_]+)%s*=%s*([%w_]+)" )
+		-- print( tostring( k ) .. " = " .. tostring( v ) )
+		key = string.lower( k ) -- use only lowercase inside of module
+		val = tonumber( v )
+		if val == nil then val = v end
+		return key, val
+	end
+
+	local is_valid = true
+	local is_section
+	local key, val
+	for _, line in ipairs( contents ) do
+		-- print( line )
+		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
+		is_key = ( string.find( line, '%w', 1, false ) == 1 )
+		-- print( is_section, is_key )
+
+		if is_section then
+			curr_section = processSectionLine( line )
+			if not data[curr_section] then data[curr_section]={} end
+		elseif is_key and curr_section ~= nil then
+			key, val = processKeyLine( line )
+			data[curr_section][key] = val
+		end
+	end
+
+	return data
+end
+
+--== End dmc_utils copies ==--
+
+local DMC_LIBRARY_DEFAULTS = {
+	location = ''
+}
 local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
-dmc_lib_data = _G.__dmc_library or {}
-dmc_lib_info = dmc_lib_data.dmc_library or {}
+-- no module has yet tried to read in a config file
+if _G.__dmc_library == nil then
+	local config_file, file_path, config_data
+	config_file = 'dmc_library.cfg'
+	file_path = system.pathForFile( config_file, system.ResourceDirectory )
+	config_data = Utils.readConfigFile( file_path, { default_section='dmc_library' } )
+	if config_data == nil then
+		_G.__dmc_library = {}
+	else
+		_G.__dmc_library = config_data
+	end
+	dmc_lib_data = _G.__dmc_library
 
-if dmc_lib_info.location ~= nil and dmc_lib_info.location ~= ''  then
-	dmc_lib_location = dmc_lib_info.location .. '.'
-else
-	dmc_lib_location = ''
+	dmc_lib_info = dmc_lib_data.dmc_library or {}
+	if dmc_lib_info.location ~= nil and dmc_lib_info.location ~= ''  then
+		dmc_lib_location = dmc_lib_info.location .. '.'
+	else
+		dmc_lib_location = ''
+	end
 end
+
+dmc_lib_data = dmc_lib_data or _G.__dmc_library
+dmc_lib_info = dmc_lib_info or dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_location or dmc_lib_info.location
+
+
+
+--====================================================================--
+-- Setup DMC Facebook Config
+--====================================================================--
+
+local DMC_FACEBOOK_DEFAULTS = {
+}
+local dmc_facebook_data = dmc_lib_data.dmc_facebook or {}
+
+dmc_facebook_data = Utils.extend( dmc_facebook_data, DMC_FACEBOOK_DEFAULTS )
+
 
 
 --====================================================================--
@@ -63,10 +222,10 @@ local UrlLib = require( 'socket.url' )
 local json = require( 'json' )
 
 local Objects = require( dmc_lib_location .. 'dmc_objects' )
--- local States = require( dmc_lib_location .. 'dmc_states' )
 
 -- only needed for debugging
-Utils = require( dmc_lib_location .. 'dmc_utils' )
+-- Utils = require( dmc_lib_location .. 'dmc_utils' )
+
 
 
 --====================================================================--
@@ -78,6 +237,8 @@ local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
 
 local Facebook_Singleton -- ref to our singleton
+
+
 
 --====================================================================--
 -- Support Methods
@@ -108,7 +269,9 @@ end
 
 -- parse_query()
 -- splits an HTTP query string (eg, 'one=1&two=2' ) into its components
--- returns a table with the key/value pairs
+--
+-- @param  str  string containing url-type key/value pairs
+-- @returns a table with the key/value pairs
 --
 function parse_query(str)
 	local t = {}
@@ -128,6 +291,7 @@ function create_query( tbl )
 	end
 	return str
 end
+
 
 
 --====================================================================--
@@ -179,7 +343,7 @@ Facebook.GET_PERMISSIONS = 'get_permissions_query'
 Facebook.REQUEST_PERMISSIONS = 'request_permissions_query'
 Facebook.REMOVE_PERMISSIONS = 'remove_permissions_query'
 Facebook.POST_MESSAGE = 'post_message_query'
-Facebook.POST_PHOTO = 'post_photo_query'
+Facebook.POST_LINK = 'post_link_query'
 Facebook.LOGOUT = 'logout_query'
 
 Facebook.POST_MESSAGE_PATH = 'me/feed'
@@ -199,14 +363,17 @@ function Facebook:_init( params )
 	self._params = params
 
 	self._view_type = ''  -- the type of login view to request
+	self._view_params = nil  -- the parameters for the webview
 
 	self._app_id = nil  -- the ID of the Facebook app, string
 	self._app_url = nil  -- the URL for the Facebook app, string
 	self._app_token_url = nil  -- the URL to get app token
 
-	self._app_url_parts = nil -- table
+	self._app_url_parts = nil -- table of pieces, self._app_url
 
-	self._is_logged_in = nil  -- the access token handed back from Facebook API
+	-- login variables
+	self._had_login = true  -- if we had previous login state, in browser
+	self._had_permissions = true  -- if we had previous permissions, in browser
 
 	-- the access token handed back from Facebook API
 	-- this can be written internally via self._access_token
@@ -248,7 +415,7 @@ function Facebook:init( app_id, app_url, params )
 	if params.view_params == nil then params.view_params = Facebook.VIEW_PARAMS end
 
 	self._view_type = params.view_type
-	self.view_params = params.view_params
+	self._view_params = params.view_params
 
 	self._app_id = app_id
 	self._app_url = app_url
@@ -259,21 +426,30 @@ function Facebook:init( app_id, app_url, params )
 end
 
 
---[[
-login()
-login to facebook api service
 
-@param permissions: list of permission strings to request for user
-@param params: table with additional login parameters
-
-https://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/
---]]
+-- login()
+-- login to facebook api service
+--
+-- @param permissions: array of permission strings to request for user
+-- @param params: table with additional login parameters
+--
+-- https://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/
+--
 function Facebook:login( permissions, params )
 	-- print( "Facebook:login" )
 
+	permissions = permissions or {}
+
 	params = params or {}
+	if params.view_type == nil then params.view_type = self._view_type end
+	if params.view_params == nil then params.view_params = self._view_params end
+
+	-- reset these for the login call
+	self._had_login = true
+	self._had_permissions = true
 
 	-- make sure to set basic permissions, according to Facebook spec
+	-- TODO: don't blindly add to front, do search in array to see if it exists
 	if permissions[1] ~= Facebook.BASIC_PERMS then
 		-- print( "adding basic permissions" )
 		table.insert( permissions, 1, Facebook.BASIC_PERMS )
@@ -281,7 +457,7 @@ function Facebook:login( permissions, params )
 
 	local url, callback, webview
 
-	url = Facebook.AUTH_URLS[ self._view_type ]
+	url = Facebook.AUTH_URLS[ params.view_type ]
 	url = url .. '?' .. 'client_id=' .. self._app_id
 	url = url .. '&' .. 'redirect_uri=' .. url_encode( self._app_url )
 	url = url .. '&' .. 'response_type=' .. 'token'
@@ -293,19 +469,24 @@ function Facebook:login( permissions, params )
 
 	callback = self:createCallback( self._loginRequest_handler )
 
-	webview = self:_createWebView( self._view_params, callback )
+	webview = self:_createWebView( params.view_params, callback )
 	webview:request( url )
 
 end
 
 
+function Facebook:cancelLogin()
+	self:_removeWebView()
+end
+
+
 -- _loginRequest_handler()
 -- handler for the login request
--- it's a private method, but put here for convenience
+-- it's a private method, but placed here in file for convenience
 --
 function Facebook:_loginRequest_handler( event )
 	-- print( "Facebook:_loginRequest_handler", event )
-	-- print( event.url )
+	-- print( event.url, event.type )
 	-- print( event.type, event.errorMessage )
 
 	--== setup request handlers
@@ -315,6 +496,14 @@ function Facebook:_loginRequest_handler( event )
 	success_f = function( value )
 		-- print( "Login: Success Handler" )
 		self._access_token = value
+
+		local evt = {
+			access_token=value,
+			had_login = self._had_login,
+			had_permissions = self._had_permissions
+		}
+		self:_dispatchEvent( Facebook.LOGIN, evt )
+
 	end
 
 	error_f = function( response )
@@ -322,7 +511,7 @@ function Facebook:_loginRequest_handler( event )
 		self._access_token = nil
 
 		local evt = {
-			isError = true,
+			is_error = true,
 			error = response.error,
 			error_reason = response.error_reason,
 			error_description = response.error_description,
@@ -341,14 +530,16 @@ function Facebook:_loginRequest_handler( event )
 	url_parts = UrlLib.parse( event.url )
 	-- Utils.print( url_parts )
 
-	-- getting Facebook UI dialog
+	-- getting Facebook UI dialog, credentials
 	if url_parts.path == '/login.php' and event.type == 'loaded' then
 		self._webview.isVisible = true
+		self._had_login = false
 		return
 
-	-- getting Facebook UI dialog
+	-- getting Facebook UI dialog, permissions
 	elseif url_parts.path == '/dialog/oauth' and event.type == 'loaded' then
 		self._webview.isVisible = true
+		self._had_permissions = false
 		return
 
 	-- getting other
@@ -356,10 +547,11 @@ function Facebook:_loginRequest_handler( event )
 		return
 	end
 
+	--== we're done with login/permissions dialogs, now do our stuff
 
 	self:_removeWebView()
 
-
+	-- let's see what we got back from FB
 	query_parts = parse_query( url_parts.query )
 	fragment_parts = parse_query( url_parts.fragment )
 	-- print( 'URL Parts:' )
@@ -383,22 +575,52 @@ end
 --[[
 https://developers.facebook.com/docs/facebook-login/permissions/
 --]]
-function Facebook:getPermissions()
-	print( "Facebook:getPermissions" )
+function Facebook:getPermissions( params )
+	-- print( "Facebook:getPermissions" )
+
+	local g_params, success_f, error_f
+
+	g_params = { fields='permissions' }
+
+	success_f = function( data )
+		-- print( "postMessage: Success Handler" )
+		local d = nil
+		if data ~= nil and data.data ~= nil and data.data[1] ~= nil then
+			d = data.data[1]
+		end
+		local evt = {
+			params = params,
+			data = d
+		}
+		self:_dispatchEvent( Facebook.GET_PERMISSIONS, evt )
+	end
+
+	error_f = function( response, net_params )
+		-- print( "postMessage: Error Handler" )
+		local evt = {
+			params = params,
+			is_error = true,
+			data = response
+		}
+		self:_dispatchEvent( Facebook.GET_PERMISSIONS, evt )
+	end
+
+	self:_makeFacebookGraphRequest( 'me/permissions', 'GET', g_params, success_f, error_f )
+
 end
 
 
 function Facebook:requestPermissions( permissions, params )
-	print( "Facebook:requestPermissions", permissions, params )
+	-- print( "Facebook:requestPermissions", permissions, params )
 end
 
 function Facebook:removePermission( permission, params )
-	print( "Facebook:removePermission", permission, params )
+	-- print( "Facebook:removePermission", permission, params )
 end
 
 
-function Facebook:postPhoto( link, params )
-	-- print( "Facebook:postPhoto", link, params )
+function Facebook:postLink( link, params )
+	-- print( "Facebook:postLink", link, params )
 
 	params = params or {}
 	params.link = link
@@ -409,22 +631,22 @@ function Facebook:postPhoto( link, params )
 	local success_f, error_f
 
 	success_f = function( data )
-		-- print( "postPhoto: Success Handler" )
+		-- print( "postLink: Success Handler" )
 		local evt = {
 			params = params,
 			data = data
 		}
-		self:_dispatchEvent( Facebook.POST_PHOTO, evt )
+		self:_dispatchEvent( Facebook.POST_LINK, evt )
 	end
 
 	error_f = function( response, net_params )
-		-- print( "postPhoto: Error Handler" )
+		-- print( "postLink: Error Handler" )
 		local evt = {
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
-		self:_dispatchEvent( Facebook.POST_PHOTO, evt )
+		self:_dispatchEvent( Facebook.POST_LINK, evt )
 	end
 
 	self:_makeFacebookGraphRequest( 'me/feed', 'POST', params, success_f, error_f )
@@ -452,7 +674,7 @@ function Facebook:postMessage( text, params )
 		-- print( "postMessage: Error Handler" )
 		local evt = {
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.POST_MESSAGE, evt )
@@ -488,7 +710,7 @@ function Facebook:request( path, method, params )
 			path = path,
 			method = method,
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.REQUEST, evt )
@@ -534,20 +756,20 @@ function Facebook:_logoutRequest_handler( event )
 
 	success_f = function()
 		-- print( "Request Success Handler" )
+		local evt = {}
 		self._access_token = nil
+		self:_dispatchEvent( Facebook.LOGOUT, evt )
 	end
 
 	error_f = function( response )
 		-- print( "Request Error Handler" )
-		--[[
 		local evt = {
-			isError = true,
+			is_error = true,
 			error = 'error',
 			error_reason = 'error_reason',
 			error_description = 'error_description',
 		}
 		self:_dispatchEvent( Facebook.LOGOUT, evt )
-	--]]
 	end
 
 
@@ -595,17 +817,9 @@ end
 --
 function Facebook.__setters:_access_token( value )
 
-	local prev = self._token -- save current token for check
-
 	self._token = value
 
-	if value ~= nil and prev == nil then
-		self:_dispatchEvent( Facebook.LOGIN, { access_token=value } )
-	elseif value ~= nil and prev ~= nil then
-		self:_dispatchEvent( Facebook.ACCESS_TOKEN, { access_token=value } )
-	elseif value == nil and prev ~= nil then
-		self:_dispatchEvent( Facebook.LOGOUT )
-	end
+	self:_dispatchEvent( Facebook.ACCESS_TOKEN, { access_token=value } )
 end
 
 --[[
@@ -616,7 +830,8 @@ end
 
 
 function Facebook:_createWebView( params, listener )
-
+	-- print( "Facebook:_createWebView" )
+	-- Utils.print( params )
 	params = params or Facebook.VIEW_PARAMS
 
 	local webview
@@ -653,11 +868,20 @@ function Facebook:_removeWebView( params )
 end
 
 
+-- _makeFacebookGraphRequest()
+-- this is the method which makes all FB Graph calls
+--
+-- @param  path  string of path in FB, eg, 'me/friends'
+-- @param  method  string of HTTP method, eg 'GET' (default), 'POST'
+-- @param  params  table of other parameters for the call
+-- @param  successHandler  function to call on successful call
+-- @param  errorHandler  function to call on call error
+--
 function Facebook:_makeFacebookGraphRequest( path, method, params, successHandler, errorHandler )
 	-- print( "Facebook:_makeFacebookGraphRequest", path, method )
 
 	-- make sure we have login already
-	-- TODO: figure out how to deal with this
+	-- TODO: figure out how to better deal with this
 	--
 	if not self.has_login then
 		local err = Facebook.DMC_ERRORS[ 'no_login' ]
@@ -676,7 +900,6 @@ function Facebook:_makeFacebookGraphRequest( path, method, params, successHandle
 	local url, callback
 
 	-- create our graph URL
-	--
 	url = Facebook.GRAPH_URL
 	url = url .. '/' .. path
 	url = url .. '?' .. 'access_token=' .. self._token
@@ -730,7 +953,7 @@ function Facebook:_networkRequest_handler( event, params )
 	local successHandler = params.successHandler
 	local errorHandler = params.errorHandler
 
-	if event.isError then
+	if event.is_error then
 		-- on Network Error, call error handler
 		if errorHandler then errorHandler( event, params ) end
 
