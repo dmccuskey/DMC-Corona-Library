@@ -438,6 +438,8 @@ end
 function Facebook:login( permissions, params )
 	-- print( "Facebook:login" )
 
+	permissions = permissions or {}
+
 	params = params or {}
 	if params.view_type == nil then params.view_type = self._view_type end
 	if params.view_params == nil then params.view_params = self._view_params end
