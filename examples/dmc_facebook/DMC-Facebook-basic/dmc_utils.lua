@@ -31,8 +31,23 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
-local Utils = {}
+-- Semantic Versioning Specification: http://semver.org/
 
+local VERSION = "1.0.0"
+
+
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
+local Utils = {}  -- utilities module object
+
+
+
+--====================================================================--
+-- Table Utilities
+--====================================================================--
 
 -- extend()
 -- Copy key/values from one table to another
@@ -125,6 +140,308 @@ function Utils.destroy( table )
 end
 
 
+--
+-- http://rosettacode.org/wiki/Knuth_shuffle#Lua
+--
+function Utils.shuffle( t )
+	local n = #t
+	while n > 1 do
+		local k = math.random(n)
+		t[n], t[k] = t[k], t[n]
+		n = n - 1
+	end
+	return t
+end
+
+
+-- http://snippets.luacode.org/snippets/Table_Slice_116
+function Utils.tableSlice( values, i1, i2 )
+	local res = {}
+	local n = #values
+	-- default values for range
+	i1 = i1 or 1
+	i2 = i2 or n
+	if i2 < 0 then
+		i2 = n + i2 + 1
+	elseif i2 > n then
+		i2 = n
+	end
+	if i1 < 1 or i1 > n then
+		return {}
+	end
+	local k = 1
+	for i = i1,i2 do
+		res[k] = values[i]
+		k = k + 1
+	end
+	return res
+end
+
+
+-- calculates size of table, mostly used on a dictionary
+--
+function Utils.tableSize( t1 )
+	local size = 0
+	for _,v in pairs( t1 ) do
+		size = size + 1
+	end
+	return size
+end
+
+
+
+
+--====================================================================--
+-- File Utilities
+--====================================================================--
+
+
+-- read/write status constants
+--
+Utils.IO_ERROR = "io_error"
+Utils.IO_SUCCESS = "io_success"
+
+
+-- readFile()
+-- basic read/write functions in Lua
+--
+-- @param  file_path  path to file to read, string
+-- @param  options  table of different options for read file
+--	lines: true/false, default true, read file as lines
+--
+function Utils.readFile( file_path, options )
+	-- print( "Utils.readFile", file_path )
+
+	options = options or {}
+	if options.lines == nil then options.lines = true end
+
+	local contents -- either string or table of strings
+	local ret_val = {} -- an array, [ status, content ]
+
+	if file_path == nil then
+		local ret_val = { Utils.IO_ERROR, "file path is NIL" }
+
+	else
+		local fh, reason = io.open( file_path, "r" )
+		if fh == nil then
+			print("ERROR: datastore load settings: " .. tostring( reason ) )
+			ret_val = { Utils.IO_ERROR, reason }
+
+		else
+			if options.lines == false then
+				-- read contents in one big string
+				contents = fh:read( '*all' )
+
+			else
+				-- read all contents of file into a table
+				contents = {}
+				for line in fh:lines() do
+					table.insert( contents, line )
+				end
+
+			end
+
+			ret_val = { Utils.IO_SUCCESS, contents }
+			io.close( fh )
+
+		end  -- fh == nil
+	end  -- file_path == nil
+
+	return ret_val[1], ret_val[2]
+end
+
+
+local function saveFile( file_path, data )
+	local ret_val = {} -- an array, [ status, content ]
+
+	local fh, reason = io.open( file_path, "w" )
+	if fh then
+		fh:write( data )
+		io.close( fh )
+		ret_val = { Utils.IO_SUCCESS, contents }
+	else
+		print("ERROR: datastore save settings: " .. tostring( reason ) )
+		ret_val = { Utils.IO_ERROR, reason }
+	end
+	return ret_val
+
+end
+
+
+-- readConfigFile()
+-- reads in config file, makes data structure from contents
+--
+-- @param  file_path  path to file to read, string
+-- @param  options  table of different options for read file
+--   lines: true/false, default true, read file as lines
+--
+function Utils.readConfigFile( file_path, options )
+	-- print( "Utils.readConfigFile", file_path )
+
+	options = options or {}
+	options.lines = true
+	options.default_section = options.default_section or nil -- no default here
+
+	local status, contents = Utils.readFile( file_path, options )
+
+	if status == Utils.IO_ERROR then return nil end
+
+	local data = {}
+	local curr_section = options.default_section
+	if curr_section ~= nil and not data[curr_section] then
+		data[curr_section]={}
+	end
+
+	local function processSectionLine( line )
+		local key
+		key = line:match( "%[([%w_]+)%]" )
+		key = string.lower( key ) -- use only lowercase inside of module
+		return key
+	end
+
+	local function processKeyLine( line )
+		local k, v, key, val
+		-- print( line )
+		k, v = line:match( "([%w_]+)%s*=%s*([%w_]+)" )
+		-- print( tostring( k ) .. " = " .. tostring( v ) )
+		key = string.lower( k ) -- use only lowercase inside of module
+		val = tonumber( v )
+		if val == nil then val = v end
+		return key, val
+	end
+
+	local is_valid = true
+	local is_section
+	local key, val
+	for _, line in ipairs( contents ) do
+		-- print( line )
+		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
+		is_key = ( string.find( line, '%w', 1, false ) == 1 )
+		-- print( is_section, is_key )
+
+		if is_section then
+			curr_section = processSectionLine( line )
+			if not data[curr_section] then data[curr_section]={} end
+		elseif is_key and curr_section ~= nil then
+			key, val = processKeyLine( line )
+			data[curr_section][key] = val
+		end
+	end
+
+	return data
+end
+
+
+
+--====================================================================--
+-- App Performance Utilities
+--====================================================================--
+
+
+local firstTimeMarker = nil
+local lastTimeMarker = nil
+local timeMarks = {}
+
+function Utils.markTime( marker, params )
+	local t = system.getTimer()
+	local precision = 100000
+	local delta = 0
+	params = params or {}
+	if params.reset == true then lastTimeMarker = nil end
+	if params.print == nil then params.print = true end
+
+	if firstTimeMarker == nil then
+		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
+		firstTimeMarker = t
+	end
+	if lastTimeMarker == nil then lastTimeMarker = t end
+
+	if params.print then
+		delta = math.floor((t-lastTimeMarker)*precision)/precision
+		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
+	end
+
+	lastTimeMarker = t
+	if marker then timeMarks[ marker ] = t end
+end
+
+function Utils.markTimeDiff( marker1, marker2 )
+	local precision = 100000
+	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
+	local delta = math.floor((t1-t2 )*precision)/precision
+
+	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
+end
+
+
+
+
+--====================================================================--
+-- App Memory Monitor Utilities
+--====================================================================--
+
+local memoryWatcherCallback = nil
+
+
+-- Memory Monitor function
+
+function Utils.memoryMonitor()
+
+	collectgarbage()
+
+	local memory = collectgarbage("count")
+	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
+
+	print( "M: " .. memory, " T: " .. texture )
+
+end
+
+
+-- watchMemory()
+-- prints out current memory values
+--
+-- value (boolean:
+-- if true, start memory watching every frame
+-- if false, stop current memory watching
+-- if number, start memory watching every Number of milliseconds
+--
+function Utils.watchMemory( value )
+
+	local f
+
+	if value == true then
+		-- setup constant, frame rate memory watch
+
+		Runtime:addEventListener( "enterFrame", Utils.memoryMonitor )
+
+		memoryWatcherCallback = function()
+			Runtime:removeEventListener( "enterFrame", Utils.memoryMonitor )
+			memoryWatcherCallback = nil
+		end
+
+	elseif type( value ) == "number" and value > 0 then
+
+		local timer = timer.performWithDelay( value, Utils.memoryMonitor, 0 )
+
+		memoryWatcherCallback = function()
+			timer.cancel( timer )
+			memoryWatcherCallback = nil
+		end
+
+	elseif value == false and memoryWatcherCallback ~= nil then
+		-- stop watching memory
+		memoryWatcherCallback()
+	end
+
+end
+
+
+
+
+--====================================================================--
+-- Misc Utilities
+--====================================================================--
+
 -- createObjectCallback()
 -- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
 --
@@ -139,6 +456,19 @@ function Utils.createObjectCallback( object, method )
 		return method( object, ... )
 	end
 end
+
+
+
+
+function Utils.getTransitionCompleteFunc( count, callback )
+	local total = 0
+	local func = function( event )
+		total = total + 1
+		if total >= count then callback( event ) end
+	end
+	return func
+end
+
 
 
 
@@ -206,29 +536,6 @@ function Utils.print( table, include, exclude, params )
 end
 
 
---
--- http://rosettacode.org/wiki/Knuth_shuffle#Lua
---
-function Utils.shuffle( t )
-	local n = #t
-	while n > 1 do
-		local k = math.random(n)
-		t[n], t[k] = t[k], t[n]
-		n = n - 1
-	end
-	return t
-end
-
-
-
-function Utils.getTransitionCompleteFunc( count, callback )
-	local total = 0
-	local func = function( event )
-		total = total + 1
-		if total >= count then callback( event ) end
-	end
-	return func
-end
 
 
 -- volume, channel
@@ -246,141 +553,6 @@ function Utils.getAudioChannel( opts )
 end
 
 
--- http://snippets.luacode.org/snippets/Table_Slice_116
-function Utils.tableSlice( values, i1, i2 )
-	local res = {}
-	local n = #values
-	-- default values for range
-	i1 = i1 or 1
-	i2 = i2 or n
-	if i2 < 0 then
-		i2 = n + i2 + 1
-	elseif i2 > n then
-		i2 = n
-	end
-	if i1 < 1 or i1 > n then
-		return {}
-	end
-	local k = 1
-	for i = i1,i2 do
-		res[k] = values[i]
-		k = k + 1
-	end
-	return res
-end
-
-
--- calculates size of table, mostly used as a dictionary
---
-function Utils.tableSize( t1 )
-	local size = 0
-	for _,v in pairs( t1 ) do
-		size = size + 1
-	end
-	return size
-end
-
-
---====================================================================--
--- Time Marker
---====================================================================--
-
-local firstTimeMarker = nil
-local lastTimeMarker = nil
-local timeMarks = {}
-
-local function calculateTime()
-
-end
-function Utils.markTime( marker, params )
-	local t = system.getTimer()
-	local precision = 100000
-	local delta = 0
-	params = params or {}
-	if params.reset == true then lastTimeMarker = nil end
-	if params.print == nil then params.print = true end
-
-	if firstTimeMarker == nil then 
-		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
-		firstTimeMarker = t 
-	end
-	if lastTimeMarker == nil then lastTimeMarker = t end
-
-	if params.print then
-		delta = math.floor((t-lastTimeMarker)*precision)/precision
-		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
-	end
-
-	lastTimeMarker = t
-	if marker then timeMarks[ marker ] = t end
-end
-
-function Utils.markTimeDiff( marker1, marker2 )
-	local precision = 100000
-	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
-	local delta = math.floor((t1-t2 )*precision)/precision
-
-	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
-end
-
---====================================================================--
--- Memory Monitor
---====================================================================--
-
-local memoryWatcherCallback = nil
-
-
--- Memory Monitor function
-
-function Utils.memoryMonitor()
-
-	collectgarbage()
-
-	local memory = collectgarbage("count") 
-	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
-
-	print( "M: " .. memory, " T: " .. texture )
-
-end
-
-
--- watchMemory()
--- prints out current memory values
---
--- value (boolean:
--- if true, start memory watching every frame
--- if false, stop current memory watching
--- if number, start memory watching every Number of milliseconds
---
-function Utils.watchMemory( value )
-
-	local f
-
-	if value == true then
-		-- setup constant, frame rate memory watch
-
-		Runtime:addEventListener( "enterFrame", Utils.memoryMonitor )
-
-		memoryWatcherCallback = function()
-			Runtime:removeEventListener( "enterFrame", Utils.memoryMonitor )
-			memoryWatcherCallback = nil
-		end
-
-	elseif type( value ) == "number" and value > 0 then
-
-		local timer = timer.performWithDelay( value, Utils.memoryMonitor, 0 )
-
-		memoryWatcherCallback = function()
-			timer.cancel( timer )
-			memoryWatcherCallback = nil
-		end
-
-	elseif value == false and memoryWatcherCallback ~= nil then
-		-- stop watching memory
-		memoryWatcherCallback()
-	end
-
-end
 
 
 return Utils
