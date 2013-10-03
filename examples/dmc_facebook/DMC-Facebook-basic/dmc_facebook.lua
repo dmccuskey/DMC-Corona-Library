@@ -509,7 +509,7 @@ function Facebook:_loginRequest_handler( event )
 		self._access_token = nil
 
 		local evt = {
-			isError = true,
+			is_error = true,
 			error = response.error,
 			error_reason = response.error_reason,
 			error_description = response.error_description,
@@ -573,12 +573,12 @@ end
 --[[
 https://developers.facebook.com/docs/facebook-login/permissions/
 --]]
-function Facebook:getPermissions()
+function Facebook:getPermissions( params )
 	-- print( "Facebook:getPermissions" )
 
-	params = { fields='permissions' }
+	local g_params, success_f, error_f
 
-	local success_f, error_f
+	g_params = { fields='permissions' }
 
 	success_f = function( data )
 		-- print( "postMessage: Success Handler" )
@@ -597,13 +597,13 @@ function Facebook:getPermissions()
 		-- print( "postMessage: Error Handler" )
 		local evt = {
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.GET_PERMISSIONS, evt )
 	end
 
-	self:_makeFacebookGraphRequest( 'me/permissions', 'GET', params, success_f, error_f )
+	self:_makeFacebookGraphRequest( 'me/permissions', 'GET', g_params, success_f, error_f )
 
 end
 
@@ -641,7 +641,7 @@ function Facebook:postLink( link, params )
 		-- print( "postLink: Error Handler" )
 		local evt = {
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.POST_LINK, evt )
@@ -672,7 +672,7 @@ function Facebook:postMessage( text, params )
 		-- print( "postMessage: Error Handler" )
 		local evt = {
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.POST_MESSAGE, evt )
@@ -708,7 +708,7 @@ function Facebook:request( path, method, params )
 			path = path,
 			method = method,
 			params = params,
-			isError = true,
+			is_error = true,
 			data = response
 		}
 		self:_dispatchEvent( Facebook.REQUEST, evt )
@@ -762,7 +762,7 @@ function Facebook:_logoutRequest_handler( event )
 	error_f = function( response )
 		-- print( "Request Error Handler" )
 		local evt = {
-			isError = true,
+			is_error = true,
 			error = 'error',
 			error_reason = 'error_reason',
 			error_description = 'error_description',
@@ -951,7 +951,7 @@ function Facebook:_networkRequest_handler( event, params )
 	local successHandler = params.successHandler
 	local errorHandler = params.errorHandler
 
-	if event.isError then
+	if event.is_error then
 		-- on Network Error, call error handler
 		if errorHandler then errorHandler( event, params ) end
 

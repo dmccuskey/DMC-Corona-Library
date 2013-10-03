@@ -15,6 +15,7 @@ local Utils = require( 'dmc_utils' )
 
 local Facebook = require( "dmc_facebook" )
 
+
 --====================================================================--
 -- Setup, Constants
 --====================================================================--
@@ -23,7 +24,7 @@ local Facebook = require( "dmc_facebook" )
 --
 local APP_ID = '236229049738744'
 local APP_URL = 'http://m.davidmccuskey.com'
-local APP_TOKEN_URL = 'http://m.davidmccuskey.com/app_token.php'
+-- local APP_TOKEN_URL = 'http://m.davidmccuskey.com/app_token.php'
 
 
 --===================================================================--
@@ -32,10 +33,16 @@ local APP_TOKEN_URL = 'http://m.davidmccuskey.com/app_token.php'
 
 local btn_login, btn_logout, btn_read, btn_post
 
+-- showAlert
+-- helper for showing our alerts
+--
 local function showAlert( message )
 	native.showAlert( "DMC Facebook Plugin", message, { "OK" }, onComplete )
 end
 
+-- toggleLoginLogoutButtons
+-- show button Login or Logout depending on state of Facebook Login
+--
 local function toggleLoginLogoutButtons()
 
 	if Facebook.has_login then
@@ -48,73 +55,17 @@ local function toggleLoginLogoutButtons()
 
 end
 
-local function facebookHandler( event )
-	-- print( 'Main: facebookHandler', event.type )
-	-- Utils.print( event )
+-- invokeFacebookCommand
+-- run a command on Facebook
+-- we made this so facebookHandler() below is a little easier to read
+--
+local function invokeFacebookCommand( cmd )
 
-	local data = event.data
-
-	if event.type == Facebook.LOGIN then
-		toggleLoginLogoutButtons()
-
-
-	elseif event.type == Facebook.LOGOUT then
-		toggleLoginLogoutButtons()
-
-
-	elseif event.type == Facebook.ACCESS_TOKEN then
-		showAlert( "Access token has changed" )
-
-
-	elseif event.type == Facebook.POST_MESSAGE then
-		if event.isError then
-			showAlert( "Error posting message: " .. data.message )
-		else
-			showAlert( "Message successfully posted" )
-		end
-
-
-	elseif event.type == Facebook.POST_LINK then
-		if event.isError then
-			showAlert( "Error posting link: " .. data.message )
-		else
-			showAlert( "Link successfully posted" )
-		end
-
-
-	elseif event.type == Facebook.REQUEST then
-
-		if event.path == 'me' then
-			if event.isError then
-				showAlert( "Error in request: " .. data.message )
-			else
-				Utils.print( data )
-				showAlert( "Data request successful" )
-			end
-
-		end
-
-	end
-end
-
-local function buttonHandler( event )
-	-- print( 'Main: buttonHandler', event.type )
-	local button = event.target
-
-	if button.id == 'login' then
-		Facebook:login( { 'publish_stream' }, fb_options )
-
-	elseif button.id == 'logout' then
-		Facebook:logout()
-
-	elseif button.id == 'read' then
-		Facebook:request( 'me', 'GET', params )
-
-	elseif button.id == 'post_msg' then
+	if cmd == 'post_msg' then
 		local msg = "Test message post @ " .. tostring( os.time() )
 		Facebook:postMessage( msg )
 
-	elseif button.id == 'post_link' then
+	elseif cmd == 'post_link' then
 		local link = 'http://m.davidmccuskey.com/'
 		local params = {
 			picture='http://developer.coronalabs.com/demo/Corona90x90.png',
@@ -124,12 +75,141 @@ local function buttonHandler( event )
 			actions={ { name = "Learn More", link = "http://docs.davidmccuskey.com" } }
 		}
 		Facebook:postLink( link, params )
+	end
+
+end
+
+-- facebookHandler
+-- handle data return from Facebook calls
+--
+local function facebookHandler( event )
+	-- print( 'Main: facebookHandler', event.type )
+	-- Utils.print( event )
+
+	local data = event.data
+
+	if event.type == Facebook.LOGIN then
+		if event.is_error then
+			showAlert( "Error with login: " .. data.message )
+		else
+			local str = "Successful Login: "
+			if event.had_login and not event.had_permissions then
+				str = str .. "existing auth only"
+			elseif not event.had_login and event.had_permissions then
+				str = str .. "existing perms only"
+			elseif event.had_login and event.had_permissions then
+				str = str .. "existing auth and perms"
+			else
+				str = str .. "neither existing auth nor perms"
+			end
+			showAlert( str )
+		end
+		toggleLoginLogoutButtons()
+
+
+	elseif event.type == Facebook.LOGOUT then
+		toggleLoginLogoutButtons()
+
+
+	elseif event.type == Facebook.ACCESS_TOKEN then
+		print( "Access token has changed" )
+
+
+	elseif event.type == Facebook.POST_MESSAGE then
+		if event.is_error then
+			showAlert( "Error posting message: " .. data.message )
+		else
+			showAlert( "Message successfully posted" )
+		end
+
+
+	elseif event.type == Facebook.GET_PERMISSIONS then
+		if event.is_error then
+			showAlert( "Error getting permissions: " .. data.message )
+		else
+			local params = event.params
+			local has_command = (params and params.next_command)
+			local has_perms = (data.publish_stream == 1)
+
+			-- see if we're just checking perms for another operation
+			if not has_command then
+				showAlert( "Get Permissions successful" )
+			else
+				if has_perms then
+					invokeFacebookCommand( params.next_command )
+				else
+					showAlert( "Get Permissions successful, tho perms not good for call" )
+				end
+			end
+		end
+
+
+	elseif event.type == Facebook.POST_LINK then
+		if event.is_error then
+			showAlert( "Error posting link: " .. data.message )
+		else
+			showAlert( "Link successfully posted" )
+		end
+
+
+	elseif event.type == Facebook.REQUEST then
+
+		if event.path == 'me' then
+			if event.is_error then
+				showAlert( "Error in request: " .. data.message )
+			else
+				print( "-- Request Data --" )
+				Utils.print( data )
+				showAlert( "Data request successful" )
+			end
+
+		end
+
+	end
+end
+
+-- buttonHandler
+-- handle button clicks
+--
+local function buttonHandler( event )
+	-- print( 'Main: buttonHandler', event.type )
+	local button = event.target
+
+	if button.id == 'login' then
+		Facebook:login( { 'publish_stream' } )
+
+	elseif button.id == 'logout' then
+		Facebook:logout()
+
+	elseif button.id == 'read' then
+		if Facebook.has_login then
+			Facebook:request( 'me' )
+		else
+			showAlert( "You need to first Login" )
+		end
+
+	elseif button.id == 'post_msg' then
+		if Facebook.has_login then
+			Facebook:getPermissions( { next_command='post_msg' } )
+		else
+			showAlert( "You need to first Login" )
+		end
+
+	elseif button.id == 'post_link' then
+		if Facebook.has_login then
+			Facebook:getPermissions( { next_command='post_link' } )
+		else
+			showAlert( "You need to first Login" )
+		end
 
 	end
 
 	return true
 end
 
+-- setupUI
+-- put UI buttons on stage
+--
 local function setupUI()
 
 	local params = {
