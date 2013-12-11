@@ -348,7 +348,7 @@ function readInNamedColors( file, format )
 end
 
 function translateRGBToHDR( ... )
-	print( 'translateRGBToHDR' )
+	-- print( 'translateRGBToHDR' )
 
 	local args = { ... }
 	local color
@@ -387,7 +387,7 @@ function translateRGBToHDR( ... )
 		print('\n')
 	end
 
-	print( color[1], color[2], color[3], color[4] )
+	-- print( color[1], color[2], color[3], color[4] )
 
 	return color
 end
@@ -396,7 +396,7 @@ end
 -- gives back methods, but will work with named colors, defined in HDR
 --
 function translateHDRToHDR( ... )
-	print( 'translateHDRToHDR' )
+	-- print( 'translateHDRToHDR' )
 
 	local args = { ... }
 	local color
