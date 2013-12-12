@@ -220,6 +220,7 @@ dmc_lib_location = dmc_lib_location or dmc_lib_info.location
 local DMC_KOLOR_DEFAULTS = {
 	default_color_space='RGB',
 	cache_is_active='false',
+	make_global='false',
 	-- named_color_file,
 	-- named_color_format,
 }
@@ -731,6 +732,18 @@ function Kolor.newText( ... )
 end
 
 
+
+--====================================================================--
+-- Final Setup
+--====================================================================--
+
+-- replace original display object with one of ours
+
+if dmc_kolor_data.make_global == 'true' then
+	_G.display = Kolor
+else
+	_G.display = Display
+end
 
 
 return Kolor

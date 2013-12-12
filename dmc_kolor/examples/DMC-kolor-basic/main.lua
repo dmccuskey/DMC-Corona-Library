@@ -17,7 +17,7 @@ print("---------------------------------------------------")
 --===================================================================--
 
 -- just need to require the module
-require( 'dmc_kolor' )
+local display = require( 'dmc_kolor' )
 
 
 

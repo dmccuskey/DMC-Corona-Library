@@ -244,9 +244,12 @@ local json = require( 'json' )
 -- Setup, Constants
 --====================================================================--
 
-local Kolor = {}
 local NAMED_COLORS = nil  -- table of colors
 local CACHED_COLORS = {}  -- table of cached colors
+
+local _DISPLAY = _G.display -- reference to the original display object
+
+local Display, Kolor
 
 
 
@@ -347,6 +350,15 @@ function readInNamedColors( file, format )
 
 end
 
+
+-- if we have file with named colors then process it
+--
+if dmc_kolor_data.named_color_file and dmc_kolor_data.named_color_format then
+	readInNamedColors( dmc_kolor_data.named_color_file, dmc_kolor_data.named_color_format )
+end
+
+
+
 function translateRGBToHDR( ... )
 	-- print( 'translateRGBToHDR' )
 
@@ -393,6 +405,7 @@ function translateRGBToHDR( ... )
 end
 
 
+
 -- gives back methods, but will work with named colors, defined in HDR
 --
 function translateHDRToHDR( ... )
@@ -434,9 +447,18 @@ end
 
 
 
+--====================================================================--
+-- Display Setup
+--====================================================================--
+
+Display = {}
+
+setmetatable( Display, { __index=_DISPLAY } )
+
+
 -- imbue object with fillColor magic
 --
-function modifySetFillColor( o )
+function Display._modifySetFillColor( o )
 	-- print( 'modifySetFillColor' )
 
 	-- cached version
@@ -469,28 +491,18 @@ function modifySetFillColor( o )
 		return f
 	end
 
-
-	--== Modify setFillColor
-
 	o._setFillColor = o.setFillColor
 
 	o.setFillRGB = createClosure( o, translateRGBToHDR )
 	o.setFillHDR = createClosure( o, translateHDRToHDR )
-
-	-- set the default behavior
-	if dmc_kolor_data.default_color_space == 'HDR' then
-		o.setFillColor = o.setFillHDR
-	else
-		o.setFillColor = o.setFillRGB
-	end
 
 end
 
 
 -- imbue object with strokeColor magic
 --
-function modifySetStrokeColor( o )
-	-- print( 'modifySetStrokeColor' )
+function Display._modifySetStrokeColor( o )
+	-- print( 'Display._modifySetStrokeColor' )
 
 	-- cached version
 	--[[
@@ -515,33 +527,92 @@ function modifySetStrokeColor( o )
 	--]]
 
 	function createClosure( obj, translate )
-		-- print('createCloserure stroke')
+		-- print('createClosure stroke')
 		local f = function( ... )
-		-- print('stro')
 			local color = translate( ... )
 			obj:_setStrokeColor( unpack( color ) )
 		end
-		-- print(f)
 		return f
 	end
-
-
-	--== Modify setStrokeColor
 
 	o._setStrokeColor = o.setStrokeColor
 
 	o.setStrokeRGB = createClosure( o, translateRGBToHDR )
 	o.setStrokeHDR = createClosure( o, translateHDRToHDR )
 
-	-- set the default behavior
-	if dmc_kolor_data.default_color_space == 'HDR' then
-		o.setStrokeColor = o.setStrokeHDR
-	else
-		o.setStrokeColor = o.setStrokeRGB
-	end
-
 end
 
+
+
+function Display.newCircle( ... )
+	-- print( 'Display.newCircle' )
+
+	local o = _DISPLAY.newCircle( ... )
+
+	Display._modifySetFillColor( o )
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
+
+
+function Display.newLine( ... )
+	-- print( 'Display.newLine' )
+
+	local o = _DISPLAY.newLine( ... )
+
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
+
+
+function Display.newPolygon( ... )
+	-- print( 'Display.newPolygon' )
+
+	local o = _DISPLAY.newPolygon( ... )
+
+	Display._modifySetFillColor( o )
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
+
+
+function Display.newRect( ... )
+	-- print( 'Display.newRect' )
+
+	local o = _DISPLAY.newRect( ... )
+
+	Display._modifySetFillColor( o )
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
+
+
+function Display.newRoundedRect( ... )
+	-- print( 'Display.newRoundedRect' )
+
+	local o = _DISPLAY.newRoundedRect( ... )
+
+	Display._modifySetFillColor( o )
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
+
+
+function Display.newText( ... )
+	-- print( 'Display.newText' )
+
+	local o = _DISPLAY.newText( ... )
+
+	Display._modifySetFillColor( o )
+	Display._modifySetStrokeColor( o )
+
+	return o
+end
 
 
 
@@ -549,132 +620,116 @@ end
 -- Kolor Setup
 --====================================================================--
 
-
--- if we have file with named colors then process it
---
-if dmc_kolor_data.named_color_file and dmc_kolor_data.named_color_format then
-	readInNamedColors( dmc_kolor_data.named_color_file, dmc_kolor_data.named_color_format )
-end
-
+Kolor = {}
+setmetatable( Kolor, { __index=Display } )
 
 
 function Kolor.newCircle( ... )
 	-- print( 'Kolor.newCircle' )
 
-	local o = display._newCircle( ... )
+	local o = Display.newCircle( ... )
 
-	modifySetFillColor( o )
-	modifySetStrokeColor( o )
+	-- set the default behavior
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+		o.setFillColor = o.setFillHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+		o.setFillColor = o.setFillRGB
+	end
 
 	return o
 end
-
-display._newCircle = display.newCircle
-display.newCircle = Kolor.newCircle
 
 
 function Kolor.newLine( ... )
 	-- print( 'Kolor.newLine' )
 
-	print( '\n' )
-	print( 'WARNING dmc_kolor: there is a bug in Corona newLine. use setStrokeRGB instead' )
-	print( '\n' )
+	local o = Display.newLine( ... )
 
-	local o = display._newLine( ... )
-
-	modifySetStrokeColor( o )
+	-- set the default behavior
+	print( '\n' )
+	print( 'WARNING dmc_kolor: there is a bug in Corona newLine. use setStrokeRGB() instead' )
+	print( '\n' )
+	--[[
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+	end
+	--]]
 
 	return o
 end
-
-display._newLine = display.newLine
-display.newLine = Kolor.newLine
 
 
 function Kolor.newPolygon( ... )
 	-- print( 'Kolor.newPolygon' )
 
-	local o = display._newPolygon( ... )
+	local o = Display.newPolygon( ... )
 
-	modifySetFillColor( o )
-	modifySetStrokeColor( o )
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+		o.setFillColor = o.setFillHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+		o.setFillColor = o.setFillRGB
+	end
 
 	return o
 end
-
-display._newPolygon = display.newPolygon
-display.newPolygon = Kolor.newPolygon
 
 
 function Kolor.newRect( ... )
 	-- print( 'Kolor.newRect' )
 
-	local o = display._newRect( ... )
+	local o = Display.newRect( ... )
 
-	modifySetFillColor( o )
-	modifySetStrokeColor( o )
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+		o.setFillColor = o.setFillHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+		o.setFillColor = o.setFillRGB
+	end
 
 	return o
 end
-
-display._newRect = display.newRect
-display.newRect = Kolor.newRect
 
 
 function Kolor.newRoundedRect( ... )
 	-- print( 'Kolor.newRoundedRect' )
 
-	local o = display._newRoundedRect( ... )
+	local o = Display.newRoundedRect( ... )
 
-	modifySetFillColor( o )
-	modifySetStrokeColor( o )
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+		o.setFillColor = o.setFillHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+		o.setFillColor = o.setFillRGB
+	end
 
 	return o
 end
-
-display._newRoundedRect = display.newRoundedRect
-display.newRoundedRect = Kolor.newRoundedRect
 
 
 function Kolor.newText( ... )
 	-- print( 'Kolor.newText' )
 
-	local o = display._newText( ... )
+	local o = Display.newText( ... )
 
-	modifySetFillColor( o )
-	modifySetStrokeColor( o )
-
-	return o
-end
-
-display._newText = display.newText
-display.newText = Kolor.newText
-
-
-function Kolor.newTextBox( ... )
-	-- print( 'Kolor.newTextBox' )
-
-	local o = native._newTextBox( ... )
+	if dmc_kolor_data.default_color_space == 'HDR' then
+		o.setStrokeColor = o.setStrokeHDR
+		o.setFillColor = o.setFillHDR
+	else
+		o.setStrokeColor = o.setStrokeRGB
+		o.setFillColor = o.setFillRGB
+	end
 
 	return o
 end
 
--- not yet HDR
--- native._newTextBox = native.newTextBox
--- native.newTextBox = Kolor.newTextBox
-
-
-function Kolor.newTextField( ... )
-	-- print( 'Kolor.newTextField' )
-
-	local o = native._newTextField( ... )
-
-	return o
-end
-
--- not yet HDR
--- native._newTextField = native.newTextField
--- native.newTextField = Kolor.newTextField
 
 
 
