@@ -110,6 +110,7 @@ local star1 = display.newLine( x1,y1, x2,y1 )
 star1:append( x2,y2, x1,y2, x1,y1 )
 star1.strokeWidth = 15
 star1:setStrokeColor( 150, 150, 150 )  -- << bug here, use setStrokeRGB
+star1:setStrokeRGB( 150, 150, 150 )  -- << bug here, use setStrokeRGB
 
 x1, x2, y1, y2 = 275, 325, 900, 950
 
