@@ -46,7 +46,7 @@ There is a detailed example in the folder `examples/dmc_autostore/` which shows 
 
 It also gives additional functionality like the ability to use names when setting object colors like "Aqua" or "Red". The module even includes color tables for all of the X11 color definitions.
 
-[more info...](dmc_kolor/README.md)
+[more info...](dmc_kolor/)
 
 **Documentation**
 
