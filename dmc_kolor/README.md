@@ -4,7 +4,7 @@
 
 It also gives additional functionality like the ability to use names when setting object colors like "Aqua" or "Red". The module even includes color tables for all of the X11 color definitions.
 
-#### Reasons to use dmc_kolor####
+#### Reasons to use dmc_kolor ####
 
 Here are some of the reasons why you would use this module:
 
@@ -28,11 +28,11 @@ Here are some of the reasons why you would use this module:
 
 	There is more functionality built in, like being able to used named colors, hex colors, mixing RGB and HDR if necessary, etc.
 
-**Examples**
+#### Examples ####
 
 There are examples in the folder `dmc_kolor/examples/` which show different ways to use the `dmc_kolor` library.
 
-**Documentation**
+#### Documentation ####
 
 http://docs.davidmccuskey.com/display/docs/dmc_kolor.lua
 

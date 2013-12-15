@@ -52,10 +52,6 @@ It also gives additional functionality like the ability to use names when settin
 
 http://docs.davidmccuskey.com/display/docs/dmc_kolor.lua
 
-**Examples**
-
-There are examples in the folder `dmc_kolor/examples/` which show different ways to use the `dmc_kolor` library.
-
 
 
 ### dmc_objects.lua ###
