@@ -122,8 +122,8 @@ dmc_lib_data.dmc_kolor = dmc_lib_data.dmc_kolor or {}
 
 local DMC_KOLOR_DEFAULTS = {
 	default_color_space='RGB',
-	cache_is_active='false',
-	make_global='false',
+	cache_is_active=false,
+	make_global=false,
 	-- named_color_file, no default,
 	-- named_color_format, no default,
 }
