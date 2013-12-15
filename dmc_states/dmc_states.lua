@@ -203,6 +203,20 @@ local function States._getPreviousState( self )
 end
 
 
+local function States._pushState( self, state_name )
+	table.insert( self._state_stack, 1, state_name )
+end
+
+
+local function States._resetStates( self )
+	if States._DEBUG then
+		print( "DMC States::resetStates" )
+	end
+	self._state_stack = {}
+	self._curr_state = nil
+	self._curr_state_name = ""
+end
+
 
 --== Facade API Methods ==--
 
@@ -220,9 +234,7 @@ local function States._mixin( obj )
 	obj = obj or {}
 
 	-- add variables
-	obj._state_stack = {}
-	obj._curr_state = nil
-	obj._curr_state_name = ""
+	resetStates( obj )
 
 	-- add methods
 	obj.setState = States._setState
@@ -230,6 +242,8 @@ local function States._mixin( obj )
 	obj.gotoPreviousState = States._gotoPreviousState
 	obj.getState = States._getState
 	obj.getPreviousState = States._getPreviousState
+	obj.pushState = States._pushState
+	obj.resetStates = States._resetStates
 
 	return obj
 end
