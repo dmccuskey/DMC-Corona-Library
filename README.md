@@ -137,6 +137,18 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 
 
 
+### Module dmc_states ###
+
+`dmc_states` is a Lua module which helps to implement the State Machine design pattern.
+
+[more info...](dmc_states/)
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_states.lua
+
+
+
 ### dmc_touchmanager.lua ###
 
 This module controls how touch events are processed within an application made with the Corona SDK. Unlike the default (broken?) multi-touch behavior in the Corona SDK, it will allow you to track any amount of events and un/set focus any one of them to or from an object.
