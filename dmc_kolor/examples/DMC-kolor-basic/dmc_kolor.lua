@@ -37,19 +37,10 @@ local VERSION = "1.1.0"
 
 
 --====================================================================--
--- Setup DMC Library Config
+-- Boot Support Methods
 --====================================================================--
 
--- This is standard code to bootstrap the dmc_library
--- it looks for a configuration file to read in
-
-
 local Utils = {} -- make copying from dmc_utils easier
-
---== Start dmc_utils copies ==--
-
-Utils.IO_ERROR = "io_error"
-Utils.IO_SUCCESS = "io_success"
 
 function Utils.extend( fromTable, toTable )
 
@@ -75,6 +66,104 @@ function Utils.extend( fromTable, toTable )
 
 	return _extend( fromTable, toTable )
 end
+
+
+
+--====================================================================--
+-- DMC Library Config
+--====================================================================--
+
+local dmc_lib_data, dmc_lib_info, dmc_lib_location
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+require( "dmc_library_boot" )
+if false == pcall( function() require( "dmc_library_boot" ) end ) then
+	_G.__dmc_library = {
+		dmc_library={
+			location = ''
+		},
+		func = {
+			find=function( name )
+				local loc = ''
+				if dmc_lib_data[name] and dmc_lib_data[name].location then
+					loc = dmc_lib_data[name].location
+				else
+					loc = dmc_lib_info.location
+				end
+				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
+					loc = loc .. '.'
+				end
+				return loc
+		end		}
+	}
+end
+
+dmc_lib_data = _G.__dmc_library
+dmc_lib_func = dmc_lib_data.func
+dmc_lib_info = dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_info.location
+
+
+
+
+--====================================================================--
+-- DMC Library : DMC Kolor
+--====================================================================--
+
+
+
+--====================================================================--
+-- DMC Kolor Config
+--====================================================================--
+
+dmc_lib_data.dmc_kolor = dmc_lib_data.dmc_kolor or {}
+
+local DMC_KOLOR_DEFAULTS = {
+	default_color_space='RGB',
+	cache_is_active='false',
+	make_global='false',
+	-- named_color_file, no default,
+	-- named_color_format, no default,
+}
+
+local dmc_kolor_data = Utils.extend( dmc_lib_data.dmc_kolor, DMC_KOLOR_DEFAULTS )
+
+
+
+--====================================================================--
+-- Imports
+--====================================================================--
+
+local json = require( 'json' )
+
+
+-- only needed for debugging
+-- Utils2 = require( dmc_lib_func.find('dmc_utils') .. 'dmc_utils' )
+
+
+
+--====================================================================--
+-- Setup, Constants
+--====================================================================--
+
+local NAMED_COLORS = nil  -- table of colors
+local CACHED_COLORS = {}  -- table of cached colors
+
+local _DISPLAY = _G.display -- reference to the original display object
+
+local Display, Kolor
+
+
+
+--====================================================================--
+-- Support Methods
+--====================================================================--
+
+
+Utils.IO_ERROR = "io_error"
+Utils.IO_SUCCESS = "io_success"
 
 function Utils.readFile( file_path, options )
 	-- print( "Utils.readFile", file_path )
@@ -117,146 +206,7 @@ function Utils.readFile( file_path, options )
 	return ret_val[1], ret_val[2]
 end
 
-function Utils.readConfigFile( file_path, options )
-	-- print( "Utils.readConfigFile", file_path )
 
-	options = options or {}
-	options.lines = true
-	options.default_section = options.default_section or nil -- no default here
-
-	local status, contents = Utils.readFile( file_path, options )
-
-	if status == Utils.IO_ERROR then return nil end
-
-	local data = {}
-	local curr_section = options.default_section
-	if curr_section ~= nil and not data[curr_section] then
-		data[curr_section]={}
-	end
-
-	local function processSectionLine( line )
-		local key
-		key = line:match( "%[([%w_]+)%]" )
-		key = string.lower( key ) -- use only lowercase inside of module
-		return key
-	end
-
-	local function processKeyLine( line )
-		local k, v, key, val
-		-- print( line )
-		k, v = line:match( "([%w_]+)%s*=%s*([%w_./\\]+)" )
-		-- print( tostring( k ) .. " = " .. tostring( v ) )
-		key = string.lower( k ) -- use only lowercase inside of module
-		val = tonumber( v )
-		if val == nil then val = v end
-		return key, val
-	end
-
-	local is_valid = true
-	local is_section
-	local key, val
-	for _, line in ipairs( contents ) do
-		-- print( line )
-		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
-		is_key = ( string.find( line, '%w', 1, false ) == 1 )
-		-- print( is_section, is_key )
-
-		if is_section then
-			curr_section = processSectionLine( line )
-			if not data[curr_section] then data[curr_section]={} end
-		elseif is_key and curr_section ~= nil then
-			key, val = processKeyLine( line )
-			data[curr_section][key] = val
-		end
-	end
-
-	return data
-end
-
---== End dmc_utils copies ==--
-
-
-local DMC_LIBRARY_CONFIG_FILE = 'dmc_library.cfg'
-local DMC_LIBRARY_DEFAULT_SECTION = 'dmc_library'
-local DMC_LIBRARY_DEFAULTS = {
-	location = ''
-}
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
-
--- no module has yet tried to read in a config file
-if _G.__dmc_library == nil then
-	local file_path, config_data
-	file_path = system.pathForFile( DMC_LIBRARY_CONFIG_FILE, system.ResourceDirectory )
-	if file_path ~= nil then
-		config_data = Utils.readConfigFile( file_path, { default_section=DMC_LIBRARY_DEFAULT_SECTION } )
-	end
-	if config_data == nil then
-		_G.__dmc_library = {}
-	else
-		_G.__dmc_library = config_data
-	end
-	dmc_lib_data = _G.__dmc_library
-
-	dmc_lib_info = dmc_lib_data.dmc_library or {}
-	if dmc_lib_info.location ~= nil and dmc_lib_info.location ~= ''  then
-		dmc_lib_info.location = string.gsub( dmc_lib_info.location, '[/\\]', "." )
-		dmc_lib_location = dmc_lib_info.location .. '.'
-	else
-		dmc_lib_location = ''
-	end
-end
-
-dmc_lib_data = dmc_lib_data or _G.__dmc_library
-dmc_lib_info = dmc_lib_info or dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_location or dmc_lib_info.location
-
-
-
---====================================================================--
--- Setup DMC Kolor Config
---====================================================================--
-
-
-local DMC_KOLOR_DEFAULTS = {
-	default_color_space='RGB',
-	cache_is_active='false',
-	make_global='false',
-	-- named_color_file,
-	-- named_color_format,
-}
-local dmc_kolor_data = dmc_lib_data.dmc_kolor or {}
-
-dmc_kolor_data = Utils.extend( dmc_kolor_data, DMC_KOLOR_DEFAULTS )
-
-
-
---====================================================================--
--- Imports
---====================================================================--
-
-local json = require( 'json' )
-
--- only needed for debugging
--- Utils2 = require( dmc_lib_location .. 'dmc_utils' )
-
-
-
---====================================================================--
--- Setup, Constants
---====================================================================--
-
-local NAMED_COLORS = nil  -- table of colors
-local CACHED_COLORS = {}  -- table of cached colors
-
-local _DISPLAY = _G.display -- reference to the original display object
-
-local Display, Kolor
-
-
-
---====================================================================--
--- Support Methods
---====================================================================--
 
 function readInNamedColors( file, format )
 	-- print( 'readInNamedColors' )
@@ -449,7 +399,7 @@ end
 
 
 --====================================================================--
--- Display Setup
+-- Display Class Setup
 --====================================================================--
 
 Display = {}
@@ -468,7 +418,7 @@ function Display._modifySetFillColor( o )
 		local f = function( ... )
 			local args = { ... }
 			local key, color
-			if type( args[2] ) == 'number' and dmc_kolor_data.cache_is_active == 'true' then
+			if type( args[2] ) == 'number' and dmc_kolor_data.cache_is_active == true then
 				-- check cache
 				key = table.concat( { tostring(args[2]), tostring(args[3]), tostring(args[4]), tostring(args[5]) }, '-' )
 				color = CACHED_COLORS[key]
@@ -511,7 +461,7 @@ function Display._modifySetStrokeColor( o )
 		local f = function( ... )
 			local args = { ... }
 			local key, color
-			if type( args[2] ) == 'number' and dmc_kolor_data.cache_is_active == 'true' then
+			if type( args[2] ) == 'number' and dmc_kolor_data.cache_is_active == true then
 				-- check cache
 				key = table.concat( { tostring(args[2]), tostring(args[3]), tostring(args[4]), tostring(args[5]) }, '-' )
 				color = CACHED_COLORS[key]
@@ -618,7 +568,7 @@ end
 
 
 --====================================================================--
--- Kolor Setup
+-- Kolor Class Setup
 --====================================================================--
 
 Kolor = {}
@@ -739,7 +689,7 @@ end
 
 -- replace original display object with one of ours
 
-if dmc_kolor_data.make_global == 'true' then
+if dmc_kolor_data.make_global == true then
 	_G.display = Kolor
 else
 	_G.display = Display
