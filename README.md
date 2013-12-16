@@ -40,6 +40,20 @@ There is a detailed example in the folder `examples/dmc_autostore/` which shows 
 
 
 
+### Module dmc_kolor ###
+
+`dmc_kolor` is a Lua module which brings back the traditional ways of describing colors using RGBA values ( eg, 255, 180, 34 ) instead of the new way using percentage values (eg, 1, .5, .25 ) brought about by the change to Graphics 2.0.
+
+It also gives additional functionality like the ability to use names when setting object colors like "Aqua" or "Red". The module even includes color tables for all of the X11 color definitions.
+
+[more info...](dmc_kolor/)
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_kolor.lua
+
+
+
 ### dmc_objects.lua ###
 
 This file contains several methods and object classes which together form an object-oriented framework to use when programming in Lua with Corona SDK.  _**Though it's not just for Corona - the top-level object classes can be used when developing software in plain Lua.**_
@@ -120,6 +134,18 @@ Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library. Other examples use the button class as well - check in `examples/dmc_objects/`.
 
+
+
+
+### Module dmc_states ###
+
+`dmc_states` is a Lua module which helps to implement the State Machine design pattern.
+
+[more info...](dmc_states/)
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_states.lua
 
 
 
