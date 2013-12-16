@@ -160,6 +160,41 @@ Files.IO_SUCCESS = "io_success"
 
 
 
+--====================================================================--
+--== fileExists() ==--
+
+
+-- pure Lua functionality
+--
+function Files._fileExists( file_path, options )
+	local exists = false
+	local fh = io.open( file_path, "r" )
+	if fh then
+		fh:close()
+		exists = true
+	end
+	return exists
+
+end
+
+-- http://docs.coronalabs.com/api/library/system/pathForFile.html
+-- check to see if a file already exists in storage
+--
+function Files.fileExists( filename, options )
+
+	options = options or {}
+	if options.base_dir == nil then options.base_dir = system.DocumentsDirectory end
+
+	local file_path = system.pathForFile( filename, options.base_dir )
+	return Files._fileExists( file_path, options )
+end
+
+
+
+--====================================================================--
+--== remove() ==--
+
+
 -- item is a path
 function Files._removeFile( f_path, f_options )
 		local success, msg = os.remove( f_path )
@@ -244,6 +279,9 @@ end
 
 
 
+--====================================================================--
+--== readFile() ==--
+
 
 function Files.readFile( file_path, options )
 	-- print( "Files.readFile", file_path )
@@ -288,6 +326,9 @@ end
 
 
 
+--====================================================================--
+--== saveFile() ==--
+
 
 function Files.saveFile( file_path, data )
 	-- print( "Files.saveFile" )
@@ -309,6 +350,10 @@ end
 
 
 
+--====================================================================--
+--== readJSONFile() ==--
+
+
 function Files.readJSONFile( file_path, options )
 
 	local options = options or {}
@@ -323,6 +368,12 @@ function Files.readJSONFile( file_path, options )
 
 end
 
+
+
+--====================================================================--
+--== saveJSONFile() ==--
+
+
 -- data is a plain Lua table/memory structure
 -- returns status / content
 function Files.saveJSONFile( file_path, data )
@@ -332,6 +383,10 @@ function Files.saveJSONFile( file_path, data )
 
 end
 
+
+
+--====================================================================--
+--== readConfigFile() ==--
 
 
 function Files.readConfigFile( file_path, options )
