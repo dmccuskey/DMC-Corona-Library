@@ -94,7 +94,7 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 					loc = loc .. '.'
 				end
-				return loc
+				return loc .. name
 			end
 		}
 	}
@@ -121,7 +121,7 @@ dmc_lib_location = dmc_lib_info.location
 dmc_lib_data.dmc_performance = dmc_lib_data.dmc_performance or {}
 
 local DMC_PERFORMANCE_DEFAULTS = {
-	-- memory_active - string, transform to boolean/integer
+	memory_active = 'false'
 }
 
 local dmc_performance_data = Utils.extend( dmc_lib_data.dmc_performance, DMC_PERFORMANCE_DEFAULTS )
