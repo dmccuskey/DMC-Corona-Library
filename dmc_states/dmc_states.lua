@@ -85,19 +85,18 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 		},
 		func = {
 			find=function( name )
-				local loc
+				local loc = ''
 				if dmc_lib_data[name] and dmc_lib_data[name].location then
 					loc = dmc_lib_data[name].location
-				elseif dmc_lib_info.location then
-					loc = dmc_lib_info.location
 				else
-					loc = ''
+					loc = dmc_lib_info.location
 				end
 				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 					loc = loc .. '.'
 				end
-				return loc
-		end		}
+				return loc .. name
+			end
+		}
 	}
 end
 
