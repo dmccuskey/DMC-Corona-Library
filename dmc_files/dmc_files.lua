@@ -95,7 +95,7 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 					loc = loc .. '.'
 				end
-				return loc
+				return loc .. name
 			end
 		}
 	}
