@@ -78,7 +78,6 @@ local dmc_lib_data, dmc_lib_info, dmc_lib_location
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-require( "dmc_library_boot" )
 if false == pcall( function() require( "dmc_library_boot" ) end ) then
 	_G.__dmc_library = {
 		dmc_library={
@@ -96,7 +95,8 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 					loc = loc .. '.'
 				end
 				return loc
-		end		}
+			end
+		}
 	}
 end
 
