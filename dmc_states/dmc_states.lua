@@ -157,7 +157,7 @@ States._DEBUG = dmc_states_data.debug_active or false
 --== State API Methods ==--
 
 
-local function States._setState( self, state )
+function States._setState( self, state )
 	if States._DEBUG then
 		print( "DMC States::setState: is now >> " .. tostring( state ) )
 	end
@@ -172,7 +172,7 @@ local function States._setState( self, state )
 end
 
 
-local function States._gotoState( self, state, ... )
+function States._gotoState( self, state, ... )
 	if States._DEBUG then
 		print( "DMC States::gotoState: " .. tostring( state ) )
 	end
@@ -182,7 +182,7 @@ local function States._gotoState( self, state, ... )
 end
 
 
-local function States._gotoPreviousState( self, ... )
+function States._gotoPreviousState( self, ... )
 	local state = table.remove( self._state_stack, 1 )
 	if States._DEBUG then
 		print( "DMC States::gotoPreviousState: going to >> " .. tostring( state ) )
@@ -192,22 +192,22 @@ local function States._gotoPreviousState( self, ... )
 end
 
 
-local function States._getState( self )
+function States._getState( self )
 	return self._curr_state_name
 end
 
 
-local function States._getPreviousState( self )
+function States._getPreviousState( self )
 	return self._state_stack[1]
 end
 
 
-local function States._pushState( self, state_name )
+function States._pushState( self, state_name )
 	table.insert( self._state_stack, 1, state_name )
 end
 
 
-local function States._resetStates( self )
+function States._resetStates( self )
 	if States._DEBUG then
 		print( "DMC States::resetStates" )
 	end
@@ -220,12 +220,12 @@ end
 --== Facade API Methods ==--
 
 
-local function States._setDebug( value )
+function States._setDebug( value )
 	States._DEBUG = value
 end
 
 
-local function States._mixin( obj )
+function States._mixin( obj )
 	if States._DEBUG then
 		print( "DMC States::mixin: ", obj )
 	end
