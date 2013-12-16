@@ -94,7 +94,7 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 					loc = loc .. '.'
 				end
-				return loc
+				return loc .. name
 			end
 		}
 	}
@@ -140,7 +140,7 @@ local json = require( 'json' )
 
 
 -- only needed for debugging
--- Utils2 = require( dmc_lib_func.find('dmc_utils') .. 'dmc_utils' )
+-- Utils2 = require( dmc_lib_func.find('dmc_utils') )
 
 
 
