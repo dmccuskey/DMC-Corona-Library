@@ -233,7 +233,7 @@ function States._mixin( obj )
 	obj = obj or {}
 
 	-- add variables
-	resetStates( obj )
+	States._resetStates( obj )
 
 	-- add methods
 	obj.setState = States._setState
