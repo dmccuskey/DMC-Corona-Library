@@ -32,15 +32,113 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.11.2"
+local VERSION = "1.0.0"
+
+
+
+--====================================================================--
+-- Boot Support Methods
+--====================================================================--
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+
+--====================================================================--
+-- DMC Library Config
+--====================================================================--
+
+local dmc_lib_data, dmc_lib_info, dmc_lib_location
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_library_boot" ) end ) then
+	_G.__dmc_library = {
+		dmc_library={
+			location = ''
+		},
+		func = {
+			find=function( name )
+				local loc = ''
+				if dmc_lib_data[name] and dmc_lib_data[name].location then
+					loc = dmc_lib_data[name].location
+				else
+					loc = dmc_lib_info.location
+				end
+				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
+					loc = loc .. '.'
+				end
+				return loc .. name
+			end
+		}
+	}
+end
+
+dmc_lib_data = _G.__dmc_library
+dmc_lib_func = dmc_lib_data.func
+dmc_lib_info = dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_info.location
+
+
+
+
+--====================================================================--
+-- DMC Library : DMC NiceNet
+--====================================================================--
+
+
+
+
+--====================================================================--
+-- DMC NiceNet Config
+--====================================================================--
+
+dmc_lib_data.dmc_nicenet = dmc_lib_data.dmc_nicenet or {}
+
+local DMC_NICENET_DEFAULTS = {
+	default_color_space='RGB',
+	cache_is_active=false,
+	make_global=false,
+	-- named_color_file, no default,
+	-- named_color_format, no default,
+}
+
+local dmc_nicenet_data = Utils.extend( dmc_lib_data.dmc_nicenet, DMC_NICENET_DEFAULTS )
+
 
 
 --====================================================================--
 -- Imports
 --====================================================================--
 
-local Objects = require( "dmc_objects" )
-local Utils = require( "dmc_utils" )
+local Objects = require( dmc_lib_func.find( 'dmc_objects' ) )
+local Utils = require( dmc_lib_func.find('dmc_utils') )
 
 
 
