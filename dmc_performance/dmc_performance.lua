@@ -1,14 +1,14 @@
 --====================================================================--
--- dmc_states.lua
---
+-- dmc_performance.lua
 --
 -- by David McCuskey
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_performance.lua
 --====================================================================--
+
 
 --[[
 
-Copyright (C) 2013 David McCuskey. All Rights Reserved.
+Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -37,7 +37,7 @@ local VERSION = "1.0.0"
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Library Support Methods
 --====================================================================--
 
 local Utils = {} -- make copying from dmc_utils easier
@@ -109,22 +109,23 @@ dmc_lib_location = dmc_lib_info.location
 
 
 --====================================================================--
--- DMC Library : DMC States
+-- DMC Library : DMC Files
 --====================================================================--
 
 
 
 --====================================================================--
--- Configuration
+-- DMC Files Config
 --====================================================================--
 
-dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
+dmc_lib_data.dmc_performance = dmc_lib_data.dmc_performance or {}
 
-local DMC_STATES_DEFAULTS = {
-	debug_active=true,
+local DMC_PERFORMANCE_DEFAULTS = {
+	memory_active = 'false'
 }
 
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
+local dmc_performance_data = Utils.extend( dmc_lib_data.dmc_performance, DMC_PERFORMANCE_DEFAULTS )
+
 
 
 --====================================================================--
@@ -137,9 +138,7 @@ local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAUL
 -- Setup, Constants
 --====================================================================--
 
-local States = {}
-
-States._DEBUG = dmc_states_data.debug_active or false
+local Perf = {}
 
 
 
@@ -148,116 +147,134 @@ States._DEBUG = dmc_states_data.debug_active or false
 --====================================================================--
 
 
+local function castValue( v )
+	local ret = nil
 
---====================================================================--
--- States Object
---====================================================================--
-
-
---== State API Methods ==--
-
-
-function States._setState( self, state )
-	if States._DEBUG then
-		print( "DMC States::setState: is now >> " .. tostring( state ) )
-	end
-
-	local f = self[ state ]
-	if f then
-		self._curr_state = f
-		self._curr_state_name = state
+	if v == 'true' then
+		ret = true
+	elseif v == 'false' then
+		ret = false
 	else
-		print( "\n\nERROR: missing state method '" .. tostring( state ) .. "'\n\n")
-	end
-end
-
-
-function States._gotoState( self, state, ... )
-	if States._DEBUG then
-		print( "DMC States::gotoState: " .. tostring( state ) )
+		ret = tonumber( v )
 	end
 
-	table.insert( self._state_stack, 1, self._curr_state_name )
-	self:_curr_state( state, ... )
+	return ret
 end
-
-
-function States._gotoPreviousState( self, ... )
-	local state = table.remove( self._state_stack, 1 )
-	if States._DEBUG then
-		print( "DMC States::gotoPreviousState: going to >> " .. tostring( state ) )
-	end
-
-	self:_curr_state( state, ... )
-end
-
-
-function States._getState( self )
-	return self._curr_state_name
-end
-
-
-function States._getPreviousState( self )
-	return self._state_stack[1]
-end
-
-
-function States._pushState( self, state_name )
-	table.insert( self._state_stack, 1, state_name )
-end
-
-
-function States._resetStates( self )
-	if States._DEBUG then
-		print( "DMC States::resetStates" )
-	end
-	self._state_stack = {}
-	self._curr_state = nil
-	self._curr_state_name = ""
-end
-
-
---== Facade API Methods ==--
-
-
-function States._setDebug( value )
-	States._DEBUG = value
-end
-
-
-function States._mixin( obj )
-	if States._DEBUG then
-		print( "DMC States::mixin: ", obj )
-	end
-
-	obj = obj or {}
-
-	-- add variables
-	resetStates( obj )
-
-	-- add methods
-	obj.setState = States._setState
-	obj.gotoState = States._gotoState
-	obj.gotoPreviousState = States._gotoPreviousState
-	obj.getState = States._getState
-	obj.getPreviousState = States._getPreviousState
-	obj.pushState = States._pushState
-	obj.resetStates = States._resetStates
-
-	return obj
-end
-
 
 
 
 --====================================================================--
--- States Facade Object
+-- Performance Module
 --====================================================================--
 
-local StateFacade = {}
 
-StateFacade.setDebug = States._setDebug
-StateFacade.mixin = States._mixin
 
-return StateFacade
+--== Time Marker ==--
 
+
+local firstTimeMarker = nil
+local lastTimeMarker = nil
+local timeMarks = {}
+
+local function calculateTime()
+
+end
+function Perf.markTime( marker, params )
+	local t = system.getTimer()
+	local precision = 100000
+	local delta = 0
+	params = params or {}
+	if params.reset == true then lastTimeMarker = nil end
+	if params.print == nil then params.print = true end
+
+	if firstTimeMarker == nil then
+		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
+		firstTimeMarker = t
+	end
+	if lastTimeMarker == nil then lastTimeMarker = t end
+
+	if params.print then
+		delta = math.floor((t-lastTimeMarker)*precision)/precision
+		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
+	end
+
+	lastTimeMarker = t
+	if marker then timeMarks[ marker ] = t end
+end
+
+function Perf.markTimeDiff( marker1, marker2 )
+	local precision = 100000
+	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
+	local delta = math.floor((t1-t2 )*precision)/precision
+
+	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
+end
+
+
+
+--== Memory Monitor ==--
+
+
+local memoryWatcherCallback = nil
+
+
+-- Memory Monitor function
+
+function Perf.memoryMonitor()
+
+	collectgarbage()
+
+	local memory = collectgarbage("count")
+	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
+
+	print( "M: " .. memory, " T: " .. texture )
+
+end
+
+
+-- watchMemory()
+-- prints out current memory values
+--
+-- value (boolean:
+-- if true, start memory watching every frame
+-- if false, stop current memory watching
+-- if number, start memory watching every Number of milliseconds
+--
+function Perf.watchMemory( value )
+	print( "Perf.watchMemory", value )
+	local f
+
+	if value == true then
+		-- setup constant, frame rate memory watch
+
+		Runtime:addEventListener( "enterFrame", Perf.memoryMonitor )
+
+		memoryWatcherCallback = function()
+			Runtime:removeEventListener( "enterFrame", Perf.memoryMonitor )
+			memoryWatcherCallback = nil
+		end
+
+	elseif type( value ) == "number" and value > 0 then
+
+		local timer = timer.performWithDelay( value, Perf.memoryMonitor, 0 )
+
+		memoryWatcherCallback = function()
+			timer.cancel( timer )
+			memoryWatcherCallback = nil
+		end
+
+	elseif value == false and memoryWatcherCallback ~= nil then
+		-- stop watching memory
+		memoryWatcherCallback()
+	end
+
+end
+
+
+if dmc_performance_data.memory_active then
+	dmc_performance_data.memory_active = castValue( dmc_performance_data.memory_active )
+	Perf.watchMemory( dmc_performance_data.memory_active )
+end
+
+
+return Perf
