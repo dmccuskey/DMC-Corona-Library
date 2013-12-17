@@ -40,7 +40,7 @@ There is a detailed example in the folder `examples/dmc_autostore/` which shows 
 
 
 
-### Module dmc_kolor ###
+### Module: dmc_kolor ###
 
 `dmc_kolor` is a Lua module which brings back the traditional ways of describing colors using RGBA values ( eg, 255, 180, 34 ) instead of the new way using percentage values (eg, 1, .5, .25 ) brought about by the change to Graphics 2.0.
 
@@ -51,6 +51,34 @@ It also gives additional functionality like the ability to use names when settin
 **Documentation**
 
 http://docs.davidmccuskey.com/display/docs/dmc_kolor.lua
+
+
+
+### Module: dmc_nicenet ###
+
+`dmc_nicenet` is a Lua module used for communication with a network server. It gets its name because it is meant to help an application be better behaved with its network requests.
+
+It is intended to be a drop-in replacement for the standard Corona Network library, so you automatically get some great benefits without changing any code.
+
+The module will help with:
+
+* **Request Queue**
+
+	A queue ensures that your app won't overrun your server with data requests. You get this for free !
+
+* **Mock Server Hook**
+
+	You can add a mock server for developent and testing. You can get this with slightly modifying your code.
+
+* **Priority**
+
+  You can dynamically set priority for any request still in the queue. All requests can automatically be assigned a default priority value. This is more advanced, so data requests must be written with this in mind.
+
+[more info...](dmc_nicenet/)
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_nicenet.lua
 
 
 

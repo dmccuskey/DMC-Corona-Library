@@ -247,7 +247,7 @@ dmc_lib_data.func.find = function( name )
 	if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 		loc = loc .. '.'
 	end
-	return loc
+	return loc .. name
 end
 
 
