@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.1"
+local VERSION = "1.2.2"
 
 
 
@@ -78,7 +78,6 @@ local dmc_lib_data, dmc_lib_info, dmc_lib_location
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-require( "dmc_library_boot" )
 if false == pcall( function() require( "dmc_library_boot" ) end ) then
 	_G.__dmc_library = {
 		dmc_library={
@@ -95,8 +94,9 @@ if false == pcall( function() require( "dmc_library_boot" ) end ) then
 				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
 					loc = loc .. '.'
 				end
-				return loc
-		end		}
+				return loc .. name
+			end
+		}
 	}
 end
 
@@ -140,7 +140,7 @@ local json = require( 'json' )
 
 
 -- only needed for debugging
--- Utils2 = require( dmc_lib_func.find('dmc_utils') .. 'dmc_utils' )
+-- Utils2 = require( dmc_lib_func.find('dmc_utils') )
 
 
 
