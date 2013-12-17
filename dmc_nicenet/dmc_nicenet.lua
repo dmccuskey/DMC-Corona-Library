@@ -361,7 +361,7 @@ end
 --
 function NetworkCommand:_dispatchEvent( e_type, data )
 	--print( "NetworkCommand:_dispatchEvent" )
-	
+
 	-- setup custom event
 	local e = {
 		name = NetworkCommand.EVENT,
@@ -415,7 +415,7 @@ function NiceNetwork:_init( params )
 	--== Create Properties ==--
 
 	self._params = params
-	self._default_priority = params.default_priority or NiceNetwork.LOW 
+	self._default_priority = params.default_priority or NiceNetwork.LOW
 
 	-- TODO: hook this up to params
 	self._active_limit = params.active_queue_limit or self.DEFAULT_ACTIVE_QUEUE_LIMIT
@@ -511,7 +511,7 @@ function NiceNetwork:download( url, method, listener, params, filename, basedir 
 
 	--== Setup and create Command object
 
-	local net_params, cmd_params 
+	local net_params, cmd_params
 
 	-- save parameters for Corona network.* call
 	net_params = {
@@ -594,7 +594,7 @@ function NiceNetwork:_insertCommand( params )
 
 	self:_processQueue()
 
-	return command 
+	return command
 end
 
 function NiceNetwork:_removeCommand( command )
@@ -653,7 +653,7 @@ function NiceNetwork:_checkStatus( queue )
 		table.insert( status[ cmd.priority ], cmd )
 	end
 
-	return status 
+	return status
 end
 
 
@@ -691,7 +691,7 @@ function NiceNetwork:network_command_event( event )
 			-- remove from Active queue
 			self:_removeCommand( cmd )
 		end
-	end 
+	end
 end
 
 
@@ -704,7 +704,7 @@ end
 --
 function NiceNetwork:_dispatchEvent( e_type, data )
 	--print( "NiceNetwork:_dispatchEvent" )
-	
+
 	-- setup custom event
 	local e = {
 		name = NiceNetwork.EVENT,
