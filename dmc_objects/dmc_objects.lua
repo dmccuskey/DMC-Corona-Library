@@ -166,47 +166,67 @@ end
 -- override the normal Lua lookup functionality to allow
 -- property getter functions
 --
+-- @param t object table
+-- @param k key
+--
 local function indexFunc( t, k )
 
-	local gt, f, val, par
+	local o, val
 
-	-- look for key in getters table
-	gt = rawget( t, '__getters' ) or {}
-	f = gt[ k ]
-	if f then
-		-- found getter function, let's call it
-		val = f( t )
-	else
-		-- not in getter, so check for key directly on object
-		val = rawget( t, k )
-		if val == nil then
-			-- not found on object, so let's check parent hierarchy
-			par = rawget( t, '__parent' )
-			if par then val = par[ k ] end
-		end
+	--== do key lookup in different places on object
+
+	-- check for key in getters table
+	o = rawget( t, '__getters' ) or {}
+	if o[k] then return o[k](t) end
+
+	-- check for key directly on object
+	val = rawget( t, k )
+	if val ~= nil then return val end
+
+	-- check OO hierarchy
+	o = rawget( t, '__parent' )
+	if o then val = o[k] end
+	if val ~= nil then return val end
+
+	-- check object's view
+	--[[
+	o = rawget( t, 'view' )
+	if o ~= nil and o[k] ~= nil then
+		print("on view ", type(o[k]), o.x, k, o )
+		if type(o[k]) == 'function' then
+			return o[k]()
+		else
+			return o[k]
+		end		
 	end
+	--]]
 
-	return val
+	return nil
 end
 
 -- newindexFunc()
 -- override the normal Lua lookup functionality to allow
 -- property setter functions
 --
+-- @param t object table
+-- @param k key
+-- @param v value
+--
 local function newindexFunc( t, k, v )
 
-	local st, f
+	local o, f
 
-	-- look for key in setters table
-	st = rawget( t, '__setters' ) or {}
-	f = st[ k ]
+	-- check for key in setters table
+	o = rawget( t, '__setters' ) or {}
+	f = o[k]
 	if f then
-		-- found setter function, let's call it
-		f( t, v )
+		-- found setter, so call it
+		f(t,v)
 	else
-		-- not in setter, so place key/value directly on object
+		-- place key/value directly on object
 		rawset( t, k, v )
 	end
+
 end
 
 -- _bless()
@@ -489,6 +509,14 @@ end
 --
 function CoronaBase:_createView()
 	-- OVERRIDE THIS
+
+	-- Added by Karim:
+	-- Used to block touches at the level of parent display
+	-- It can be moved to another subclass if the feature is not generic for all Corona Base children
+	-- Subclasses should call self:superCall( "_createView" )
+	local o = self.display
+	o.touch = function(e) return true end
+	o:addEventListener( "touch", o )
 end
 -- _undoCreateView()
 -- remove any items added during _createView()
