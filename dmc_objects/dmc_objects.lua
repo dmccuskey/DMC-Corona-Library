@@ -353,40 +353,43 @@ end
 -- call a method on an object's parent
 --
 function Object:superCall( name, ... )
+	-- print( 'Object:supercall', name, self.NAME )
 
 	local c, s 		-- class, super
-	local found		-- flag, if property is found
 	local result
 	local self_dmc_super = self.__dmc_super
 	local super_flag = self_dmc_super
+
+	-- finds method in class hierarchy
+	-- returns found class or nil
+	function findMethod( class, method )
+		while class do
+			if rawget( class, method ) then break end
+			class = class:superClass()
+		end
+		return class
+	end
 
 	-- structure in which to save our place
 	-- in case supercall is invoked again
 	if self_dmc_super == nil then
 		self.__dmc_super = {} -- a stack
 		self_dmc_super = self.__dmc_super
-		table.insert( self_dmc_super, self )
+		-- here we start with our class
+		s = findMethod( self:class(), name )
+		table.insert( self_dmc_super, s )
 	end
 
-	-- loop setup
 	c = self_dmc_super[ # self_dmc_super ]
-	s = c:superClass()
-	found = false
-
-	-- loop through class supers and their properties
-	-- until we find first match
-	while s and not found do
-		found = rawget( s, name )
-		if found then
-			-- push the stack, call the method, pop the stack
-			table.insert( self_dmc_super, s )
-			result = s[name]( self, unpack( arg ) )
-			table.remove( self_dmc_super, # self_dmc_super )
-		end
-		s = s:superClass()
+	-- here we start with the super class
+	s = findMethod( c:superClass(), name )
+	if s then
+		table.insert( self_dmc_super, s )
+		result = s[name]( self, unpack( arg ) )
+		table.remove( self_dmc_super, # self_dmc_super )
 	end
 
-	-- we were the first and last, so clean up
+	-- here were the first and last on callstack, so clean up
 	if super_flag == nil then
 		table.remove( self_dmc_super, # self_dmc_super )
 		self.__dmc_super = nil
