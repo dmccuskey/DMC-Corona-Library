@@ -197,7 +197,7 @@ local function indexFunc( t, k )
 			return o[k]()
 		else
 			return o[k]
-		end		
+		end
 	end
 	--]]
 
@@ -569,7 +569,7 @@ function CoronaBase:_unsetView()
 			for i = view.numChildren, 1, -1 do
 				local o = view[i]
 				o.parent:remove( o )
-			end		
+			end
 		end
 		view:removeSelf()
 		self.view = nil
