@@ -351,6 +351,22 @@ end
 
 
 
+-- tableLength()
+-- Count the number of items in a table
+-- http://stackoverflow.com/questions/2705793/how-to-get-number-of-entries-in-a-lua-table
+--
+-- @param t the table in which to count items
+-- @return number of items in table
+--
+function Utils.tableLength( t )
+	local count = 0
+	for _, _ in pairs(t) do count = count + 1 end
+	return count
+end
+
+
+
+
 
 function Utils.getUniqueRandom( include, exclude )
 	--print( "Utils.getUniqueRandom" )
