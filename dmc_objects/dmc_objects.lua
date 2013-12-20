@@ -35,41 +35,14 @@ DEALINGS IN THE SOFTWARE.
 local VERSION = "1.0.2"
 
 
--- =========================================================
--- Imports
--- =========================================================
 
+--====================================================================--
+-- DMC Library Support Methods
+--====================================================================--
 
+local Utils = {} -- make copying from dmc_utils easier
 
-
--- =========================================================
--- Class Support Functions
--- =========================================================
-
-
--- propertyIn()
--- Determines whether a property is within a list of items in a table (acting as an array)
---
--- @param table the table with *list* of properties
--- @param property the name of the property to search for
---
-local function propertyIn( list, property )
-  for i = 1, #list do
-    if list[i] == property then return true end
-  end
-  return false
-end
-
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-local function extend( fromTable, toTable )
+function Utils.extend( fromTable, toTable )
 
 	function _extend( fT, tT )
 
@@ -96,6 +69,77 @@ end
 
 
 
+--====================================================================--
+-- DMC Library Config
+--====================================================================--
+
+local dmc_lib_data, dmc_lib_info, dmc_lib_location
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_library_boot" ) end ) then
+	_G.__dmc_library = {
+		dmc_library={
+			location = ''
+		},
+		func = {
+			find=function( name )
+				local loc = ''
+				if dmc_lib_data[name] and dmc_lib_data[name].location then
+					loc = dmc_lib_data[name].location
+				else
+					loc = dmc_lib_info.location
+				end
+				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
+					loc = loc .. '.'
+				end
+				return loc .. name
+			end
+		}
+	}
+end
+
+dmc_lib_data = _G.__dmc_library
+dmc_lib_func = dmc_lib_data.func
+dmc_lib_info = dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_info.location
+
+
+
+
+--====================================================================--
+-- DMC Library : DMC Objects
+--====================================================================--
+
+
+
+
+--====================================================================--
+-- DMC Object Config
+--====================================================================--
+
+dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
+
+local DMC_OBJECTS_DEFAULTS = {
+	auto_touch_block=false,
+}
+
+local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEFAULTS )
+
+
+
+-- =========================================================
+-- Imports
+-- =========================================================
+
+local Utils = require( dmc_lib_func.find('dmc_utils') )
+
+
+
+-- =========================================================
+-- Class Support Functions
+-- =========================================================
 
 -- printObject()
 -- print out the keys contained within a table.
@@ -114,7 +158,7 @@ local function printObject( table, include, exclude, params )
 	local options = {
 		limit = 10,
 	}
-	opts = extend( params, options )
+	opts = Utils.extend( params, options )
 
 	--print("Printing object table =============================")
 	function _print( t, ind, s )
@@ -125,10 +169,10 @@ local function printObject( table, include, exclude, params )
 		for k, v in pairs( t ) do
 			local ok_to_process = true
 
-			if propertyIn( include, k ) then
+			if Utils.propertyIn( include, k ) then
 				ok_to_process = true
 			elseif type( t[k] ) == "function" or
-				propertyIn( exclude, k ) or
+				Utils.propertyIn( exclude, k ) or
 				type( k ) == "string" and k:sub(1,1) == '_' then
 				ok_to_process = false
 			end
@@ -251,8 +295,8 @@ local function bless( base, obj )
 	o.__getters = {}
 	if base then
 		-- we have a parent, so let's copy down all its getters/setters
-		o.__getters = extend( base.__getters, o.__getters )
-		o.__setters = extend( base.__setters, o.__setters )
+		o.__getters = Utils.extend( base.__getters, o.__getters )
+		o.__setters = Utils.extend( base.__setters, o.__setters )
 	end
 
 	return o
@@ -513,19 +557,29 @@ end
 function CoronaBase:_createView()
 	-- OVERRIDE THIS
 
-	-- Added by Karim:
-	-- Used to block touches at the level of parent display
-	-- It can be moved to another subclass if the feature is not generic for all Corona Base children
 	-- Subclasses should call self:superCall( "_createView" )
+
 	local o = self.display
-	o.touch = function(e) return true end
-	o:addEventListener( "touch", o )
+
+	-- Used to block touches at the level of parent display
+	-- It can be moved to another subclass if the feature is not
+	-- generic for all Corona Base children
+	if dmc_objects_data.auto_touch_block then
+		o.touch = function(e) return true end
+		o:addEventListener( 'touch', o )
+	end
 end
 -- _undoCreateView()
 -- remove any items added during _createView()
 --
 function CoronaBase:_undoCreateView()
 	-- OVERRIDE THIS
+
+	if dmc_objects_data.auto_touch_block and o.touch then
+		o:removeEventListener( 'touch', o.touch )
+		o.touch = nil
+	end
+
 end
 
 
