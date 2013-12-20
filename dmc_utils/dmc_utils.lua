@@ -130,16 +130,15 @@ local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS 
 
 
 
--- =========================================================
+--====================================================================--
 -- Imports
--- =========================================================
+--====================================================================--
 
 
 
 --====================================================================--
--- Module Functions
+-- Table Functions
 --====================================================================--
-
 
 
 -- extend()
@@ -295,8 +294,6 @@ function Utils.print( table, include, exclude, params )
 end
 
 
-
-
 -- http://snippets.luacode.org/snippets/Table_Slice_116
 function Utils.tableSlice( values, i1, i2 )
 	local res = {}
@@ -321,8 +318,6 @@ function Utils.tableSlice( values, i1, i2 )
 end
 
 
-
-
 -- calculates size of table, mostly used as a dictionary
 --
 function Utils.tableSize( t1 )
@@ -334,9 +329,6 @@ function Utils.tableSize( t1 )
 end
 
 
-
-
---
 -- http://rosettacode.org/wiki/Knuth_shuffle#Lua
 --
 function Utils.shuffle( t )
@@ -348,7 +340,6 @@ function Utils.shuffle( t )
 	end
 	return t
 end
-
 
 
 -- tableLength()
@@ -365,6 +356,11 @@ function Utils.tableLength( t )
 end
 
 
+
+
+--====================================================================--
+-- Math Functions
+--====================================================================--
 
 
 
@@ -415,6 +411,13 @@ function Utils.getUniqueRandom( include, exclude )
 end
 
 
+
+
+--====================================================================--
+-- Callback Functions
+--====================================================================--
+
+
 -- createObjectCallback()
 -- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
 --
@@ -431,8 +434,6 @@ function Utils.createObjectCallback( object, method )
 end
 
 
-
-
 function Utils.getTransitionCompleteFunc( count, callback )
 	local total = 0
 	local func = function(...)
@@ -444,6 +445,10 @@ end
 
 
 
+
+--====================================================================--
+-- Audio Functions
+--====================================================================--
 
 -- volume, channel
 function Utils.getAudioChannel( opts )
