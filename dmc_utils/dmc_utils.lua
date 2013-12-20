@@ -1,4 +1,3 @@
-
 --====================================================================--
 -- dmc_utils.lua
 --
@@ -9,7 +8,7 @@
 
 --[[
 
-Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
+Copyright (C) 2011-2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -33,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.8.0"
+local VERSION = "0.8.1"
 
 
 
@@ -367,9 +366,9 @@ function Utils.markTime( marker, params )
 	if params.reset == true then lastTimeMarker = nil end
 	if params.print == nil then params.print = true end
 
-	if firstTimeMarker == nil then 
+	if firstTimeMarker == nil then
 		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
-		firstTimeMarker = t 
+		firstTimeMarker = t
 	end
 	if lastTimeMarker == nil then lastTimeMarker = t end
 
@@ -406,7 +405,7 @@ function Utils.memoryMonitor()
 
 	collectgarbage()
 
-	local memory = collectgarbage("count") 
+	local memory = collectgarbage("count")
 	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
 
 	print( "M: " .. memory, " T: " .. texture )
