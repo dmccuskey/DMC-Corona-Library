@@ -121,7 +121,7 @@ dmc_lib_location = dmc_lib_info.location
 dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
 
 local DMC_STATES_DEFAULTS = {
-	debug_active=true,
+	debug_active=false,
 }
 
 local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
