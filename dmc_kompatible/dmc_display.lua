@@ -1,14 +1,14 @@
 --====================================================================--
--- dmc_states.lua
+-- dmc_display.lua
 --
 --
 -- by David McCuskey
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_display.lua
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013 David McCuskey. All Rights Reserved.
+Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.1"
+local VERSION = "1.0.0"
 
 
 
@@ -109,22 +109,25 @@ dmc_lib_location = dmc_lib_info.location
 
 
 --====================================================================--
--- DMC Library : DMC States
+-- DMC Library : DMC Kolor
 --====================================================================--
 
 
 
 --====================================================================--
--- Configuration
+-- DMC Kolor Config
 --====================================================================--
 
-dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
+dmc_lib_data.dmc_display = dmc_lib_data.dmc_display or {}
 
-local DMC_STATES_DEFAULTS = {
-	debug_active=false,
+local DMC_DISPLAY_DEFAULTS = {
+	-- none
+	activate_anchor=true,
+	activate_color=false
 }
 
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
+local dmc_display_data = Utils.extend( dmc_lib_data.dmc_display, DMC_DISPLAY_DEFAULTS )
+
 
 
 --====================================================================--
@@ -137,9 +140,8 @@ local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAUL
 -- Setup, Constants
 --====================================================================--
 
-local States = {}
-
-States._DEBUG = dmc_states_data.debug_active or false
+-- reference to the original display object
+local _DISPLAY = _G.display
 
 
 
@@ -150,114 +152,190 @@ States._DEBUG = dmc_states_data.debug_active or false
 
 
 --====================================================================--
--- States Object
+-- Display Class Setup
 --====================================================================--
 
+local Display = {}
 
---== State API Methods ==--
+
+--== Setup ==--
+
+-- so dmc_display works with dmc_kolor
+
+if _G._dmc_setmt then
+	_G._dmc_setmt( Display )
+else
+	Display.super = _DISPLAY
+	setmetatable( Display, { __index=Display.super } )
+end
+
+_G._dmc_setmt = function( obj )
+	obj.super = Display.super
+	setmetatable( obj, { __index=obj.super } )
+
+	Display.super = obj
+	setmetatable( Display, { __index=Display.super } )
+end
 
 
-function States._setState( self, state )
-	if States._DEBUG then
-		print( "DMC States::setState: is now >> " .. tostring( state ) )
+--== Config ==--
+
+
+Display.TopLeftReferencePoint = { 0, 0 }
+Display.TopCenterReferencePoint = { 0.5, 0 }
+Display.TopRightReferencePoint = { 1, 0 }
+Display.CenterLeftReferencePoint = { 0, 0.5 }
+Display.CenterReferencePoint = { 0.5, 0.5 }
+Display.CenterRightReferencePoint = { 1, 0.5 }
+Display.BottomLeftReferencePoint = { 0, 1 }
+Display.BottomCenterReferencePoint = { 0.5, 1 }
+Display.BottomRightReferencePoint = { 1, 1 }
+
+
+-- imbue object with fillColor magic
+--
+function Display._addSetAnchor( o )
+	-- print( 'Kompatible._addSetAnchor' )
+
+	function createClosure( obj )
+		local f = function( ... )
+			local args = {...}
+			local x, y
+			if type( args[2] ) == 'table' then
+				x, y = unpack( args[2] )
+			end
+			if type( args[2] ) == 'number' then
+				x = args[2]
+			end
+			if type( args[3] ) == 'number' then
+				y = args[2]
+			end
+			obj.anchorX = x
+			obj.anchorY = y
+		end
+		return f
 	end
 
-	local f = self[ state ]
-	if f then
-		self._curr_state = f
-		self._curr_state_name = state
-	else
-		print( "\n\nERROR: missing state method '" .. tostring( state ) .. "'\n\n")
-	end
+	o.setAnchor = createClosure( o )
 end
 
 
-function States._gotoState( self, state, ... )
-	if States._DEBUG then
-		print( "DMC States::gotoState: " .. tostring( state ) )
-	end
 
-	table.insert( self._state_stack, 1, self._curr_state_name )
-	self:_curr_state( state, ... )
-end
+--== Corona Display API ==--
 
 
-function States._gotoPreviousState( self, ... )
-	local state = table.remove( self._state_stack, 1 )
-	if States._DEBUG then
-		print( "DMC States::gotoPreviousState: going to >> " .. tostring( state ) )
+function Display.newCircle( ... )
+	-- print( 'Kompatible.newCircle' )
+
+	local o = Display.super.newCircle( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
 	end
 
-	self:_curr_state( state, ... )
+	return o
 end
 
 
-function States._getState( self )
-	return self._curr_state_name
-end
+function Display.newImage( ... )
+	-- print( 'Kompatible.newImage' )
 
+	local o = Display.super.newImage( ... )
 
-function States._getPreviousState( self )
-	return self._state_stack[1]
-end
-
-
-function States._pushState( self, state_name )
-	table.insert( self._state_stack, 1, state_name )
-end
-
-
-function States._resetStates( self )
-	if States._DEBUG then
-		print( "DMC States::resetStates" )
-	end
-	self._state_stack = {}
-	self._curr_state = nil
-	self._curr_state_name = ""
-end
-
-
---== Facade API Methods ==--
-
-
-function States._setDebug( value )
-	States._DEBUG = value
-end
-
-
-function States._mixin( obj )
-	if States._DEBUG then
-		print( "DMC States::mixin: ", obj )
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
 	end
 
-	obj = obj or {}
-
-	-- add variables
-	States._resetStates( obj )
-
-	-- add methods
-	obj.setState = States._setState
-	obj.gotoState = States._gotoState
-	obj.gotoPreviousState = States._gotoPreviousState
-	obj.getState = States._getState
-	obj.getPreviousState = States._getPreviousState
-	obj.pushState = States._pushState
-	obj.resetStates = States._resetStates
-
-	return obj
+	return o
 end
 
+
+function Display.newImageRect( ... )
+	-- print( 'Kompatible.newImageRect' )
+
+	local o = Display.super.newImageRect( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
+
+
+function Display.newLine( ... )
+	-- print( 'Kompatible.newLine' )
+
+	local o = Display.super.newLine( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
+
+
+function Display.newPolygon( ... )
+	-- print( 'Kompat.newPolygon' )
+
+	local o = Display.super.newPolygon( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
+
+
+function Display.newRect( ... )
+	-- print( 'Kompatible.newRect' )
+
+	-- local args = { ... }
+	-- print(  args[1], args[2], args[3], args[4] )
+
+	local o = Display.super.newRect( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
+
+
+function Display.newRoundedRect( ... )
+	-- print( 'Kompatible.newRoundedRect' )
+
+	local o = Display.super.newRoundedRect( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
+
+
+function Display.newText( ... )
+	-- print( 'Kompatible.newText' )
+
+	local o = Display.super.newText( ... )
+
+	if dmc_display_data.activate_anchor then
+		Display._addSetAnchor( o )
+	end
+
+	return o
+end
 
 
 
 --====================================================================--
--- States Facade Object
+-- Final Setup
 --====================================================================--
 
-local StateFacade = {}
+if not _G.__dmc_display then _G.__dmc_display = Display end
 
-StateFacade.setDebug = States._setDebug
-StateFacade.mixin = States._mixin
-
-return StateFacade
-
+return _G.__dmc_display
