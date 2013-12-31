@@ -161,6 +161,8 @@ local MockServer = inheritsFrom( CoronaBase )
 MockServer.NAME = "DMC Library Mock Server"
 
 
+MockServer.REQUEST_DELAY = 500 -- milliseconds
+
 
 --== Start: Setup DMC Objects
 
@@ -305,9 +307,14 @@ function MockServer:_request( url, method, callback, params )
 	-- print( "MockServer:_request", url, method  )
 
 	local passthru = MockServer.PASSTHRU_HASH[ method ]
+	local f
 
 	if self:_mockHandlesRequest( url, method ) then
-		return self:_respond( url, method, callback, params )
+		f = function()
+			self:_respond( url, method, callback, params )
+		end
+		timer.performWithDelay( self.REQUEST_DELAY, f )
+
 	else
 		-- do real call
 		return self._network.request( url, method, callback, params )
