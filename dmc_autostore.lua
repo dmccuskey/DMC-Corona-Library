@@ -114,7 +114,7 @@ Response.SUCCESS = "io_success"
 -- options.lines = false
 local function readFile( file_path, options )
 	local opts = options or {}
-	if opts.lines == nil then opts.lines = true end 
+	if opts.lines == nil then opts.lines = true end
 
 	local contents = {}
 	local ret_val = {} -- an array, [ status, content ]
@@ -169,7 +169,7 @@ end
 
 
 -- addPixieDust()
--- 
+--
 --
 addPixieDust = function( obj, parent )
 	--print( "adding pixie dust: " .. tostring( obj ) )
@@ -260,7 +260,7 @@ function TableProxy:__data()
 end
 
 
--- The following are methods to interface with the table library 
+-- The following are methods to interface with the table library
 -- since the table library doesn't "eat its own dogfood"
 
 
