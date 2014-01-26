@@ -73,7 +73,7 @@ local createTableProxy
 --
 function extend( fromTable, toTable )
 
-	function _extend( fT, tT )
+	local _extend = function( fT, tT )
 
 		for k,v in pairs( fT ) do
 
