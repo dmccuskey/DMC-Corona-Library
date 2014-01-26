@@ -264,6 +264,49 @@ end
 -- since the table library doesn't "eat its own dogfood"
 
 
+-- clone()
+--
+-- get the length of the table
+-- replacement for table.len( tbl )
+--
+function TableProxy:clone()
+	-- print( "TableProxy:clone" )
+	local mt = getmetatable( self )
+	local t = mt.__dmc.t  -- the real table
+
+	local _extendTable
+
+	_extendTable = function( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+				-- print( "1", k, v, v.NAME )
+
+				tT[ k ] = _extendTable( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				-- print( "2", k, v, v.NAME )
+				tT[ k ] = _extendTable( fT[ k ], {} )
+
+			else
+				-- print( k, v )
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+
+	local clone = _extendTable( t, {} )
+	-- print( "output ")
+	-- Utils.print( clone )
+
+	return clone
+end
+
 -- len()
 --
 -- get the length of the table
