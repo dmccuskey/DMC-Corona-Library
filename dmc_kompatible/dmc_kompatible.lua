@@ -266,7 +266,7 @@ end
 -- addSetFillColor()
 -- imbue object with setFillColor / setTextColor magic
 --
-function addSetFillColor( o, method_name )
+function addSetFillColor( o )
 	-- print( 'addSetFillColor' )
 
 	function createClosure( obj, translate )
@@ -283,10 +283,6 @@ function addSetFillColor( o, method_name )
 	o._setFillColor = o.setFillColor -- save original version
 	o.setFillColor = createClosure( o, translateRGBToHDR )
 
-	if method_name then
-		o[ method_name ] = o.setFillColor
-	end
-
 end
 
 
@@ -294,7 +290,7 @@ end
 -- addSetStrokeColor()
 -- imbue object with strokeColor magic
 --
-function addSetStrokeColor( o, method_name )
+function addSetStrokeColor( o )
 	-- print( 'addSetStrokeColor' )
 
 	function createClosure( obj, translate )
@@ -308,10 +304,6 @@ function addSetStrokeColor( o, method_name )
 
 	o._setStrokeColor = o.setStrokeColor -- save original version
 	o.setStrokeColor = createClosure( o, translateRGBToHDR )
-
-	if method_name then
-		o[ method_name ] = o.setStrokeColor
-	end
 
 end
 
@@ -423,6 +415,9 @@ function Display.newImageRect( ... )
 end
 
 
+
+
+
 function Display.newLine( ... )
 	-- print( 'Kompatible.newLine' )
 
@@ -437,7 +432,8 @@ function Display.newLine( ... )
 		addSetAnchor( o, Display.TopLeftReferencePoint )
 	end
 	if dkd.activate_fillcolor then
-		addSetFillColor( o, 'setColor' )
+		addSetFillColor( o )
+		o.setColor = o.setFillColor
 	end
 
 	return o
@@ -520,7 +516,8 @@ function Display.newText( ... )
 		addSetAnchor( o, Display.CenterReferencePoint )
 	end
 	if dkd.activate_fillcolor then
-		addSetFillColor( o, 'setTextColor' )
+		addSetFillColor( o )
+		o.setTextColor = o.setFillColor
 	end
 
 	return o
