@@ -170,7 +170,7 @@ function translateRGBToHDR( ... )
 	local args = { ... }
 	local color
 
-	print(  args[1], args[2], args[3], args[4], args[5] )
+	-- print(  args[1], args[2], args[3], args[4], args[5] )
 
 	if type( args[2] ) == 'number' then
 		-- regular RGB
@@ -195,10 +195,10 @@ function translateRGBToHDR( ... )
 
 		-- gradient RGB
 		t = args[2].color1
-		args[2].color1 = { t[1]/255, t[2]/255, t[3]/255, t[4]/255 }
+		args[2].color1 = { t[1]/255, t[2]/255, t[3]/255, t[4] }
 
 		t = args[2].color2
-		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, t[4]/255 }
+		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, t[4] }
 
 		color = { args[2] }
 
@@ -266,7 +266,7 @@ end
 -- addSetFillColor()
 -- imbue object with setFillColor / setTextColor magic
 --
-function addSetFillColor( o, method_name )
+function addSetFillColor( o )
 	-- print( 'addSetFillColor' )
 
 	function createClosure( obj, translate )
@@ -283,10 +283,6 @@ function addSetFillColor( o, method_name )
 	o._setFillColor = o.setFillColor -- save original version
 	o.setFillColor = createClosure( o, translateRGBToHDR )
 
-	if method_name then
-		o[ method_name ] = o.setFillColor
-	end
-
 end
 
 
@@ -294,7 +290,7 @@ end
 -- addSetStrokeColor()
 -- imbue object with strokeColor magic
 --
-function addSetStrokeColor( o, method_name )
+function addSetStrokeColor( o )
 	-- print( 'addSetStrokeColor' )
 
 	function createClosure( obj, translate )
@@ -308,10 +304,6 @@ function addSetStrokeColor( o, method_name )
 
 	o._setStrokeColor = o.setStrokeColor -- save original version
 	o.setStrokeColor = createClosure( o, translateRGBToHDR )
-
-	if method_name then
-		o[ method_name ] = o.setStrokeColor
-	end
 
 end
 
@@ -344,7 +336,7 @@ Display.BottomRightReferencePoint = { 1, 1 }
 --== Corona Display API ==--
 
 function Display.newCircle( ... )
-	print( 'Kompatible.newCircle' )
+	-- print( 'Kompatible.newCircle' )
 
 	local o = Display.super.newCircle( ... )
 	local p
@@ -424,18 +416,6 @@ end
 
 
 
--- 'n' is the call stack level to show
--- '2' will show the calling function
-local function printFuncName(n, msg )
-	n = n or 2
-	local info = debug.getinfo(n, "Snl")
-	if info.what == "C" then   -- is a C function?
-		print(n, "DMC_KOMPATIBLE WARNING: C function")
-	else   -- a Lua function
-		print(string.format("DMC_KOMPATIBLE WARNING:: in func [%s]:%d " .. tostring(msg), info.name, info.currentline))
-		print( info.source )
-	end
-end
 
 
 function Display.newLine( ... )
@@ -445,11 +425,9 @@ function Display.newLine( ... )
 
 	if dkd.print_warnings then
 		print('\n')
-		local m = "be sure to change newLine property 'width' to 'strokeWidth'"
-		printFuncName( 3, m )
+		print( "WARNING KOMPATIBLE: change newLine property 'width' to 'strokeWidth'" )
 		print('\n')
 	end
-
 	if dkd.activate_reference then
 		addSetAnchor( o, Display.TopLeftReferencePoint )
 	end
@@ -538,7 +516,8 @@ function Display.newText( ... )
 		addSetAnchor( o, Display.CenterReferencePoint )
 	end
 	if dkd.activate_fillcolor then
-		addSetFillColor( o, 'setTextColor' )
+		addSetFillColor( o )
+		o.setTextColor = o.setFillColor
 	end
 
 	return o
