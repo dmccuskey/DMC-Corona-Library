@@ -174,7 +174,22 @@ function translateRGBToHDR( ... )
 
 	if type( args[2] ) == 'number' then
 		-- regular RGB
-		color = { args[2]/255, args[3]/255, args[4]/255, args[5] }
+		if args[3] == nil then
+			-- greyscale
+			args[3] = args[2]
+			args[4] = args[2]
+			args[5] = 255
+		elseif args[4] == nil then
+			-- greyscale with alpha
+			args[3] = args[2]
+			args[4] = args[2]
+			args[5] = args[3]
+		elseif args[5] == nil then
+			-- RGB, no alpha
+			args[5] = 255
+		end
+
+		color = { args[2]/255, args[3]/255, args[4]/255, args[5]/255 }
 
 	elseif type( args[2] ) == 'table' and args[2].type=='gradient' then
 
