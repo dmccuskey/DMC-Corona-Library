@@ -19,7 +19,7 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 
 <a name="dmc_autostore"></a>
-### dmc_autostore.lua ###
+### Module: dmc_autostore ###
 
 This module contains a data-storage manager which makes saving application data painlessly easy simply because it doesn't have an API! Instead, any modifications which you make to your data structure will trigger the save mechanism. Super simple!!
 
@@ -205,7 +205,7 @@ There are examples in the folder `examples/dmc_touchmanager/` which show how to 
 
 
 <a name="dmc_trajectory"></a>
-### dmc_trajectory.lua ###
+### Module: dmc_trajectory ###
 
 The main intent of this module is to provide an easy way to have objects follow ballistic trajectories. The library module has a single, simple method to do this, but it also has other methods which can be used to obtain raw trajectory calculations if desired.
 
@@ -213,7 +213,7 @@ The main intent of this module is to provide an easy way to have objects follow 
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
+Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_trajectory
 
 
 
