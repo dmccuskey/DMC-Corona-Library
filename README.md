@@ -7,13 +7,18 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 
 
-## Current Files ##
+## Current Modules ##
+
+* [dmc_autostore](#dmc_autostore)
+
+  Automatic JSON storage for your app. [read more...](#dmc_autostore)
 
 * [dmc_trajectory](#dmc_trajectory)
 
   Have objects follow a ballistic trajectory. [read more...](#dmc_trajectory)
 
 
+<a name="dmc_autostore"></a>
 ### dmc_autostore.lua ###
 
 This module contains a data-storage manager which makes saving application data painlessly easy simply because it doesn't have an API! Instead, any modifications which you make to your data structure will trigger the save mechanism. Super simple!!
