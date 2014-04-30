@@ -213,9 +213,7 @@ The main intent of this module is to provide an easy way to have objects follow 
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_trajectory
-
-
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
 
 **Examples**
 
