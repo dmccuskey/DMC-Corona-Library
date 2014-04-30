@@ -11,11 +11,11 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 * [dmc_autostore](#dmc_autostore)
 
-  Automatic JSON storage for your app. [read more...](#dmc_autostore)
+  Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
 * [dmc_trajectory](#dmc_trajectory)
 
-  Have objects follow a ballistic trajectory. [read more...](#dmc_trajectory)
+  Ballistic (parabolic) trajectory for objects. [Read more...](#dmc_trajectory)
 
 
 <a name="dmc_autostore"></a>
