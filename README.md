@@ -9,6 +9,10 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 ## Current Files ##
 
+* [dmc_trajectory](#dmc_trajectory)
+
+  Have objects follow a ballistic trajectory. [read more...](#dmc_trajectory)
+
 
 ### dmc_autostore.lua ###
 
@@ -195,6 +199,7 @@ There are examples in the folder `examples/dmc_touchmanager/` which show how to 
 
 
 
+<a name="dmc_trajectory"></a>
 ### dmc_trajectory.lua ###
 
 The main intent of this module is to provide an easy way to have objects follow ballistic trajectories. The library module has a single, simple method to do this, but it also has other methods which can be used to obtain raw trajectory calculations if desired.
