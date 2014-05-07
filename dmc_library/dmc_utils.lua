@@ -136,6 +136,240 @@ local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS 
 
 
 
+
+--====================================================================--
+-- Audio Functions
+--====================================================================--
+
+
+-- volume, channel
+function Utils.getAudioChannel( opts )
+
+	opts = opts == nil and {} or opts
+	opts.volume = opts.volume == nil and 1.0 or opts.volume
+	opts.channel = opts.channel == nil and 1 or opts.channel
+
+	local ac = audio.findFreeChannel( opts.channel )
+	audio.setVolume( opts.volume, { channel=ac } )
+
+	return ac
+
+end
+
+
+
+
+--====================================================================--
+-- Callback Functions
+--====================================================================--
+
+
+-- createObjectCallback()
+-- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
+--
+-- @param object the object which has the method
+-- @param method the method to call
+--
+function Utils.createObjectCallback( object, method )
+	if object == nil or method == nil then
+		error( "ERROR: missing object or method in createObjectCallback()" )
+	end
+	return function( ... )
+		return method( object, ... )
+	end
+end
+
+
+function Utils.getTransitionCompleteFunc( count, callback )
+	local total = 0
+	local func = function(...)
+		total = total + 1
+		if total >= count then callback(...) end
+	end
+	return func
+end
+
+
+
+
+--====================================================================--
+-- Date Functions
+--====================================================================--
+
+
+--[[
+
+	Given a UNIX time (seconds), calculate the number of weeks, days, etc
+	{ months=0, weeks=2, days=3, hours=8, minutes=35, seconds=21 }
+
+--]]
+
+local week_s, day_s, hour_s, min_s, sec_s
+sec_s = 1
+min_s = 60 * sec_s
+hour_s = 60 * min_s
+day_s = 24 * hour_s
+week_s = 7 * day_s
+
+-- give number and remainder
+local function diff( time, divisor )
+	return { math.floor( time/divisor ), ( time % divisor ) }
+end
+function Utils.calcTimeBreakdown( seconds, params )
+
+	seconds = math.abs( seconds )
+
+	params = params or {}
+	params.days = params.days or true
+	params.hours = params.hours or true
+	params.minutes = params.minutes or true
+
+	local result, tmp = {}, { 0, seconds }
+
+	result.weeks = 0
+	if params.weeks and tmp[2] >= week_s then
+		tmp = diff( tmp[2], week_s )
+		result.weeks = tmp[1]
+	end
+
+	result.days = 0
+	if params.days and tmp[2] >= day_s then
+		tmp = diff( tmp[2], day_s )
+		result.days = tmp[1]
+	end
+
+	result.hours = 0
+	if params.hours and tmp[2] >= hour_s then
+		tmp = diff( tmp[2], hour_s )
+		result.hours = tmp[1]
+	end
+
+	result.minutes = 0
+	if params.minutes and tmp[2] >= min_s then
+		tmp = diff( tmp[2], min_s )
+		result.minutes = tmp[1]
+	end
+	result.seconds = tmp[2]
+
+	return result
+
+end
+
+
+
+
+--====================================================================--
+-- Image Functions
+--====================================================================--
+
+
+--
+-- container, image - table with width/height keys
+-- returns scale
+-- param.bind : 'inside', 'outside'
+function Utils.imageScale( container, image, params )
+	params = params or {}
+	if params.bind == nil then params.bind = 'outside' end
+	--==--
+
+	local bind = params.bind
+
+	local box_ratio, img_ratio
+	local scale = 1
+
+	box_ratio = container.width / container.height
+	img_ratio = image.width / image.height
+
+	if ( bind=='outside' and img_ratio > box_ratio ) or ( bind=='inside' and img_ratio < box_ratio ) then
+		-- constrained by height
+		scale = container.height / image.height
+	else
+		-- constrained by width
+		scale = container.width / image.width
+	end
+
+	return scale
+end
+
+
+
+
+--====================================================================--
+-- Math Functions
+--====================================================================--
+
+
+function Utils.getUniqueRandom( include, exclude )
+	--print( "Utils.getUniqueRandom" )
+
+	include = include or {}
+	if #include == 0 then return end
+
+	exclude = exclude or {}
+	local exclude_hash = {} -- used as dict
+	local pruned_list = {}
+	local item
+
+
+	math.randomseed( os.time() )
+
+	-- process as normal if no exclusions
+	if #exclude == 0 then
+		item = include[ math.random( #include ) ]
+
+	else
+
+		-- make a hash for quicker lookup when creating pruned list
+		for _, name in ipairs( exclude ) do
+			exclude_hash[ name ] = true
+		end
+
+		-- create our pruned list
+		for _, name in ipairs( include ) do
+			if exclude_hash[ name ] ~= true then
+				table.insert( pruned_list, name )
+			end
+		end
+
+		-- Sanity Check
+		if #pruned_list == 0 then
+			print( "WARNING: Utils.getUniqueRandom()" )
+			print( "The 'exclude' list is equal to the 'include' list" )
+			return nil
+		end
+
+		-- get our item
+		item = pruned_list[ math.random( #pruned_list ) ]
+	end
+
+	return item
+end
+
+
+
+
+--====================================================================--
+-- String Functions
+--====================================================================--
+
+
+-- split string up in parts, using separator
+-- returns array of pieces
+function Utils.split( str, sep )
+	if sep == nil then
+		sep = "%s"
+	end
+	t={} ; i=1
+	for str in string.gmatch( str, "([^"..sep.."]+)") do
+		t[i] = str
+		i = i + 1
+	end
+	return t
+end
+
+
+
+
 --====================================================================--
 -- Table Functions
 --====================================================================--
@@ -373,172 +607,6 @@ end
 
 
 --====================================================================--
--- Math Functions
---====================================================================--
-
-
-
-function Utils.getUniqueRandom( include, exclude )
-	--print( "Utils.getUniqueRandom" )
-
-	include = include or {}
-	if #include == 0 then return end
-
-	exclude = exclude or {}
-	local exclude_hash = {} -- used as dict
-	local pruned_list = {}
-	local item
-
-
-	math.randomseed( os.time() )
-
-	-- process as normal if no exclusions
-	if #exclude == 0 then
-		item = include[ math.random( #include ) ]
-
-	else
-
-		-- make a hash for quicker lookup when creating pruned list
-		for _, name in ipairs( exclude ) do
-			exclude_hash[ name ] = true
-		end
-
-		-- create our pruned list
-		for _, name in ipairs( include ) do
-			if exclude_hash[ name ] ~= true then
-				table.insert( pruned_list, name )
-			end
-		end
-
-		-- Sanity Check
-		if #pruned_list == 0 then
-			print( "WARNING: Utils.getUniqueRandom()" )
-			print( "The 'exclude' list is equal to the 'include' list" )
-			return nil
-		end
-
-		-- get our item
-		item = pruned_list[ math.random( #pruned_list ) ]
-	end
-
-	return item
-end
-
-
-
-
---====================================================================--
--- Callback Functions
---====================================================================--
-
-
--- createObjectCallback()
--- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
---
--- @param object the object which has the method
--- @param method the method to call
---
-function Utils.createObjectCallback( object, method )
-	if object == nil or method == nil then
-		error( "ERROR: missing object or method in createObjectCallback()" )
-	end
-	return function( ... )
-		return method( object, ... )
-	end
-end
-
-
-function Utils.getTransitionCompleteFunc( count, callback )
-	local total = 0
-	local func = function(...)
-		total = total + 1
-		if total >= count then callback(...) end
-	end
-	return func
-end
-
-
-
-
---====================================================================--
--- Audio Functions
---====================================================================--
-
--- volume, channel
-function Utils.getAudioChannel( opts )
-
-	opts = opts == nil and {} or opts
-	opts.volume = opts.volume == nil and 1.0 or opts.volume
-	opts.channel = opts.channel == nil and 1 or opts.channel
-
-	local ac = audio.findFreeChannel( opts.channel )
-	audio.setVolume( opts.volume, { channel=ac } )
-
-	return ac
-
-end
-
-
-
-
---====================================================================--
--- Image Functions
---====================================================================--
-
---
--- container, image - table with width/height keys
--- returns scale
--- param.bind : 'inside', 'outside'
-function Utils.imageScale( container, image, params )
-	params = params or {}
-	if params.bind == nil then params.bind = 'outside' end
-	--==--
-
-	local bind = params.bind
-
-	local box_ratio, img_ratio
-	local scale = 1
-
-	box_ratio = container.width / container.height
-	img_ratio = image.width / image.height
-
-	if ( bind=='outside' and img_ratio > box_ratio ) or ( bind=='inside' and img_ratio < box_ratio ) then
-		-- constrained by height
-		scale = container.height / image.height
-	else
-		-- constrained by width
-		scale = container.width / image.width
-	end
-
-	return scale
-end
-
-
-
-
---====================================================================--
--- String Functions
---====================================================================--
-
-
--- split string up in parts, using separator
--- returns array of pieces
-function Utils.split( str, sep )
-	if sep == nil then
-		sep = "%s"
-	end
-	t={} ; i=1
-	for str in string.gmatch( str, "([^"..sep.."]+)") do
-		t[i] = str
-		i = i + 1
-	end
-	return t
-end
-
-
-
-
---====================================================================--
 -- Web Functions
 --====================================================================--
 
@@ -568,71 +636,6 @@ function Utils.create_query( tbl )
 	return str
 end
 
-
-
-
-
---====================================================================--
--- Date Functions
---====================================================================--
-
---[[
-
-	Given a UNIX time (seconds), calculate the number of weeks, days, etc
-	{ months=0, weeks=2, days=3, hours=8, minutes=35, seconds=21 }
-
---]]
-
-local week_s, day_s, hour_s, min_s, sec_s
-sec_s = 1
-min_s = 60 * sec_s
-hour_s = 60 * min_s
-day_s = 24 * hour_s
-week_s = 7 * day_s
-
--- give number and remainder
-local function diff( time, divisor )
-	return { math.floor( time/divisor ), ( time % divisor ) }
-end
-function Utils.calcTimeBreakdown( seconds, params )
-
-	seconds = math.abs( seconds )
-
-	params = params or {}
-	params.days = params.days or true
-	params.hours = params.hours or true
-	params.minutes = params.minutes or true
-
-	local result, tmp = {}, { 0, seconds }
-
-	result.weeks = 0
-	if params.weeks and tmp[2] >= week_s then
-		tmp = diff( tmp[2], week_s )
-		result.weeks = tmp[1]
-	end
-
-	result.days = 0
-	if params.days and tmp[2] >= day_s then
-		tmp = diff( tmp[2], day_s )
-		result.days = tmp[1]
-	end
-
-	result.hours = 0
-	if params.hours and tmp[2] >= hour_s then
-		tmp = diff( tmp[2], hour_s )
-		result.hours = tmp[1]
-	end
-
-	result.minutes = 0
-	if params.minutes and tmp[2] >= min_s then
-		tmp = diff( tmp[2], min_s )
-		result.minutes = tmp[1]
-	end
-	result.seconds = tmp[2]
-
-	return result
-
-end
 
 
 
