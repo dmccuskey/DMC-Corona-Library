@@ -294,6 +294,20 @@ function Utils.print( table, include, exclude, params )
 end
 
 
+-- searches for item in table (as array), removes and returns item
+--
+function Utils.removeFromTable( t, item )
+	local o = nil
+	for i=#t,1,-1 do
+		if t[i] == item then
+			o = table.remove( t, i )
+			break
+		end
+	end
+	return o
+end
+
+
 -- http://snippets.luacode.org/snippets/Table_Slice_116
 function Utils.tableSlice( values, i1, i2 )
 	local res = {}
