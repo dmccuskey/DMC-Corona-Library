@@ -205,7 +205,7 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 
 * **Dynamic buffer**
 
-	Any data coming in is automatically put into a buffer. At any point you can find out how many bytes are available for reading. Plus, the module has a method `unreceive()`, which can be used to *put back* buffer data.
+	Any data coming in is automatically put into a buffer. At any point you can find out how many bytes are available for reading. Plus, the socket has a method `unreceive()`, which can be used to *put back* data even after it's been read.
 
 * **Re-connectable**
 
