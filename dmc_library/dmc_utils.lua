@@ -368,6 +368,21 @@ function Utils.split( str, sep )
 end
 
 
+-- stringFormatting()
+-- implement Python-style string replacement
+-- http://lua-users.org/wiki/StringInterpolation
+--
+function Utils.stringFormatting( a, b )
+	if not b then
+		return a
+	elseif type(b) == "table" then
+		return string.format(a, unpack(b))
+	else
+		return string.format(a, b)
+	end
+end
+
+
 
 
 --====================================================================--
