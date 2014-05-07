@@ -244,7 +244,7 @@ There are examples in the folder `examples/dmc_trajectory/` which show how to us
 
 This file is an ever-changing list of helpful utility functions. Ever-changing because some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
 
-* Audio Functions - getAudiChannel()
+* Audio Functions - getAudioChannel()
 * Callback Functions - createObjectCallback(), getTransitionCompleteFunc()
 * Date Functions - calcTimeBreakdown()
 * Image Functions - imageScale()
