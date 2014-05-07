@@ -1,23 +1,24 @@
-
 --====================================================================--
 -- Example: Trajectory Direction
 --
 -- Shows example of how to setup dmc_trajectory with objects
---  that face either left or right. 
+--  that face either left or right.
 --
 -- by David McCuskey
 --
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
--- Copyright (C) 2012 David McCuskey. All Rights Reserved.
+--
+-- Copyright (C) 2012-2014 David McCuskey. All Rights Reserved.
 --====================================================================--
+
 print("---------------------------------------------------")
 
 --=========================================================
 -- Imports
 --=========================================================
 
-local Trajectory = require( "dmc_trajectory" )
+local Trajectory = require( "dmc_library.dmc_trajectory" )
 
 
 --====================================================================--
@@ -25,7 +26,7 @@ local Trajectory = require( "dmc_trajectory" )
 --====================================================================--
 
 display.setStatusBar( display.HiddenStatusBar )
-math.randomseed( os.time() ) 
+math.randomseed( os.time() )
 
 
 -- coordinate points for each test location
@@ -43,17 +44,17 @@ local HEIGHTS = { 5, 25, 45, 65 }
 local TIMES = { 750, 1500, 3000 }
 
 
---=========================================================
--- Main
---=========================================================
-
 local grid = display.newGroup()
 
 
+--====================================================================--
+-- Support Functions
+--====================================================================--
+
 -- drawGrid()
--- puts grid dots on the UI - locations for trajectory tests
+-- create and position the grid points - locations for trajectory tests
 --
-function drawGrid()
+local function drawGrid()
 	local o
 
 	for i=1, #POINTS do
@@ -71,12 +72,12 @@ end
 --== Projectile Creation functions ==--
 --
 local createLeftProjectile = function()
-	local o = display.newImageRect( "projectile_left.png", 12, 12 )
+	local o = display.newImageRect( "assets/projectile_left.png", 12, 12 )
 	local p = { rotate=true, direction="left" }
 	return o, p
 end
 local createRightProjectile = function()
-	local o = display.newImageRect( "projectile_right.png", 13, 7 )
+	local o = display.newImageRect( "assets/projectile_right.png", 13, 7 )
 	local p = { rotate=true, direction="right" }
 	return o, p
 end
@@ -85,7 +86,7 @@ end
 -- createRandomProjectile()
 -- returns a random projectile
 --
-function createRandomProjectile()
+local function createRandomProjectile()
 
 	if math.random( 2 ) == 1 then
 		return createLeftProjectile()
@@ -99,7 +100,7 @@ end
 
 -- doTest()
 --
-function doTest()
+local function doTest()
 
 	local oB, oE, oP -- refs to objects Begin, End, Projectile
 	local height, time -- random height and time for transition
@@ -116,11 +117,11 @@ function doTest()
 
 	-- begin point - green
 	oB = display.newCircle( pB[1], pB[2], 1 )
-	oB:setFillColor( 0, 255, 0 )
+	oB:setFillColor( 0, 1, 0 )
 
 	-- end point -- red
 	oE = display.newCircle( pE[1], pE[2], 5 )
-	oE:setFillColor( 255, 0, 0 )
+	oE:setFillColor( 1, 0, 0 )
 
 	-- projectile
 	oP, prms = createRandomProjectile()
@@ -128,7 +129,7 @@ function doTest()
 
 
 	-- onComplete function, called after trajectory transition is finished
-	local complete = function()
+	local onCompleteCallback = function()
 
 		-- clean up test items
 		oB:removeSelf()
@@ -144,7 +145,7 @@ function doTest()
 	params = {
 		time=time, pBegin=pB, pEnd=pE, height=height,
 		rotate=prms.rotate, direction=prms.direction,
-		onComplete=complete 
+		onComplete=onCompleteCallback
 	}
 
 	-- get calculated angle for intiial setup
@@ -161,14 +162,14 @@ function doTest()
 end
 
 
+--== Main Function
 
--- main()
--- let's get this party started !
---
 local main = function()
 	drawGrid()
 	doTest()
 end
 
+-- let's get this party started !
+--
 main()
 

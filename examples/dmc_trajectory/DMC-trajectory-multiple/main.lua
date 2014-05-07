@@ -1,4 +1,3 @@
-
 --====================================================================--
 -- Trajectory Multiple
 --
@@ -8,15 +7,17 @@
 --
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
--- Copyright (C) 2012 David McCuskey. All Rights Reserved.
+
+-- Copyright (C) 2012-2014 David McCuskey. All Rights Reserved.
 --====================================================================--
+
 print("---------------------------------------------------")
 
 --=========================================================
 -- Imports
 --=========================================================
 
-local Trajectory = require( "dmc_trajectory" )
+local Trajectory = require( "dmc_library.dmc_trajectory" )
 
 
 --====================================================================--
@@ -24,7 +25,7 @@ local Trajectory = require( "dmc_trajectory" )
 --====================================================================--
 
 display.setStatusBar( display.HiddenStatusBar )
-math.randomseed( os.time() ) 
+math.randomseed( os.time() )
 
 
 -- coordinate points for each test location
@@ -40,18 +41,20 @@ local POINTS = {
 local HEIGHTS = { 5, 25, 45, 65 }
 local TIMES = { 500, 750, 1000, 2000 }
 
-
---=========================================================
--- Main
---=========================================================
-
 local grid = display.newGroup()
 
 
+--====================================================================--
+-- Support Functions
+--====================================================================--
+
+local doTransition, startTest -- forward declare functions
+
+
 -- drawGrid()
--- puts grid dots on the UI - locations for trajectory tests
+-- create and position the grid points - locations for trajectory tests
 --
-function drawGrid()
+local function drawGrid()
 	local o
 
 	for i=1, #POINTS do
@@ -75,18 +78,18 @@ function doTransition( list, createProjectile, params )
 	-- get next set of point pairs
 	local pB, pE = unpack( table.remove( list ) )
 
-	-- clean up params if necessary	
+	-- clean up params if necessary
 	local params = params == nil and {} or params
 	local rotate = params.rotate
- 
+
 
 	-- begin point - green
 	oB = display.newCircle( pB[1], pB[2], 5 )
-	oB:setFillColor( 0, 255, 0 )
+	oB:setFillColor( 0, 1, 0 )
 
 	-- end point -- red
 	oE = display.newCircle( pE[1], pE[2], 5 )
-	oE:setFillColor( 255, 0, 0 )
+	oE:setFillColor( 1, 0, 0 )
 
 	-- projectile
 	oP = createProjectile()
@@ -130,7 +133,7 @@ function startTest( projectileFunction, params )
 	-- create list
 	for i=#POINTS, 1, -1 do
 		for j=#POINTS, 1, -1 do
-			if i ~= j then 
+			if i ~= j then
 				table.insert( point_list, { POINTS[i], POINTS[j] } )
 			end
 		end
@@ -146,24 +149,23 @@ end
 --
 local createBlueRoundProjectile = function()
 	local o = display.newCircle( 0, 0, 5 )
-	o:setFillColor( 0, 0, 255 )
+	o:setFillColor( 0, 0, 1 )
 	return o
 end
 local createPurpleRectProjectile = function()
 	local o = display.newRect( -4, -1, 8, 2 )
-	o:setFillColor(255, 0, 255)
+	o:setFillColor( 1, 0, 1 )
 	return o
 end
 local createYellowRectProjectile = function()
 	local o = display.newRect( -5, -2, 10, 4 )
-	o:setFillColor(255, 255, 0)
+	o:setFillColor( 1, 1, 0 )
 	return o
 end
 
 
--- main()
--- let's get this party started !
---
+--== Main Function
+
 local main = function()
 
 	drawGrid()
@@ -174,16 +176,18 @@ local main = function()
 	startTest( createBlueRoundProjectile )
 
 	-- start test 2, 15s delay
-	timer.performWithDelay( 15000, function() 
+	timer.performWithDelay( 10000, function()
 		startTest( createPurpleRectProjectile, { rotate=true } )
 	end )
 
 	-- start test 3, 30s delay
-	timer.performWithDelay( 30000, function() 
+	timer.performWithDelay( 20000, function()
 		startTest( createYellowRectProjectile, { rotate=true } )
 	end )
 
 end
 
+-- let's get this party started !
+--
 main()
 

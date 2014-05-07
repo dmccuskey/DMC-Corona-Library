@@ -355,7 +355,7 @@ end
 
 
 function Files.readJSONFile( file_path, options )
-	-- print( "Files.readJSONFile", file_path )
+	print( "Files.readJSONFile", file_path )
 
 	local options = options or {}
 	local status, content = Files.readFile( file_path, { lines=false } )
@@ -364,7 +364,7 @@ function Files.readJSONFile( file_path, options )
 	if content then
 		data = json.decode( content )
 		if data == nil then
-			error( "ERROR DMC File: reading JSON file, probably malformed data", 2 )
+			error( "ERROR: reading JSON file, probably malformed data", 2 )
 		end
 	end
 
