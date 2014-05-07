@@ -538,4 +538,38 @@ end
 
 
 
+--====================================================================--
+-- Web Functions
+--====================================================================--
+
+
+-- parse_query()
+-- splits an HTTP query string (eg, 'one=1&two=2' ) into its components
+--
+-- @param  str  string containing url-type key/value pairs
+-- @returns a table with the key/value pairs
+--
+function Utils.parse_query( str )
+	local t = {}
+	if str ~= nil then
+		for k, v in string.gmatch( str, "([^=&]+)=([^=&]+)") do
+			t[k] = v
+		end
+	end
+	return t
+end
+
+function Utils.create_query( tbl )
+	local str = ''
+	for k,v in pairs( tbl ) do
+		if str ~= '' then str = str .. '&' end
+		str = str .. tostring( k ) .. '=' .. url_encode( tostring(v) )
+	end
+	return str
+end
+
+
+
+
+
 return Utils
