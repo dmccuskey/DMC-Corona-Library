@@ -6,6 +6,20 @@ The DMC Corona Library is a collection of classes and utilities for use with Lua
 Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
 
 
+## Installation ##
+
+Copy the following items to your project:
+
+* Put `dmc_library_boot.lua` at the root-level of your project.
+
+* Put `dmc_library.cfg` at the root-level of your project.
+
+* Put the entire `dmc_library` folder in your project where you want. By default it should be located at the root-level, but you can change the location by editing the `dmc_library.cfg` file.
+
+
+For more information regarding installation, read the [online docs](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
+
+
 
 ## Current Modules ##
 
@@ -16,6 +30,10 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 * [dmc_trajectory](#dmc_trajectory)
 
   Ballistic (parabolic) trajectory for objects. [Read more...](#dmc_trajectory)
+
+* [dmc_utils](#dmc_utils)
+
+  Miscellaneious utility functions. [Read more...](#dmc_utils)
 
 
 <a name="dmc_autostore"></a>
