@@ -516,5 +516,26 @@ end
 
 
 
+--====================================================================--
+-- String Functions
+--====================================================================--
+
+
+-- split string up in parts, using separator
+-- returns array of pieces
+function Utils.split( str, sep )
+	if sep == nil then
+		sep = "%s"
+	end
+	t={} ; i=1
+	for str in string.gmatch( str, "([^"..sep.."]+)") do
+		t[i] = str
+		i = i + 1
+	end
+	return t
+end
+
+
+
 
 return Utils
