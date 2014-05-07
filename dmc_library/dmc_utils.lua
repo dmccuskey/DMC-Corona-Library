@@ -375,6 +375,32 @@ end
 --====================================================================--
 
 
+-- destroy()
+-- Deletes all of the items in a table structure.
+-- This is intended for generic tables and structures, *not* objects
+--
+-- @param table the table from which to delete contents
+--
+function Utils.destroy( table )
+
+	if type( table ) ~= "table" then return end
+
+	function _destroy( t )
+		for k,v in pairs( t ) do
+			if type( t[ k ] ) == "table" then
+				_destroy( t[ k ] )
+			end
+			t[ k ] = nil
+
+		end
+	end
+
+	-- start destruction process
+	_destroy( table )
+
+end
+
+
 -- extend()
 -- Copy key/values from one table to another
 -- Will deep copy any value from first table which is itself a table.
@@ -421,46 +447,6 @@ function Utils.hasOwnProperty( table, property )
 		return true
 	end
 	return false
-end
-
-
--- propertyIn()
--- Determines whether a property is within a list of items in a table (acting as an array)
---
--- @param list the table with *list* of properties
--- @param property the name of the property to search for
---
-function Utils.propertyIn( list, property )
-	for i = 1, #list do
-		if list[i] == property then return true end
-	end
-	return false
-end
-
-
--- destroy()
--- Deletes all of the items in a table structure.
--- This is intended for generic tables and structures, *not* objects
---
--- @param table the table from which to delete contents
---
-function Utils.destroy( table )
-
-	if type( table ) ~= "table" then return end
-
-	function _destroy( t )
-		for k,v in pairs( t ) do
-			if type( t[ k ] ) == "table" then
-				_destroy( t[ k ] )
-			end
-			t[ k ] = nil
-
-		end
-	end
-
-	-- start destruction process
-	_destroy( table )
-
 end
 
 
@@ -528,6 +514,20 @@ function Utils.print( table, include, exclude, params )
 end
 
 
+-- propertyIn()
+-- Determines whether a property is within a list of items in a table (acting as an array)
+--
+-- @param list the table with *list* of properties
+-- @param property the name of the property to search for
+--
+function Utils.propertyIn( list, property )
+	for i = 1, #list do
+		if list[i] == property then return true end
+	end
+	return false
+end
+
+
 -- searches for item in table (as array), removes and returns item
 --
 function Utils.removeFromTable( t, item )
@@ -539,6 +539,30 @@ function Utils.removeFromTable( t, item )
 		end
 	end
 	return o
+end
+
+
+-- http://rosettacode.org/wiki/Knuth_shuffle#Lua
+--
+function Utils.shuffle( t )
+	local n = #t
+	while n > 1 do
+		local k = math.random(n)
+		t[n], t[k] = t[k], t[n]
+		n = n - 1
+	end
+	return t
+end
+
+
+-- calculates size of table, mostly used as a dictionary
+--
+function Utils.tableSize( t1 )
+	local size = 0
+	for _,v in pairs( t1 ) do
+		size = size + 1
+	end
+	return size
 end
 
 
@@ -563,30 +587,6 @@ function Utils.tableSlice( values, i1, i2 )
 		k = k + 1
 	end
 	return res
-end
-
-
--- calculates size of table, mostly used as a dictionary
---
-function Utils.tableSize( t1 )
-	local size = 0
-	for _,v in pairs( t1 ) do
-		size = size + 1
-	end
-	return size
-end
-
-
--- http://rosettacode.org/wiki/Knuth_shuffle#Lua
---
-function Utils.shuffle( t )
-	local n = #t
-	while n > 1 do
-		local k = math.random(n)
-		t[n], t[k] = t[k], t[n]
-		n = n - 1
-	end
-	return t
 end
 
 
