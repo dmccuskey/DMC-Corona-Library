@@ -27,6 +27,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
+* [dmc_sockets](#dmc_sockets)
+
+  Event-driven, non-blocking socket library for clients. [Read more...](#dmc_sockets)
+
 * [dmc_trajectory](#dmc_trajectory)
 
   Ballistic (parabolic) trajectory for objects. [Read more...](#dmc_trajectory)
@@ -162,7 +166,6 @@ There are several examples in the folder `examples/dmc_objects/` which show how 
 
 
 
-
 ### dmc_buttons.lua ###
 
 This file contains classes to create different types of graphical buttons and button groups. It can create:
@@ -189,6 +192,38 @@ Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
 
 There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library. Other examples use the button class as well - check in `examples/dmc_objects/`.
 
+
+
+<a name="dmc_sockets"></a>
+### Module: dmc_sockets ###
+
+`dmc_sockets` is an event-driven, non-blocking socket library. In reality it's just a thin-layer over the built-in socket library (LuaSockets), but gives several additional benefits for your networking pleasure:
+
+* **Event-driven sockets**
+
+	Various events are dispatched for connection status, data available to read, etc. Create that event-driven app like you've always wanted to !
+
+* **Dynamic buffer**
+
+	All of the data coming into the socket is read into a local buffer. At any point you can find out how many bytes are available for reading. Plus, the module has a method `unreceive()`, which can be used to *put back* buffer data.
+
+* **Re-connectable**
+
+	`dmc_sockets` sockets have additional functionality to automatically re-build or re-connect closed or dropped connections.
+
+* **Socket-Check Throttling**
+
+  How often the module checks for new data is totally configurable. If you want more cycles for your app, then turn up the throttling !
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_sockets.lua
+
+
+**Examples**
+
+*Coming soon...*
 
 
 
@@ -228,7 +263,6 @@ There are examples in the folder `examples/dmc_touchmanager/` which show how to 
 The main intent of this module is to provide an easy way to have objects follow ballistic trajectories. The library module has a single, simple method to do this, but it also has other methods which can be used to obtain raw trajectory calculations if desired.
 
 
-
 **Documentation**
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
@@ -240,9 +274,9 @@ There are examples in the folder `examples/dmc_trajectory/` which show how to us
 
 
 <a name="dmc_utils"></a>
-### dmc_utils.lua ###
+### Module: dmc_utils ###
 
-This file is an ever-changing list of helpful utility functions. Ever-changing because some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
+This module is an ever-changing list of helpful utility functions. Ever-changing because, over time, some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
 
 * Audio Functions - getAudioChannel()
 * Callback Functions - createObjectCallback(), getTransitionCompleteFunc()
