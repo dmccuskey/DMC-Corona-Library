@@ -238,6 +238,7 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
 There are examples in the folder `examples/dmc_trajectory/` which show how to use the `dmc_trajectory` library.
 
 
+
 <a name="dmc_utils"></a>
 ### dmc_utils.lua ###
 
@@ -260,7 +261,7 @@ API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
 
 **Examples**
 
-As of yet there are no specific examples for `dmc_utils`, however many of the other `dmc_library` modules make use of it. Check them for examples.
+As of yet there are no specific examples for `dmc_utils`, however many of the other `dmc_library` modules make use of it. You can check them for examples.
 
 
 
