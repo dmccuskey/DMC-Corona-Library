@@ -481,4 +481,40 @@ end
 
 
 
+--====================================================================--
+-- Image Functions
+--====================================================================--
+
+--
+-- container, image - table with width/height keys
+-- returns scale
+-- param.bind : 'inside', 'outside'
+function Utils.imageScale( container, image, params )
+	params = params or {}
+	if params.bind == nil then params.bind = 'outside' end
+	--==--
+
+	local bind = params.bind
+
+	local box_ratio, img_ratio
+	local scale = 1
+
+	box_ratio = container.width / container.height
+	img_ratio = image.width / image.height
+
+	if ( bind=='outside' and img_ratio > box_ratio ) or ( bind=='inside' and img_ratio < box_ratio ) then
+		-- constrained by height
+		scale = container.height / image.height
+	else
+		-- constrained by width
+		scale = container.width / image.width
+	end
+
+	return scale
+end
+
+
+
+
+
 return Utils
