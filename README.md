@@ -197,7 +197,7 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 <a name="dmc_sockets"></a>
 ### Module: dmc_sockets ###
 
-`dmc_sockets` is an event-driven, non-blocking socket library. In reality it's just a thin-layer over the built-in socket library (LuaSockets), but gives several additional benefits for your networking pleasure:
+`dmc_sockets` is an event-driven, non-blocking socket library. In reality it's just a thin-layer over the built-in socket library *LuaSockets*, but gives several additional benefits for your networking pleasure:
 
 * **Event-driven sockets**
 
@@ -205,11 +205,11 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 
 * **Dynamic buffer**
 
-	All of the data coming into the socket is read into a local buffer. At any point you can find out how many bytes are available for reading. Plus, the module has a method `unreceive()`, which can be used to *put back* buffer data.
+	Any data coming in is automatically put into a buffer. At any point you can find out how many bytes are available for reading. Plus, the module has a method `unreceive()`, which can be used to *put back* buffer data.
 
 * **Re-connectable**
 
-	`dmc_sockets` sockets have additional functionality to automatically re-build or re-connect closed or dropped connections.
+	`dmc_sockets` sockets have additional functionality to easily re-build or re-connect closed or dropped connections. This is unlike ordinary sockets which can't be re-used once they are closed !
 
 * **Socket-Check Throttling**
 
