@@ -8,7 +8,7 @@ Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Coron
 
 ## Installation ##
 
-Copy the following items to your project:
+Copy the following items to your Corona project:
 
 * Put `dmc_library_boot.lua` at the root-level of your project.
 
@@ -241,14 +241,16 @@ There are examples in the folder `examples/dmc_trajectory/` which show how to us
 
 ### dmc_utils.lua ###
 
-This file is a small, but growing list of helpful utility functions. At the moment they are mostly concerned with tables. It provides these functions:
+This file is an ever-changing list of helpful utility functions. Ever-changing because some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
 
-* extend() - copy one table into another ( similar to jQuery extend() )
-* hasOwnProperty() - check if a property is directly on an object ( similar to JavaScript hasOwnProperty )
-* propertyIn() - check property existence in a list
-* destroy() - generic table destruction
-* createObjectCallback() - create a callback closure to call _any_ method on your object
-* print() - multi-level object printing
+* Audio Functions - getAudiChannel()
+* Callback Functions - createObjectCallback(), getTransitionCompleteFunc()
+* Date Functions - calcTimeBreakdown()
+* Image Functions - imageScale()
+* String Functions - split(), stringFormatting()
+* Table Functions - destroy(), extend(), hasOwnProperty(), print(), propertyIn(), removeFromTable(), shuffle(), tableSize(), tableSlice(), tableLength()
+copy one table into another ( similar to jQuery extend() )
+* Web Functions - parse_query(), create_query()
 
 
 **Documentation**
@@ -258,7 +260,7 @@ API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
 
 **Examples**
 
-As of yet there are no specific examples for `dmc_utils`, however the other files in this library make use of it. Check them for examples.
+As of yet there are no specific examples for `dmc_utils`, however many of the other `dmc_library` modules make use of it. Check them for examples.
 
 
 
