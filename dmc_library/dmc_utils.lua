@@ -572,4 +572,68 @@ end
 
 
 
+--====================================================================--
+-- Date Functions
+--====================================================================--
+
+--[[
+
+	Given a UNIX time (seconds), calculate the number of weeks, days, etc
+	{ months=0, weeks=2, days=3, hours=8, minutes=35, seconds=21 }
+
+--]]
+
+local week_s, day_s, hour_s, min_s, sec_s
+sec_s = 1
+min_s = 60 * sec_s
+hour_s = 60 * min_s
+day_s = 24 * hour_s
+week_s = 7 * day_s
+
+-- give number and remainder
+local function diff( time, divisor )
+	return { math.floor( time/divisor ), ( time % divisor ) }
+end
+function Utils.calcTimeBreakdown( seconds, params )
+
+	seconds = math.abs( seconds )
+
+	params = params or {}
+	params.days = params.days or true
+	params.hours = params.hours or true
+	params.minutes = params.minutes or true
+
+	local result, tmp = {}, { 0, seconds }
+
+	result.weeks = 0
+	if params.weeks and tmp[2] >= week_s then
+		tmp = diff( tmp[2], week_s )
+		result.weeks = tmp[1]
+	end
+
+	result.days = 0
+	if params.days and tmp[2] >= day_s then
+		tmp = diff( tmp[2], day_s )
+		result.days = tmp[1]
+	end
+
+	result.hours = 0
+	if params.hours and tmp[2] >= hour_s then
+		tmp = diff( tmp[2], hour_s )
+		result.hours = tmp[1]
+	end
+
+	result.minutes = 0
+	if params.minutes and tmp[2] >= min_s then
+		tmp = diff( tmp[2], min_s )
+		result.minutes = tmp[1]
+	end
+	result.seconds = tmp[2]
+
+	return result
+
+end
+
+
+
 return Utils
