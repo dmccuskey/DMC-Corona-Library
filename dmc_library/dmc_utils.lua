@@ -440,7 +440,7 @@ end
 --
 function Utils.createObjectCallback( object, method )
 	if object == nil or method == nil then
-		print( "WARNING: nil or missing parameter in createObjectCallback()" )
+		error( "ERROR: missing object or method in createObjectCallback()" )
 	end
 	return function( ... )
 		return method( object, ... )
