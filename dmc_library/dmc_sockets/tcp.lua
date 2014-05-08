@@ -340,7 +340,7 @@ function TCPSocket:close()
 
 		notice( evt.msg )
 
-		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
+		-- self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
 		return
 	end
