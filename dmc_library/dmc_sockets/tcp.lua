@@ -420,7 +420,7 @@ function TCPSocket:_readStatus( status )
 	end
 
 	buff_len = #self._buffer
-	if buff_len then
+	if buff_len > 0 then
 
 		local evt = {
 			status = self._status,
