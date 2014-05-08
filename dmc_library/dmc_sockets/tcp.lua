@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 
@@ -347,13 +347,8 @@ function TCPSocket:close()
 		return
 	end
 
-	self._socket:close()
-	self._status = TCPSocket.CLOSED
-
-	evt.status = self._status
-	evt.msg = nil
-
-	self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
+	self:_closeSocket()
+	self:_removeSocket()
 
 end
 
@@ -382,12 +377,27 @@ function TCPSocket:_createSocket()
 end
 
 
+function TCPSocket:_closeSocket()
+	-- print( 'TCPSocket:_closeSocket' )
+
+	local evt = {}
+
+	self._socket:close()
+	self._status = TCPSocket.CLOSED
+
+	evt.status = self._status
+	evt.msg = nil
+
+	self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
+
+end
+
+
 function TCPSocket:_removeSocket()
 	-- print( 'TCPSocket:_createSocket' )
 
 	if not self._socket then return end
 
-	self:close()
 	self._master:_disconnect( self )
 
 	self._socket = nil
