@@ -243,7 +243,8 @@ function TCPSocket:connect( host, port, params )
 		evt.status = self._status
 		evt.msg = "Socket is already connected"
 
-		warning( evt.msg )
+		-- warning( evt.msg ) -- waiting for dmc_patch
+		print( evt.msg )
 
 		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 		return
@@ -338,7 +339,8 @@ function TCPSocket:close()
 		evt.status = self._status
 		evt.msg = "Socket is already closed"
 
-		notice( evt.msg )
+		-- notice( evt.msg ) -- waiting for dmc_patch
+		print( evt.msg )
 
 		-- self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
