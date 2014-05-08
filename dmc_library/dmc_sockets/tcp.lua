@@ -402,6 +402,11 @@ function TCPSocket:_readStatus( status )
 	local bytes, emsg, partial = self._socket:receive( '*a' )
 	-- print( 'dataReady', bytes, emsg, partial )
 
+	if bytes == nil and emsg == 'closed' then
+		self:close()
+		return
+	end
+
 	if bytes ~= nil then
 		buff_tmp = { self._buffer, bytes }
 
