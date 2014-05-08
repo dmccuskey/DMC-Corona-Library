@@ -223,7 +223,7 @@ http://docs.davidmccuskey.com/display/docs/dmc_sockets.lua
 
 **Examples**
 
-*Coming soon...*
+Examples which show how to use the `dmc_sockets` library can be found in the folder `examples/dmc_sockets/`.
 
 
 
