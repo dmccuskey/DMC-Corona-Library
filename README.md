@@ -29,7 +29,7 @@ For more information regarding installation, read the [online docs](http://docs.
 
 * [dmc_sockets](#dmc_sockets)
 
-  Event-driven, non-blocking socket library for clients. [Read more...](#dmc_sockets)
+  Asyncronous or event-driven, non-blocking socket library for clients. [Read more...](#dmc_sockets)
 
 * [dmc_trajectory](#dmc_trajectory)
 
@@ -197,11 +197,11 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 <a name="dmc_sockets"></a>
 ### Module: dmc_sockets ###
 
-`dmc_sockets` is an event-driven, non-blocking socket library. In reality it's just a thin-layer over the built-in socket library *LuaSockets*, but gives several additional benefits for your networking pleasure:
+`dmc_sockets` is a non-blocking socket library and has two-flavors of sockets - asyncronous with callbacks or syncronous with events. In reality it's just a thin layer over the built-in socket library *LuaSockets*, but gives several additional benefits for your networking pleasure:
 
-* **Event-driven sockets**
+* **Callback- or event-driven sockets**
 
-	Various events are dispatched for connection status, data available to read, etc. Create that event-driven app like you've always wanted to !
+	The event-driven socket is more syncronous and the callback-driven is asyncronous in nature, but they're both non-blocking. Create that event-driven app like you've always wanted to !
 
 * **Dynamic buffer**
 
