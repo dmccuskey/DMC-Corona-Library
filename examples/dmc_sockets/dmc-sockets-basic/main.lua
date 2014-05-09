@@ -43,7 +43,7 @@ local function sendRequest()
 	local req_t = {
 		"GET / HTTP/1.1\r\n",
 		"Host: " .. host .. "\r\n",
-		"User-Agent: DMC Sockets 0.1.0\r\n",
+		"User-Agent: DMC Sockets " .. Sockets.VERSION .. "\r\n",
 		"\r\n"
 	}
 	req = table.concat( req_t, "" )
