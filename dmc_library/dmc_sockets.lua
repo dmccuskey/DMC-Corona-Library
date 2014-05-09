@@ -138,6 +138,7 @@ local Utils = require( dmc_lib_func.find('dmc_utils') )
 local socket = require 'socket'
 
 local tcp_socket = require( dmc_lib_func.find('dmc_sockets.tcp') )
+local atcp_socket = require( dmc_lib_func.find('dmc_sockets.atcp') )
 
 
 --====================================================================--
@@ -161,10 +162,13 @@ local Singleton = nil
 local Sockets = inheritsFrom( CoronaBase )
 Sockets.NAME = "Sockets Class"
 
+Sockets.VERSION = VERSION
+
 --== Class Constants
 
 Sockets.NO_BLOCK = 0
 Sockets.TCP = 'tcp'
+Sockets.ATCP = 'atcp'
 
 -- throttle socket checks, milliseconds delay
 Sockets.OFF = 0
@@ -185,6 +189,8 @@ function Sockets:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
+	--== Create Properties ==--
+
 	self._sockets = {} -- socket objects, keyed by object
 	self._raw_socks = {} -- socket objects, keyed by socket
 	self._raw_socks_list = {} -- socket
@@ -194,6 +200,10 @@ function Sockets:_init( params )
 
 	self._socket_check_is_active = false
 	self._socket_check_handler = nil
+
+	--== Object References ==--
+
+	-- none
 
 end
 function Sockets:_undoInit()
@@ -296,13 +306,20 @@ function Sockets:create( s_type, params )
 	-- print( 'Sockets:create', s_type, params )
 	params = params or {}
 	--==--
+
 	if s_type == Sockets.TCP then
 		return tcp_socket:new( { master=self } )
+
+	elseif s_type == Sockets.ATCP then
+		return atcp_socket:new( { master=self } )
 
 	elseif s_type == Sockets.UDP then
 		error( "UDP is not yet available" )
 
+	else
+		error( "Uknown socket type: %s" .. tostring( s_type ) )
 	end
+
 end
 
 

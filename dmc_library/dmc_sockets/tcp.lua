@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.1"
+local VERSION = "0.1.2"
 
 
 
@@ -150,6 +150,12 @@ TCPSocket.NOT_CONNECTED = 'socket_not_connected'
 TCPSocket.CONNECTED = 'socket_connected'
 TCPSocket.CLOSED = 'socket_closed'
 
+-- Socket Error Msg Constants
+
+TCPSocket.ERR_CONNECTED = 'already connected'
+TCPSocket.ERR_CONNECTION = 'Operation already in progress'
+TCPSocket.ERR_TIMEOUT = 'timeout'
+TCPSocket.ERR_CLOSED = 'already closed'
 
 -- Event Constants
 
@@ -170,6 +176,8 @@ function TCPSocket:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
+	--== Create Properties ==--
+
 	self._host = nil
 	self._port = nil
 
@@ -179,19 +187,15 @@ function TCPSocket:_init( params )
 
 	self._status = nil
 
+
+	--== Object References ==--
+
 	self._socket = nil
 	self._master = params.master
 
 end
 
-function TCPSocket:_initComplete()
-	-- print( "TCPSocket:_initComplete" )
-	self:superCall( "_initComplete" )
-	--==--
 
-	self:_createSocket()
-
-end
 function TCPSocket:_undoInitComplete()
 	-- print( "TCPSocket:_undoInitComplete" )
 
@@ -222,9 +226,11 @@ function TCPSocket:clearBuffer()
 end
 
 
-function TCPSocket:reconnect()
+function TCPSocket:reconnect( params )
 	-- print( 'TCPSocket:reconnect' )
-	local params = {}
+	params = params or {}
+	--==--
+
 	self:connect( self._host, self._port, params )
 end
 
@@ -241,10 +247,10 @@ function TCPSocket:connect( host, port, params )
 	if self._status == TCPSocket.CONNECTED then
 
 		evt.status = self._status
-		evt.msg = "Socket is already connected"
+		evt.emsg = self.ERR_CONNECTED
 
-		-- warning( evt.msg ) -- waiting for dmc_patch
-		print( evt.msg )
+		-- warning( evt.emsg ) -- waiting for dmc_patch
+		print( "TCPSocket:connect:: " .. evt.emsg )
 
 		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 		return
@@ -259,7 +265,7 @@ function TCPSocket:connect( host, port, params )
 		self._socket:settimeout(0)
 
 		evt.status = self._status
-		evt.msg = nil
+		evt.emsg = nil
 
 		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
@@ -267,7 +273,7 @@ function TCPSocket:connect( host, port, params )
 		self._status = TCPSocket.NOT_CONNECTED
 
 		evt.status = self._status
-		evt.msg = nil
+		evt.emsg = nil
 
 		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
@@ -337,10 +343,10 @@ function TCPSocket:close()
 
 	if self._status == TCPSocket.CLOSED then
 		evt.status = self._status
-		evt.msg = "Socket is already closed"
+		evt.emsg = self.ERR_CLOSED
 
-		-- notice( evt.msg ) -- waiting for dmc_patch
-		print( evt.msg )
+		-- notice( evt.emsg ) -- waiting for dmc_patch
+		print( "TCPSocket:close :" .. evt.emsg )
 
 		-- self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
@@ -360,9 +366,10 @@ end
 
 
 
-function TCPSocket:_createSocket()
+function TCPSocket:_createSocket( params )
 	-- print( 'TCPSocket:_createSocket' )
-
+	params = params or {}
+	--==--
 	-- we already have unused socket available
 	if self._status == TCPSocket.NOT_CONNECTED then return end
 
@@ -371,7 +378,7 @@ function TCPSocket:_createSocket()
 	self._socket = socket.tcp()
 	self._status = TCPSocket.NOT_CONNECTED
 
-	self._socket:settimeout()
+	self._socket:settimeout( params.timeout )
 	self._master:_connect( self )
 
 end
@@ -386,15 +393,20 @@ function TCPSocket:_closeSocket()
 	self._status = TCPSocket.CLOSED
 
 	evt.status = self._status
-	evt.msg = nil
+	evt.emsg = nil
 
+	self:_closeSocketDispatch( evt )
+
+end
+
+function TCPSocket:_closeSocketDispatch( evt )
+	-- print( 'TCPSocket:_closeSocketDispatch' )
 	self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
-
 end
 
 
 function TCPSocket:_removeSocket()
-	-- print( 'TCPSocket:_createSocket' )
+	-- print( 'TCPSocket:_removeSocket' )
 
 	if not self._socket then return end
 
@@ -422,7 +434,7 @@ function TCPSocket:_readStatus( status )
 	if bytes ~= nil then
 		buff_tmp = { self._buffer, bytes }
 
-	elseif emsg == 'timeout' and partial then
+	elseif emsg == self.ERR_TIMEOUT and partial then
 		buff_tmp = { self._buffer, partial }
 
 	end
@@ -431,18 +443,21 @@ function TCPSocket:_readStatus( status )
 		self._buffer = table.concat( buff_tmp )
 	end
 
-	buff_len = #self._buffer
-	if buff_len > 0 then
+	self:_doAfterReadAction()
 
+end
+
+function TCPSocket:_doAfterReadAction()
+	-- print( 'TCPSocket:_doAfterReadAction' )
+	if #self._buffer > 0 then
 		local evt = {
 			status = self._status,
 			bytes = buff_len
 		}
 		self:_dispatchEvent( self.READ, evt, { merge=true } )
-
 	end
-
 end
+
 
 
 function TCPSocket:_writeStatus( status )
