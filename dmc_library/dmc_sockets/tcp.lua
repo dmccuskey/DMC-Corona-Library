@@ -215,6 +215,9 @@ end
 --== Public Methods
 
 
+function TCPSocket.__getters:status()
+	return self._status
+end
 
 function TCPSocket.__getters:buffer_size()
 	return #self._buffer
