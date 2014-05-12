@@ -203,6 +203,11 @@ end
 
 
 
+function ATCPSocket.__getters:timeout( value )
+	self._timeout = value
+end
+
+
 function ATCPSocket:connect( host, port, params )
 	-- print( 'ATCPSocket:connect', host, port, params )
 	params = params or {}
