@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 
@@ -201,6 +201,11 @@ end
 --====================================================================--
 --== Public Methods
 
+
+
+function ATCPSocket.__getters:timeout( value )
+	self._timeout = value
+end
 
 
 function ATCPSocket:connect( host, port, params )

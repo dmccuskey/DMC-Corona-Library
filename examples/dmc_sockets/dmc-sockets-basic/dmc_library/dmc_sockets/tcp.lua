@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.2"
+local VERSION = "0.1.3"
 
 
 
@@ -215,6 +215,9 @@ end
 --== Public Methods
 
 
+function TCPSocket.__getters:status()
+	return self._status
+end
 
 function TCPSocket.__getters:buffer_size()
 	return #self._buffer
