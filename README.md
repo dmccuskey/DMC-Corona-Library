@@ -5,6 +5,10 @@ The DMC Corona Library is a collection of classes and utilities for use with Lua
 
 Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
 
+## Note ##
+
+I'm currently re-organizing the library so that *all* modules go inside of the folder `dmc_library`. If the modules aren't there yet, know that they soon will be.
+
 
 ## Installation ##
 
@@ -29,7 +33,7 @@ For more information regarding installation, read the [online docs](http://docs.
 
 * [dmc_sockets](#dmc_sockets)
 
-  Asyncronous or event-driven, non-blocking socket library for clients. [Read more...](#dmc_sockets)
+  Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
 
 * [dmc_trajectory](#dmc_trajectory)
 
@@ -197,11 +201,11 @@ There are examples in the folder `examples/dmc_buttons/` which show how to use t
 <a name="dmc_sockets"></a>
 ### Module: dmc_sockets ###
 
-`dmc_sockets` is a non-blocking socket library and has two-flavors of sockets - asyncronous with callbacks or syncronous with events. In reality it's just a thin layer over the built-in socket library *LuaSockets*, but gives several additional benefits for your networking pleasure:
+`dmc_sockets` is a buffered, callback- or event-based socket library for clients which has two-flavors of sockets - asyncronous with callbacks or syncronous with events (non-blocking). In reality it's just a thin layer over the built-in socket library *LuaSockets*, but gives several additional benefits for your networking pleasure:
 
-* **Callback- or event-driven sockets**
+* **Callback- or event-based sockets**
 
-	The event-driven socket is more syncronous and the callback-driven is asyncronous in nature, but they're both non-blocking. Create that event-driven app like you've always wanted to !
+	The event-based socket is more syncronous and the callback-based is asyncronous in nature, but they're both non-blocking. Create that event-based app like you've always wanted to !
 
 * **Dynamic buffer**
 
