@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.3"
+local VERSION = "1.0.4"
 
 
 
