@@ -179,6 +179,8 @@ function ATCPSocket:_init( params )
 	self._active_coroutine = nil
 	self._coroutine_queue = {}
 
+	self._read_in_process = false
+
 	-- self._host = nil
 	-- self._port = nil
 	-- self._buffer = "" -- string
@@ -335,6 +337,7 @@ function ATCPSocket:receive( option, callback )
 				if not data then
 					coroutine.yield()
 				else
+					self._read_in_process = false
 					evt.data, evt.emsg = data, nil
 					callback( evt )
 				end
@@ -344,14 +347,18 @@ function ATCPSocket:receive( option, callback )
 			until data or time_diff > timeout
 
 			if not data then
+				self._read_in_process = false
 				evt.data, evt.emsg = nil, self.ERR_TIMEOUT
 				callback( evt )
 			end
 
 		end
 
+		self._read_in_process = true
+
 		data = f( true )
 		if data then
+			self._read_in_process = false
 			evt.data, evt.emsg = data, nil
 			callback( evt )
 		else
@@ -480,6 +487,11 @@ function ATCPSocket:_doAfterReadAction()
 	-- print( 'ATCPSocket:_doAfterReadAction' )
 	if #self._buffer > 0 then
 		self:_checkCoroutineQueue()
+		if not self._read_in_process then
+			-- print(self._buffer)
+			self._onConnect( { type=self.READ })
+		end
+
 	end
 end
 
