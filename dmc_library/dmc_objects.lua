@@ -684,6 +684,37 @@ end
 
 --= CORONA OBJECT =--
 
+
+-- _dispatchEvent
+--
+function Object:_dispatchEvent( e_type, data, params )
+	-- print( "Object:_dispatchEvent ", e_type, data )
+
+	params = params or {}
+	if params.merge == nil then params.merge = false end
+
+	-- setup custom event
+	local e = {
+		name = self.EVENT,
+		type = e_type
+	}
+
+	if params.merge and type( data ) == 'table' then
+		e = data
+		e.name = self.EVENT
+		e.type = e_type
+
+	else
+		e.data = data
+	end
+
+	self:dispatchEvent( e )
+end
+
+
+
+--= CORONA OBJECT =--
+
 -- Properties
 
 -- alpha
