@@ -696,13 +696,15 @@ function Object:_dispatchEvent( e_type, data, params )
 	-- setup custom event
 	local e = {
 		name = self.EVENT,
-		type = e_type
+		type = e_type,
+		target = self
 	}
 
 	if params.merge and type( data ) == 'table' then
 		e = data
 		e.name = self.EVENT
 		e.type = e_type
+		e.target = self
 
 	else
 		e.data = data
