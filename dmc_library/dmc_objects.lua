@@ -490,7 +490,7 @@ function Object:createCallback( method )
 		error( "ERROR: missing method in createCallback()", 2 )
 	end
 	return function( ... )
-		method( self, ... )
+		return method( self, ... )
 	end
 end
 
