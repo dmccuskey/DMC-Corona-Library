@@ -31,13 +31,13 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
-* [dmc_sockets](#dmc_sockets)
-
-  Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
-
 * [dmc_objects](#dmc_objects)
 
   Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
+
+* [dmc_sockets](#dmc_sockets)
+
+  Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
 
 * [dmc_states](#dmc_states)
 
