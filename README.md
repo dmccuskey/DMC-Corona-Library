@@ -47,6 +47,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Implement the State Machine design pattern with your objects. [Read more...](#dmc_states)
 
+* [dmc_touchmanager](#dmc_touchmanager)
+
+  True multi-touch capabilities for the Corona SDK. [Read more...](#dmc_touchmanager)
+
 * [dmc_trajectory](#dmc_trajectory)
 
   Ballistic (parabolic) trajectory for objects. [Read more...](#dmc_trajectory)
@@ -272,16 +276,15 @@ http://docs.davidmccuskey.com/display/docs/dmc_states.lua
 
 
 
-### dmc_touchmanager.lua ###
+<a name="dmc_touchmanager"></a>
+### Module: dmc_touchmanager ###
 
-This module controls how touch events are processed within an application made with the Corona SDK. Unlike the default (broken?) multi-touch behavior in the Corona SDK, it will allow you to track any amount of events and un/set focus any one of them to or from an object.
-
+This module controls how touch events are processed within an application made with the Corona SDK. Unlike the default (broken?) multi-touch behavior in the Corona SDK, it will allow you to track any number of events (up to device limit) and un/set focus any one of them to or from an object.
 
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_touchmanager
-
+http://docs.davidmccuskey.com/display/docs/dmc_touchmanager.lua
 
 
 **Examples**
