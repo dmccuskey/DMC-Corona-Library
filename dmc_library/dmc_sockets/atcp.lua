@@ -281,8 +281,26 @@ function ATCPSocket:connect( host, port, params )
 end
 
 
+function ATCPSocket:send( data, callback )
+	-- print( 'ATCPSocket:send', #data, callback )
+
+	if not callback or type( callback ) ~= 'function' then return end
+
+	local evt = {}
+
+	local bytes, emsg = self._socket:send( data )
+	-- print( bytes, emsg )
+	evt.error = nil
+	evt.emsg = nil
+
+	callback( evt )
+end
+
+
 function ATCPSocket:receive( option, callback )
 	-- print( 'ATCPSocket:receive', option, callback )
+
+	if not callback or type( callback ) ~= 'function' then return end
 
 	local buffer = self._buffer
 
