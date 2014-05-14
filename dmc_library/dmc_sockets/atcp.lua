@@ -222,7 +222,7 @@ function ATCPSocket:connect( host, port, params )
 
 	if self._status == ATCPSocket.CONNECTED then
 		local evt = {}
-		evt.emsg = self.ERR_CONNECTED
+		evt.type, evt.emsg = self.CONNECT, self.ERR_CONNECTED
 		if self._onConnect then self._onConnect( evt ) end
 		return
 	end
@@ -247,6 +247,7 @@ function ATCPSocket:connect( host, port, params )
 
 			if success or emsg == self.ERR_CONNECTED then
 				self._status = self.CONNECTED
+				evt.type = self.CONNECT
 				evt.status = self._status
 				evt.emsg = emsg
 
@@ -265,6 +266,7 @@ function ATCPSocket:connect( host, port, params )
 
 		if self._status ~= self.CONNECTED then
 			self._status = self.NOT_CONNECTED
+			evt.type = self.CONNECT
 			evt.status = self._status
 			evt.emsg = self.ERR_TIMEOUT
 
@@ -319,6 +321,8 @@ function ATCPSocket:receive( option, callback )
 	elseif type( option ) == 'number' and #buffer >= option then
 		data = string.sub( buffer, 1, option )
 		self._buffer = string.sub( buffer, option+1 )
+
+		callback( { data=data, emsg=nil } )
 
 	elseif type( option ) == 'string' and option == '*l' then
 
