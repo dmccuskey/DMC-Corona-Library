@@ -486,6 +486,9 @@ end
 
 -- TODO: method can be a string or method reference
 function Object:createCallback( method )
+	if method == nil then
+		error( "ERROR: missing method in createCallback()", 2 )
+	end
 	return function( ... )
 		method( self, ... )
 	end
@@ -875,6 +878,14 @@ end
 -- addEventListener( eventName, listener )
 --
 function CoronaBase:addEventListener( ... )
+	local args = { ... }
+	if args[1] == nil then
+		error( "ERROR addEventListener: event type can't be nil", 2 )
+	end
+	if args[2] == nil then
+		error( "ERROR addEventListener: listener function can't be nil", 2 )
+	end
+
 	self.view:addEventListener( ... )
 end
 -- contentToLocal( x_content, y_content )
