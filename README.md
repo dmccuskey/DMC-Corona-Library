@@ -51,6 +51,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Miscellaneious utility functions. [Read more...](#dmc_utils)
 
+* [dmc_websockets](#dmc_websockets)
+
+  WebSocket module for the Corona SDK. [Read more...](#dmc_websockets)
+
 
 <a name="dmc_autostore"></a>
 ### Module: dmc_autostore ###
@@ -279,6 +283,25 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
 **Examples**
 
 There are examples in the folder `examples/dmc_trajectory/` which show how to use the `dmc_trajectory` library.
+
+
+
+<a name="dmc_websockets"></a>
+### Module: dmc_websockets ###
+
+This module implements WebSockets (RFC6455) for the Corona SDK. With minor modifications it can be used in plain Lua.
+
+* **Follows the web browser API implemenation**
+
+	This makes it very easy to use.
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
+
+**Examples**
+
+There are examples in the folder `examples/dmc_websockets/` which show how to use the `dmc_websockets` library.
 
 
 
