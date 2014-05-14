@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.0.1"
 
 
 
@@ -174,7 +174,22 @@ function translateRGBToHDR( ... )
 
 	if type( args[2] ) == 'number' then
 		-- regular RGB
-		color = { args[2]/255, args[3]/255, args[4]/255, args[5] }
+		if args[3] == nil then
+			-- greyscale
+			args[3] = args[2]
+			args[4] = args[2]
+			args[5] = 255
+		elseif args[4] == nil then
+			-- greyscale with alpha
+			args[3] = args[2]
+			args[4] = args[2]
+			args[5] = args[3]
+		elseif args[5] == nil then
+			-- RGB, no alpha
+			args[5] = 255
+		end
+
+		color = { args[2]/255, args[3]/255, args[4]/255, args[5]/255 }
 
 	elseif type( args[2] ) == 'table' and args[2].type=='gradient' then
 
@@ -251,7 +266,7 @@ end
 -- addSetFillColor()
 -- imbue object with setFillColor / setTextColor magic
 --
-function addSetFillColor( o, method_name )
+function addSetFillColor( o )
 	-- print( 'addSetFillColor' )
 
 	function createClosure( obj, translate )
@@ -268,10 +283,6 @@ function addSetFillColor( o, method_name )
 	o._setFillColor = o.setFillColor -- save original version
 	o.setFillColor = createClosure( o, translateRGBToHDR )
 
-	if method_name then
-		o[ method_name ] = o.setFillColor
-	end
-
 end
 
 
@@ -279,7 +290,7 @@ end
 -- addSetStrokeColor()
 -- imbue object with strokeColor magic
 --
-function addSetStrokeColor( o, method_name )
+function addSetStrokeColor( o )
 	-- print( 'addSetStrokeColor' )
 
 	function createClosure( obj, translate )
@@ -293,10 +304,6 @@ function addSetStrokeColor( o, method_name )
 
 	o._setStrokeColor = o.setStrokeColor -- save original version
 	o.setStrokeColor = createClosure( o, translateRGBToHDR )
-
-	if method_name then
-		o[ method_name ] = o.setStrokeColor
-	end
 
 end
 
@@ -408,6 +415,9 @@ function Display.newImageRect( ... )
 end
 
 
+
+
+
 function Display.newLine( ... )
 	-- print( 'Kompatible.newLine' )
 
@@ -422,7 +432,8 @@ function Display.newLine( ... )
 		addSetAnchor( o, Display.TopLeftReferencePoint )
 	end
 	if dkd.activate_fillcolor then
-		addSetFillColor( o, 'setColor' )
+		addSetFillColor( o )
+		o.setColor = o.setFillColor
 	end
 
 	return o
@@ -505,7 +516,8 @@ function Display.newText( ... )
 		addSetAnchor( o, Display.CenterReferencePoint )
 	end
 	if dkd.activate_fillcolor then
-		addSetFillColor( o, 'setTextColor' )
+		addSetFillColor( o )
+		o.setTextColor = o.setFillColor
 	end
 
 	return o
