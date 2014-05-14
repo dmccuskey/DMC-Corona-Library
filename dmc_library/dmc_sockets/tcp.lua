@@ -253,7 +253,7 @@ function TCPSocket:connect( host, port, params )
 		evt.emsg = self.ERR_CONNECTED
 
 		-- warning( evt.emsg ) -- waiting for dmc_patch
-		print( "TCPSocket:connect:: " .. evt.emsg )
+		-- print( "TCPSocket:connect:: " .. evt.emsg )
 
 		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 		return
@@ -349,7 +349,7 @@ function TCPSocket:close()
 		evt.emsg = self.ERR_CLOSED
 
 		-- notice( evt.emsg ) -- waiting for dmc_patch
-		print( "TCPSocket:close :" .. evt.emsg )
+		-- print( "TCPSocket:close :" .. evt.emsg )
 
 		-- self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
