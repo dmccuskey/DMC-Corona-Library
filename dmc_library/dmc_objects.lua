@@ -515,14 +515,16 @@ function CoronaBase:new( options )
 
 	-- set flag if this is an Intermediate class
 	if options.__setIntermediate == true then
-		o.__isIntermediate = true
+		o.is_intermediate = true
 		options.__setIntermediate = nil
+	else
+		o.is_intermediate = false
 	end
 
 	o:_init( options )
 
 	-- skip these if we're an intermediate class (eg, subclass)
-	if rawget( o, '__isIntermediate' ) == nil then
+	if rawget( o, 'is_intermediate' ) == false then
 		o:_createView()
 		o:_initComplete()
 	end
@@ -911,10 +913,10 @@ end
 -- removeSelf()
 --
 function CoronaBase:removeSelf()
-	--print( "\nOVERRIDE: removeSelf()\n" );
+	-- print( "\nOVERRIDE: removeSelf()\n" );
 
 	-- skip these if we're an intermediate class (eg, subclass)
-	if rawget( self, '__isIntermediate' ) == nil then
+	if rawget( self, 'is_intermediate' ) == false then
 		self:_undoInitComplete()
 		self:_undoCreateView()
 	end
