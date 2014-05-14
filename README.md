@@ -35,6 +35,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
 
+* [dmc_states](#dmc_states)
+
+  Implement the State Machine design pattern with your objects. [Read more...](#dmc_states)
+
 * [dmc_trajectory](#dmc_trajectory)
 
   Ballistic (parabolic) trajectory for objects. [Read more...](#dmc_trajectory)
@@ -233,9 +237,8 @@ Examples which show how to use the `dmc_sockets` library can be found in the fol
 
 ### Module dmc_states ###
 
-`dmc_states` is a Lua module which helps to implement the State Machine design pattern.
+`dmc_states` is a Lua module which helps to implement the State Machine design pattern. It can be used in Lua projects outside of Corona.
 
-[more info...](dmc_states/)
 
 **Documentation**
 
