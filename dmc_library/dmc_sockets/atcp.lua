@@ -315,7 +315,7 @@ function ATCPSocket:receive( option, callback )
 		data = buffer
 		self._buffer = ""
 		evt.data, evt.emsg = data, nil
-		if callback then callback( evt ) end
+		callback( evt )
 		return
 
 	elseif type( option ) == 'number' and #buffer >= option then
@@ -377,6 +377,8 @@ end
 
 function ATCPSocket:receiveUntilNewline( callback )
 	-- print( 'ATCPSocket:receiveUntilNewline' )
+
+	if not callback or type( callback ) ~= 'function' then return end
 
 	local data_list = {}
 	local evt = {}
