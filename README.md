@@ -35,6 +35,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
 
+* [dmc_objects](#dmc_objects)
+
+  Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
+
 * [dmc_states](#dmc_states)
 
   Implement the State Machine design pattern with your objects. [Read more...](#dmc_states)
@@ -51,7 +55,7 @@ For more information regarding installation, read the [online docs](http://docs.
 <a name="dmc_autostore"></a>
 ### Module: dmc_autostore ###
 
-This module contains a data-storage manager which makes saving application data painlessly easy simply because it doesn't have an API! Instead, any modifications which you make to your data structure will trigger the save mechanism. Super simple!!
+This module contains a data-storage manager which makes saving application data painlessly easy, simply because it doesn't have an API! Instead, any modifications which you make to your data structure will trigger the save mechanism. Super simple!!
 
 `dmc_autostore` has these features:
 
@@ -121,7 +125,8 @@ http://docs.davidmccuskey.com/display/docs/dmc_nicenet.lua
 
 
 
-### dmc_objects.lua ###
+<a name="dmc_objects"></a>
+### Module: dmc_objects ###
 
 This file contains several methods and object classes which together form an object-oriented framework to use when programming in Lua with Corona SDK.  _**Though it's not just for Corona - the top-level object classes can be used when developing software in plain Lua.**_
 
@@ -161,11 +166,7 @@ When doing OOP, these classes provide:
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_objects
-
-API: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
-
-Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
+http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
 
 
 **Examples**
@@ -235,7 +236,8 @@ Examples which show how to use the `dmc_sockets` library can be found in the fol
 
 
 
-### Module dmc_states ###
+<a name="dmc_states"></a>
+### Module: dmc_states ###
 
 `dmc_states` is a Lua module which helps to implement the State Machine design pattern. It can be used in Lua projects outside of Corona.
 
