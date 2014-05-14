@@ -964,6 +964,33 @@ end
 function CoronaBase:scale( ... )
 	self.view:scale( ... )
 end
+
+
+CoronaBase.TopLeftReferencePoint = { 0, 0 }
+CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
+CoronaBase.TopRightReferencePoint = { 1, 0 }
+CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
+CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
+CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
+CoronaBase.BottomLeftReferencePoint = { 0, 1 }
+CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
+CoronaBase.BottomRightReferencePoint = { 1, 1 }
+
+
+--
+--
+function CoronaBase:setAnchor( ... )
+	local args = {...}
+	if type( args[2] ) == 'table' then
+		self.view.anchorX, self.view.anchorY = unpack( args[2] )
+	end
+	if type( args[2] ) == 'number' then
+		self.view.anchorX = args[2]
+	end
+	if type( args[3] ) == 'number' then
+		self.view.anchorY = args[3]
+	end
+end
 function CoronaBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
 	self.view:setMask( ... )
