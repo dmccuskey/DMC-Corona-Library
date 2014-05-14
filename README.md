@@ -35,6 +35,10 @@ For more information regarding installation, read the [online docs](http://docs.
 
   Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
 
+* [dmc_kompatible](#dmc_kompatible)
+
+  Make Corona SDK G1 code run in G2. [Read more...](#dmc_kompatible)
+
 * [dmc_sockets](#dmc_sockets)
 
   Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
@@ -126,6 +130,22 @@ The module will help with:
 **Documentation**
 
 http://docs.davidmccuskey.com/display/docs/dmc_nicenet.lua
+
+
+
+<a name="dmc_kompatible"></a>
+### Module: dmc_kompatible ###
+
+A module which allows your legacy Corona Graphics 1.0 code to run in Corona Graphics 2.0.
+
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_kompatible.lua
+
+**Examples**
+
+There are examples in the folder `examples/dmc_kompatible/` which show how to use the `dmc_kompatible` library.
 
 
 
