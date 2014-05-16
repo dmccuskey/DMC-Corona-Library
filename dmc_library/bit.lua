@@ -70,7 +70,18 @@ dmc_lib_info = dmc_lib_data.dmc_library
 dmc_lib_location = dmc_lib_info.location
 
 
-return require( dmc_lib_func.find('libs.bit.numberlua') )
+
+--====================================================================--
+-- Bit Library Import
+--====================================================================--
 
 
--- return require 'dmc_library.libs.bit.numberlua'.bit
+
+local has_bitOp, bitOp = pcall( require, 'plugin.bit' )
+if has_bitOp then
+	print("dmc_library:: Loading faster bitOp plugin")
+	return bitOp
+else
+	print("dmc_library:: Loading slower bitOp library")
+	return require( dmc_lib_func.find('libs.bit.numberlua') )
+end
