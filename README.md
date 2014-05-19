@@ -70,6 +70,10 @@ The library gives a lot of flexibility where it is stored in your project. For m
 
   Miscellaneious utility functions. [Read more...](#dmc_utils)
 
+* [dmc_wamp](#dmc_wamp)
+
+  WAMP (http://wamp.ws) module for the Corona SDK. [Read more...](#dmc_wamp)
+
 * [dmc_websockets](#dmc_websockets)
 
   WebSocket module for the Corona SDK. [Read more...](#dmc_websockets)
@@ -317,6 +321,27 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
 **Examples**
 
 There are examples in the folder `examples/dmc_trajectory/` which show how to use the `dmc_trajectory` library.
+
+
+
+<a name="dmc_wamp"></a>
+### Module: dmc_wamp ###
+
+This module implements WAMP ([Web Application Messaging Protocol](http://wamp.ws))for the Corona SDK.
+
+* Lua module for WAMP _clients_ in Corona SDK
+* Supports [WAMP v2](https://github.com/tavendo/WAMP/blob/master/spec/README.md])
+* Supports roles `Caller` and `Subscriber`
+* Supports TLS (secure WebSocket) (coming soon)
+* Supports JSON serializer
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+
+**Examples**
+
+There are examples in the folder `examples/dmc_wamp/` which show how to use the `dmc_wamp` module.
 
 
 
