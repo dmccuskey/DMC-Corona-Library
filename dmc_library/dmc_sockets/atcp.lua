@@ -484,7 +484,8 @@ end
 
 
 function ATCPSocket:_closeSocketDispatch( evt )
-	-- print( 'ATCPSocket:_closeSocketDispatch' )
+	-- print( 'ATCPSocket:_closeSocketDispatch', evt )
+	evt.type = self.CONNECT
 	if self._onConnect then self._onConnect( evt ) end
 end
 
