@@ -1,13 +1,23 @@
 # Overview #
 
-The DMC Corona Library is a collection of classes and utilities for use with Lua and Corona SDK.
+The DMC Corona Library is collection of classes and utilities for use with Lua and Corona SDK. As it has grown, so has their dependency on each other, so it's best to use the library as a single unit.
+
+**Documentation & Examples**
+
+There are examples and documentation available. Look in the `examples` folder for a listing of modules. Each example can be run directly in the Corona SDK. Documentation is online at: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
+
+If you have questions or comments you can either:
+* post to the Corona forums: http://forums.coronalabs.com
+* send me an email: dmc-library at davidmccuskey com
+
+If you have any issues, please post them here on github: https://github.com/dmccuskey/DMC-Corona-Library/issues
 
 
-Main Library Documentation: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
 
 ## Note ##
 
 I'm currently re-organizing the library so that *all* modules go inside of the folder `dmc_library`. If the modules aren't there yet, know that they soon will be.
+
 
 
 ## Installation ##
@@ -28,11 +38,9 @@ For more information regarding installation, read the [online docs](http://docs.
 ## Current Modules ##
 
 * [dmc_autostore](#dmc_autostore)
-
   Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
 * [dmc_objects](#dmc_objects)
-
   Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
 
 * [dmc_kompatible](#dmc_kompatible)
@@ -324,7 +332,7 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 
 **Examples**
 
-There are examples in the folder `examples/dmc_websockets/` which show how to use the `dmc_websockets` library.
+There are examples in the folder `examples/dmc_websockets/` which show how to use the `dmc_websockets` module.
 
 
 
