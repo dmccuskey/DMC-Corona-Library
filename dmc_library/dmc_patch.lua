@@ -38,8 +38,12 @@ local VERSION = "0.1.0"
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Library
 --====================================================================--
+
+
+--====================================================================--
+-- Boot Support Methods
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -69,10 +73,8 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
 local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
@@ -107,15 +109,14 @@ dmc_lib_info = dmc_lib_data.dmc_library
 dmc_lib_location = dmc_lib_info.location
 
 
---====================================================================--
--- DMC Library : DMC Patch
---====================================================================--
 
+--====================================================================--
+-- DMC Patch
+--====================================================================--
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_patch = dmc_lib_data.dmc_patch or {}
 
@@ -129,16 +130,15 @@ local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local Utils = require( dmc_lib_func.find('dmc_utils') )
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local gRequire = _G.require -- save copy
+
 
 
 --====================================================================--
@@ -146,10 +146,8 @@ local gRequire = _G.require -- save copy
 --====================================================================--
 
 
-
 --====================================================================--
---== Patch to create Python-style string formatting
-
+--== Python-style string formatting
 
 if dmc_patch_data.string_formatting_active == true then
 	getmetatable("").__mod = Utils.stringFormatting
