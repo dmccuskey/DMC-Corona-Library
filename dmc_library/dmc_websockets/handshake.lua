@@ -39,10 +39,9 @@ WebSocket support adapted from:
 --]]
 
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 --====================================================================--
