@@ -5,7 +5,6 @@
 -- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
 --====================================================================--
 
-
 --[[
 
 Copyright (C) 2011-2014 David McCuskey. All Rights Reserved.
@@ -37,8 +36,12 @@ local VERSION = "1.0.0"
 
 
 --====================================================================--
--- DMC Library Support Methods
+-- DMC Library
 --====================================================================--
+
+
+--====================================================================--
+-- Boot Support Methods
 
 local Utils = {}
 
@@ -68,10 +71,8 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
 local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
@@ -107,17 +108,13 @@ dmc_lib_location = dmc_lib_info.location
 
 
 
-
 --====================================================================--
--- DMC Library : DMC Utils
+-- DMC Utils
 --====================================================================--
-
-
 
 
 --====================================================================--
--- DMC Utils Config
---====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_utils = dmc_lib_data.dmc_utils or {}
 
@@ -128,11 +125,8 @@ local DMC_UTILS_DEFAULTS = {
 local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS )
 
 
-
 --====================================================================--
 -- Imports
---====================================================================--
-
 
 
 
@@ -141,20 +135,21 @@ local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS 
 --====================================================================--
 
 
--- volume, channel
+-- getAudioChannel( options )
+-- simplifies getting an audio channel from Corona SDK
+-- automatically sets volume and channel
+--
+-- @params opts table: with properties: volume, channel
+--
 function Utils.getAudioChannel( opts )
-
-	opts = opts == nil and {} or opts
+	opts = opts or {}
 	opts.volume = opts.volume == nil and 1.0 or opts.volume
 	opts.channel = opts.channel == nil and 1 or opts.channel
-
+	--==--
 	local ac = audio.findFreeChannel( opts.channel )
 	audio.setVolume( opts.volume, { channel=ac } )
-
 	return ac
-
 end
-
 
 
 
@@ -187,7 +182,6 @@ function Utils.getTransitionCompleteFunc( count, callback )
 	end
 	return func
 end
-
 
 
 
@@ -256,13 +250,12 @@ end
 
 
 
-
 --====================================================================--
 -- Image Functions
 --====================================================================--
 
 
---
+-- imageScale()
 -- container, image - table with width/height keys
 -- returns scale
 -- param.bind : 'inside', 'outside'
@@ -415,7 +408,6 @@ end
 
 
 
-
 --====================================================================--
 -- String Functions
 --====================================================================--
@@ -449,7 +441,6 @@ function Utils.stringFormatting( a, b )
 		return string.format(a, b)
 	end
 end
-
 
 
 
@@ -685,7 +676,6 @@ function Utils.tableLength( t )
 	for _, _ in pairs(t) do count = count + 1 end
 	return count
 end
-
 
 
 
