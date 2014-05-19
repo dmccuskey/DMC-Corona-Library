@@ -913,11 +913,11 @@ end
 
 -- _dispatchEvent
 --
-function Object:_dispatchEvent( e_type, data, params )
+function CoronaBase:_dispatchEvent( e_type, data, params )
 	-- print( "Object:_dispatchEvent ", e_type, data )
-
 	params = params or {}
 	if params.merge == nil then params.merge = false end
+	--==--
 
 	-- setup custom event
 	local e = {
