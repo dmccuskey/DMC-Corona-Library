@@ -6,9 +6,13 @@ The DMC Corona Library is collection of classes and utilities for use with Lua a
 
 There are examples and documentation available. Look in the `examples` folder for a listing of modules. Each example can be run directly in the Corona SDK. Documentation is online at: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
 
+**Questions or Comments**
+
 If you have questions or comments you can either:
 * post to the Corona forums: http://forums.coronalabs.com
 * send me an email: dmc-library at davidmccuskey com
+
+**Issues**
 
 If you have any issues, please post them here on github: https://github.com/dmccuskey/DMC-Corona-Library/issues
 
@@ -22,25 +26,24 @@ I'm currently re-organizing the library so that *all* modules go inside of the f
 
 ## Installation ##
 
-Copy the following items to your Corona project:
+For easy installation, copy the following items at the root-level of your Corona project:
 
-* Put `dmc_library_boot.lua` at the root-level of your project.
+* The entire `dmc_library` folder
+* `dmc_library_boot.lua`
+* `dmc_library.cfg`
 
-* Put `dmc_library.cfg` at the root-level of your project.
-
-* Put the entire `dmc_library` folder in your project where you want. By default it should be located at the root-level, but you can change the location by editing the `dmc_library.cfg` file.
-
-
-For more information regarding installation, read the [online docs](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
+The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more on how to [install the `dmc_library`](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
 
 
 
 ## Current Modules ##
 
 * [dmc_autostore](#dmc_autostore)
+
   Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
 * [dmc_objects](#dmc_objects)
+
   Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
 
 * [dmc_kompatible](#dmc_kompatible)
