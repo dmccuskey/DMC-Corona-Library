@@ -4,7 +4,7 @@ The DMC Corona Library is collection of classes and utilities for use with Lua a
 
 **Documentation & Examples**
 
-There are examples and documentation available. Look in the `examples` folder for a listing of modules. Each example can be run directly in the Corona SDK. Documentation is online at: http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library
+There are examples and documentation available. Look in the `examples` folder for a listing of modules. Each example can be run directly in the Corona SDK. Documentation is online at: [docs.davidmccuskey.com](http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library)
 
 **Questions or Comments**
 
