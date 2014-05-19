@@ -122,7 +122,8 @@ dmc_lib_data.dmc_patch = dmc_lib_data.dmc_patch or {}
 
 local DMC_PATCH_DEFAULTS = {
 	string_formatting_active=true,
-	advanced_require_active=false
+	advanced_require_active=false,
+	table_pop=true
 }
 
 local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS )
@@ -154,10 +155,20 @@ if dmc_patch_data.string_formatting_active == true then
 end
 
 
+--====================================================================--
+--== Python-style table pop() method
+
+if dmc_patch_data.table_pop == true then
+	table.pop = function( t, v )
+		local res = t[v]
+		t[v] = nil
+		return res
+	end
+end
+
 
 --====================================================================--
---== Patch for advanced require()
-
+--== Advanced require()
 
 local function init()
 
