@@ -325,11 +325,29 @@ function WebSocket:close()
 end
 
 
-
-
 --====================================================================--
 --== Private Methods
 
+function WebSocket:_onOpen()
+	-- print( "WebSocket:_onOpen" )
+	self:_dispatchEvent( self.ONOPEN )
+end
+
+-- msg: data, ftype
+function WebSocket:_onMessage( msg )
+	-- print( "WebSocket:_onMessage", msg )
+	self:_dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+end
+
+function WebSocket:_onClose()
+	-- print( "WebSocket:_onClose" )
+	self:_dispatchEvent( self.ONCLOSE )
+end
+
+function WebSocket:_onError( ecode, emsg )
+	-- print( "WebSocket:_onError", ecode, emsg )
+	self:_dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
+end
 
 
 function WebSocket:_doHttpConnect()
@@ -351,7 +369,8 @@ function WebSocket:_doHttpConnect()
 
 	callback = function( event )
 		if event.error then
-			self:_dispatchEvent( self.ONERROR, {error="failed to send the handshake request: " .. err })
+			self:_onError( -1, "failed to send the handshake request: " .. err )
+
 			self:_close( { reconnect=false } )
 		end
 	end
@@ -401,8 +420,7 @@ function WebSocket:_receiveFrame()
 	-- check current state
 
 	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-		local evt = { error=true, emsg="WebSocket is not connected" }
-		self:_dispatchEvent( WebSocket.ONERROR, evt, {merge=true} )
+		self:_onError( -1, "WebSocket is not connected" )
 	end
 
 	-- setup frame callbacks
@@ -412,7 +430,7 @@ function WebSocket:_receiveFrame()
 		local ftype, data = event.type, event.data
 
 		if not data and not str_find(err, ": timeout", 1, true) then
-			self:_dispatchEvent( WebSocket.ONERROR, {error=err} )
+			self:_onError( -1, err )
 
 		elseif ftype == 'continuation' then
 			print( 'TODO: frame', data, ftype, err )
@@ -420,7 +438,7 @@ function WebSocket:_receiveFrame()
 
 		elseif ftype == 'text' or ftype == 'binary' then
 			local msg = { data=data, type=ftype }
-			self:_dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+			self:_onMessage( msg )
 
 		elseif ftype == 'close' then
 			local code, reason = wsframe.decodeCloseFrameData( data )
@@ -466,7 +484,7 @@ function WebSocket:_sendFrame( msg )
 	local onFrameCallback = function( event )
 		-- print("received built frame: size", #event.frame )
 		if not event.frame then
-			self:_dispatchEvent( self.ONERROR, {error=event.emsg} )
+			self:_onError( -1, event.emsg )
 		else
 			-- process frame
 			local socketCallback = function( event )
@@ -737,7 +755,7 @@ function WebSocket:do_state_connected( params )
 
 	self:_processMessageQueue()
 
-	self:_dispatchEvent( self.ONOPEN )
+	self:_onOpen()
 
 end
 function WebSocket:state_connected( next_state, params )
@@ -747,6 +765,9 @@ function WebSocket:state_connected( next_state, params )
 
 	if next_state == WebSocket.STATE_CLOSING then
 		self:do_state_closing_connection( params )
+
+	elseif next_state == WebSocket.STATE_CLOSED then
+		self:do_state_closed( params )
 
 	else
 		print( "WARNING :: WebSocket:state_connected %s" % tostring( next_state ) )
@@ -813,7 +834,7 @@ function WebSocket:do_state_closed( params )
 
 	print( "dmc_websockets:: Server connection closed" )
 
-	self:_dispatchEvent( self.ONCLOSE, {} )
+	self:_onClose()
 
 end
 function WebSocket:state_closed( next_state, params )

@@ -98,10 +98,10 @@ local function createHttpRequest( params )
 		proto_header = ""
 
 	elseif type( protos ) == "table" then
-		proto_header = "Sec-WebSocket-Protocol: %s \r\n" % tconcat( protos, "," )
+		proto_header = tconcat( protos, "," )
 
 	else
-		proto_header = "Sec-WebSocket-Protocol: %s \r\n" % protos
+		proto_header = protos
 	end
 
 	key = generateKey()
@@ -111,9 +111,11 @@ local function createHttpRequest( params )
 		"GET %s HTTP/1.1\r\n" % path,
 		"Upgrade: websocket\r\n",
 		"Host: %s:%s\r\n" % { host, port },
-		"Sec-WebSocket-Key: %s%s\r\n" % { key, proto_header },
+		"Sec-WebSocket-Key: %s\r\n" % key ,
+		"Sec-WebSocket-Protocol: %s\r\n" % proto_header,
 		"Sec-WebSocket-Version: 13\r\n",
-		"Connection: Upgrade\r\n\r\n"
+		"Connection: Upgrade\r\n",
+		"\r\n"
 	}
 
 	return tconcat( req_t, "" )
