@@ -14,7 +14,7 @@ If you have questions or comments you can either:
 
 **Issues**
 
-If you have any issues, please post them here on github: https://github.com/dmccuskey/DMC-Corona-Library/issues
+If you have any issues, please post them here on github: [dmc_library issues](https://github.com/dmccuskey/DMC-Corona-Library/issues)
 
 
 
@@ -32,7 +32,7 @@ For easy installation, copy the following items at the root-level of your Corona
 * `dmc_library_boot.lua`
 * `dmc_library.cfg`
 
-The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more on how to [install the `dmc_library`](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
+The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more online on how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
 
 
 
