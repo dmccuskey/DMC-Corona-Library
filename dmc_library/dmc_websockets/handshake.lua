@@ -46,7 +46,6 @@ local VERSION = "0.2.0"
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local mime = require 'mime'
 local patch = require( dmc_lib_func.find('dmc_patch') )
@@ -54,7 +53,6 @@ local patch = require( dmc_lib_func.find('dmc_patch') )
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local mbase64_encode = mime.b64
 local mrandom = math.random
@@ -64,8 +62,6 @@ local tconcat = table.concat
 
 --====================================================================--
 -- Support Functions
---====================================================================--
-
 
 local function generateKey( params )
 
@@ -123,7 +119,12 @@ end
 
 local function checkHttpResponse( params )
 	-- print( "handshake:checkHttpResponse" )
-
+	params = params or {}
+	--==--
+	-- TODO: check response
+	-- for i,v in ipairs( params.data ) do
+	-- 	print(i,v)
+	-- end
 	return true
 end
 

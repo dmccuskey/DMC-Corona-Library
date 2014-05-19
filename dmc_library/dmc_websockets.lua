@@ -39,11 +39,9 @@ WebSocket support adapted from:
 --]]
 
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.2.0"
-
 
 
 --====================================================================--
@@ -139,7 +137,6 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSO
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local mime = require 'mime'
 local Objects = require( dmc_lib_func.find('dmc_objects') )
@@ -158,7 +155,6 @@ local wshandshake = require( dmc_lib_func.find('dmc_websockets.handshake') )
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -171,6 +167,7 @@ local encode_base64 = mime.b64
 local rand = math.random
 local char = string.char
 local concat = table.concat
+
 
 
 --====================================================================--
@@ -224,7 +221,6 @@ WebSocket.ONOPEN = 'onopen'
 WebSocket.ONMESSAGE = 'onmessage'
 WebSocket.ONERROR = 'onerror'
 WebSocket.ONCLOSE = 'onclose'
-
 
 
 --====================================================================--
@@ -286,10 +282,8 @@ end
 
 
 
-
 --====================================================================--
 --== Public Methods
-
 
 function WebSocket.__setters:throttle( value )
 	-- print( 'WebSocket.__setters:throttle', value )
@@ -391,7 +385,7 @@ function WebSocket:_handleHttpRespose()
 	local callback = function( event )
 		-- print( "WebSocket:_handleHttpRespose callback" )
 		if not event.data then
-			print( event.emsg )
+			-- print( event.emsg )
 			self:_close( { reconnect=false } )
 
 		else
@@ -579,7 +573,6 @@ function WebSocket:_sendMessage( msg )
 end
 
 
-
 function WebSocket:_addMessageToQueue( msg )
 	-- print( "WebSocket:_addMessageToQueue" )
 	table.insert( self._msg_queue, msg )
@@ -594,11 +587,8 @@ function WebSocket:_processMessageQueue()
 end
 
 
-
-
---======================================================--
+--====================================================================--
 --== START: STATE MACHINE
-
 
 function WebSocket:state_create( next_state, params )
 	-- print( "WebSocket:state_create >>", next_state )
@@ -851,17 +841,13 @@ function WebSocket:state_closed( next_state, params )
 
 end
 
-
 --== END: STATE MACHINE
---======================================================--
-
+--====================================================================--
 
 
 
 --====================================================================--
 --== Event Handlers
-
-
 
 function WebSocket:_socketEvent_handler( event )
 	-- print( "WebSocket:_socketEvent_handler", event.type )
@@ -876,7 +862,6 @@ function WebSocket:_socketEvent_handler( event )
 		else
 			self:gotoState( WebSocket.STATE_CLOSED )
 		end
-
 
 	elseif event.type == sock.READ then
 
