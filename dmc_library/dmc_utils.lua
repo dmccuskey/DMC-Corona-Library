@@ -292,6 +292,75 @@ end
 
 
 
+--====================================================================--
+-- JSON/Lua Functions
+--====================================================================--
+
+
+--[[
+These functions fix the issue that arises when working with JSON and
+the duality of tables/arrays in Lua.
+When encoding Lua structures to JSON, empty tables will be converted
+to empty arrays ( {} => [] )
+
+This is an issue for data correctness and certain Internet protocols (WAMP)
+--]]
+
+-- encodeLuaTable( table )
+-- checks table structure. if empty, it will embellish it with data
+-- besure to call encodeLuaTable() after it has been encoded
+--
+-- @params table_ref table reference to table structure
+--
+function Utils.encodeLuaTable( table_ref )
+	-- print( "Utils.encodeLuaTable", table_ref )
+	if table_ref == nil or Utils.tableSize( table_ref ) == 0 then
+		table_ref = { ['__HACK__']='__PAD__' }
+	end
+	return table_ref
+end
+
+-- decodeLuaTable( encoded_json )
+-- removes any data embellishments added with encodeLuaTable().
+--
+-- @params encoded_json string of encoded JSON
+--
+function Utils.decodeLuaTable( encoded_json )
+	-- print( "Utils.decodeLuaTable", encoded_json )
+	return string.gsub( encoded_json, '"__HACK__":"__PAD__"', '' )
+end
+
+
+--[[
+These functions fix the issue that arises when working with JSON and
+the large numbers in Lua.
+Large Lua numbers (integers) will always be represented by exponential notation
+435985071997801 => 4.359850719978e+14
+
+This is an issue for data correctness and certain Internet protocols (WAMP)
+--]]
+
+-- encodeLuaInteger( integer )
+-- will encode the integer into a string
+--
+-- @params integer large integer number
+--
+function Utils.encodeLuaInteger( integer )
+	-- print( "Utils.encodeLuaInteger", integer )
+	return string.format("<<<%.0f>>>", integer )
+end
+
+-- decodeLuaInteger( integer )
+-- will remove encoding from encodeLuaInteger()
+--
+-- @params integer large integer number
+--
+function Utils.decodeLuaInteger( encoded_json )
+	-- print( "Utils.decodeLuaTable", encoded_json )
+	return string.gsub( encoded_json, '"<<<(.-)>>>"', '%1' )
+end
+
+
 
 --====================================================================--
 -- Math Functions
