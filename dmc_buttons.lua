@@ -33,7 +33,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.8.1"
+local VERSION = "0.8.2"
 
 
 -- =====================================================
@@ -157,13 +157,22 @@ function ButtonBase:_createView()
 		self:insert( group, true )
 		group:addEventListener( "touch", self )
 
-
 		-- setup image
-		img = display.newImageRect( grp_info.source,
+		if grp_info.sheet then
+			img = display.newImage( grp_info.sheet, grp_info.index )
+		else
+			img = display.newImageRect( grp_info.source,
 					grp_info.width,
 					grp_info.height )
+		end
+		if grp_info.fillColor then
+			local color = grp_info.fillColor
+			img:setFillColor(color[1], color[2], color[3])
+		end
 		if img == nil then
 			print("\nERROR: image rect source '" .. tostring( grp_info.source ) .. "'\n\n" )
+		else
+			img.x, img.y = grp_info.xOffset, grp_info.yOffset
 		end
 		group:insert( img )
 
@@ -272,7 +281,6 @@ function PushButton:_init( options )
 	local options = options or {}
 	local img_info, img_data = self._img_info, self._img_data
 
-
 	-- == define our properties ====================
 
 	-- these are display objects
@@ -311,6 +319,25 @@ function PushButton:_init( options )
 	end
 	if options.downSrc then
 		img_info.down.source = options.downSrc
+	end
+	if options.sheet then
+		img_info.up.sheet = options.sheet
+		img_info.down.sheet = options.sheet
+	end
+	if options.defaultIndex then
+		img_info.up.index = options.defaultIndex
+		img_info.down.index = options.defaultIndex
+	end
+	if options.upIndex then
+		img_info.up.index = options.upIndex
+	end
+	if options.downIndex then
+		img_info.down.index = options.downIndex
+	end
+
+	if options.fillColor then
+		img_info.up.fillColor = options.fillColor
+		img_info.down.fillColor = options.fillColor
 	end
 
 	if options.style then
@@ -500,6 +527,25 @@ function BinaryButton:_init( options )
 	if options.activeSrc then
 		img_info.active.source = options.activeSrc
 	end
+	if options.sheet then
+		img_info.active.sheet = options.sheet
+		img_info.inactive.sheet = options.sheet
+	end
+	if options.defaultIndex then
+		img_info.active.index = options.defaultIndex
+		img_info.inactive.index = options.defaultIndex
+	end
+	if options.activeIndex then
+		img_info.active.index = options.activeIndex
+	end
+	if options.inactiveIndex then
+		img_info.inactive.index = options.inactiveIndex
+	end
+	
+	if options.fillColor then
+		img_info.active.fillColor = options.fillColor
+		img_info.inactive.fillColor = options.fillColor
+	end
 
 	if options.style then
 		Utils.extend( options.style, img_info.active.style )
@@ -633,7 +679,6 @@ function BinaryButton:touch( e )
 end
 
 function BinaryButton:_setButtonState( value )
-
 	-- no need to update if the same state
 	if self.state == value then return end
 
