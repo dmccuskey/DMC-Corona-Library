@@ -1,7 +1,7 @@
 --====================================================================--
--- WAMP RPC / PubSub
+-- WAMP Basic Publish/Subscribe
 --
--- Basic test for the WAMP library
+-- Basic Pub/Sub test for the WAMP library
 --
 -- by David McCuskey
 --
@@ -32,42 +32,6 @@ local wamp -- ref to WAMP object
 
 --====================================================================--
 -- Support Functions
-
-local doWampRPC = function()
-	print( ">> WAMP:doWampRPC" )
-
-	local procedure = 'com.timeservice.now'
-
-	local params = {
-		-- args = {},
-		-- kwargs = {},
-		-- timeout = 2000,
-		onResult=function( e )
-			print( ">> WAMP RPC::onResult handler" )
-			if e.data then
-				print( '  data', e.data )
-			end
-			if e.results then
-				for i,v in ipairs( e.results ) do
-					print( '  results', i, v )
-				end
-			end
-			if e.kwresults then
-				for k,v in pairs( e.kwresults ) do
-					print( '  kwresults', k, v )
-				end
-			end
-		end,
-		onProgress=function(e) end,
-		onError=function(e) end
-	}
-	if wamp.is_connected then
-		local deferred = wamp:call( procedure, params )
-	end
-	-- deferred:cancel()
-
-end
-
 
 local doWampPubSub = function()
 	print( ">> WAMP:doWampPubSub" )
@@ -115,7 +79,6 @@ local wampEvent_handler = function( event )
 
 	if event.type == wamp.ONCONNECT then
 		print( ">> We have WAMP Connect" )
-		-- doWampRPC()
 		doWampPubSub()
 
 	elseif event.type == wamp.ONDISCONNECT then
