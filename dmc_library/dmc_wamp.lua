@@ -182,8 +182,8 @@ function Wamp:_init( params )
 
 	--== Sanity Check ==--
 
-	if not self.is_intermediate and ( not params.realm ) then
-		error( "Wamp: requires parameter 'realm'" )
+	if not self.is_intermediate then
+		assert( params.realm, "Wamp: requires parameter 'realm'" )
 	end
 
 	--== Create Properties ==--
@@ -191,21 +191,12 @@ function Wamp:_init( params )
 	self._realm = params.realm
 	self._protocols = params.protocols or { 'wamp.2.json' }
 
-
 	--== Object References ==--
 
 	self._session = nil -- a WAMP session object
 	self._serializer = nil -- a WAMP session object
 
 end
-
-
--- function Wamp:_initComplete()
--- 	-- print( "Wamp:_initComplete" )
--- 	self:superCall( "_initComplete" )
--- 	--==--
-
--- end
 
 --== END: Setup DMC Objects
 --====================================================================--
@@ -215,13 +206,17 @@ end
 --====================================================================--
 --== Public Methods
 
+-- is_connected, getter, boolean
+--
 function Wamp.__getters:is_connected()
 	-- print( "Wamp.__getters:is_connected" )
 	return ( self._session ~= nil )
 end
 
 
--- @params params table of options:
+-- call()
+-- @param procedure string name of RPC to invoke
+-- @param params table of options:
 -- args - array
 -- kwargs - table
 -- onResult - callback
@@ -242,22 +237,24 @@ function Wamp:call( procedure, params )
 	return self._session:call( procedure, params )
 end
 
-
+-- register()
+-- @param handler callback/object to handle Calls
+-- @param params table of various parameters
+--
 function Wamp:register( handler, params )
-	print( "Wamp:register", handler )
+	-- print( "Wamp:register", handler )
 	if params.pkeys or params.disclose_caller then
 		params.options = Types.RegisterOptions:new( params )
 	end
 	return self._session:register( handler, params )
 end
 
-function Wamp:yield( topic, callback )
-	print( "Wamp:yield", topic )
-	-- return self._session:subscribe( topic, callback )
-end
-
+-- unregister()
+-- @param handler callback/object to handle Calls (same item as register())
+-- @param params table of various parameters
+--
 function Wamp:unregister( handler, params )
-	print( "Wamp:unregister", handler )
+	-- print( "Wamp:unregister", handler )
 
 	try{
 		function()
@@ -266,7 +263,6 @@ function Wamp:unregister( handler, params )
 
 		catch{
 			function(e)
-				print( e, type(e))
 				if type(e)=='string' then
 					error( e )
 				elseif e:isa( Error.ProtocolError ) then
@@ -284,20 +280,64 @@ function Wamp:unregister( handler, params )
 		}
 	}
 
-	-- return self._session:unsubscribe( topic, callback )
 end
 
 
--- topic
--- callback
-function Wamp:subscribe( topic, callback )
+-- publish()
+-- @param topic string of "channel" to publish to
+-- @param params table of various parameters
+-- args
+-- kwargs
+-- onSuccess callback
+-- onError callback
+-- options table of options
+-- acknowledge boolean
+--
+function Wamp:publish( topic, params )
+	-- print( "Wamp:publish", topic )
+
+	try{
+		function()
+			self._session:publish( topic, params )
+		end,
+
+		catch{
+			function(e)
+				if type(e)=='string' then
+					error( e )
+				elseif e:isa( Error.ProtocolError ) then
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR,
+						reason="WAMP Protocol Error"
+					}
+				else
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_INTERNAL_ERROR,
+						reason="WAMP Internal Error ({})"
+					}
+				end
+			end
+		}
+	}
+
+end
+
+-- subscribe()
+-- @param topic string of "channel" to subscribe to
+-- @param handler function callback
+--
+function Wamp:subscribe( topic, handler )
 	-- print( "Wamp:subscribe", topic )
-	return self._session:subscribe( topic, callback )
+	return self._session:subscribe( topic, handler )
 end
 
-function Wamp:unsubscribe( topic, callback )
+-- unsubscribe()
+-- @param topic string of "channel" to subscribe to
+-- @param handler function callback, same as in subscribe()
+--
+function Wamp:unsubscribe( topic, handler )
 	-- print( "Wamp:unsubscribe", topic )
-	return self._session:unsubscribe( topic, callback )
+	return self._session:unsubscribe( topic, handler )
 end
 
 
@@ -367,6 +407,9 @@ end
 function Wamp:_onMessage( message )
 	-- print( "Wamp:_onMessage", message )
 
+	-- local msg = self._serializer:unserialize( message.data )
+	-- self._session:onMessage( msg, onError )
+
 	try{
 		function()
 			local msg = self._serializer:unserialize( message.data )
@@ -375,7 +418,6 @@ function Wamp:_onMessage( message )
 
 		catch{
 			function(e)
-				print( e, type(e))
 				if type(e)=='string' then
 					error( e )
 				elseif e:isa( Error.ProtocolError ) then

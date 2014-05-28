@@ -60,7 +60,7 @@ local LOCAL_DEBUG = false
 
 local tinsert = table.insert
 
-local Promise, Deferred, Failure
+local Promise, Deferred, Failure -- forward declaration
 
 
 --====================================================================--
@@ -112,6 +112,9 @@ Promise.STATE_RESOLVED = 'resolved'
 Promise.STATE_REJECTED = 'rejected'
 
 
+--====================================================================--
+--== Start: Setup Lua Objects
+
 function Promise:_init( params )
 	self:superCall( "_init", params )
 	--==--
@@ -125,6 +128,13 @@ function Promise:_init( params )
 
 end
 
+--== END: Setup Lua Objects
+--====================================================================--
+
+
+
+--====================================================================--
+--== Public Methods
 
 function Promise.__getters:state()
 	return self._state
@@ -132,13 +142,13 @@ end
 
 
 function Promise:resolve( ... )
-	print("PROMISE  RESOLVED")
+	-- print("Promise:resolve")
 	self._state = Promise.STATE_RESOLVED
 	self._result = {...}
-	print( #self._result )
 	self:_execute( self._done_cbs, ... )
 end
 function Promise:reject( ... )
+	-- print("Promise:reject")
 	self._state = Promise.STATE_REJECTED
 	self._reason = {...}
 	self:_execute( self._fail_cbs, ... )
@@ -146,18 +156,18 @@ end
 
 
 function Promise:done( callback )
+	-- print("Promise:done")
 	if self._state == Promise.STATE_RESOLVED then
-		print("PROISE DONE RESOLVED")
-		print( #self._result )
 		callback( unpack( self._result ) )
 	else
 		self:_addCallback( self._done_cbs, callback )
 	end
 end
 function Promise:progress( ... )
-	error("not implemented")
+	error("Promise:progress: not yet implemented")
 end
 function Promise:fail( errback )
+	-- print("Promise:fail")
 	if self._state == Promise.STATE_REJECTED then
 		errback( unpack( self._reason ) )
 	else
@@ -166,12 +176,15 @@ function Promise:fail( errback )
 end
 
 
+--====================================================================--
+--== Private Methods
+
 function Promise:_addCallback( list, func )
 	tinsert( list, #list+1, func )
 end
 
 function Promise:_execute( list, ... )
-	print("executing list ")
+	-- print("Promise:_execute")
 	for i=1,#list do
 		list[i]( ... )
 	end
@@ -187,11 +200,22 @@ Deferred = inheritsFrom( ObjectBase )
 Deferred.NAME = "Deferred Instance"
 
 
+--====================================================================--
+--== Start: Setup Lua Objects
+
 function Deferred:_init( params )
 	self:superCall( "_init", params )
 	--==--
 	self._promise = Promise:new()
 end
+
+--== END: Setup Lua Objects
+--====================================================================--
+
+
+
+--====================================================================--
+--== Public Methods
 
 function Deferred:callback( ... )
 	self._promise:resolve( ... )
@@ -209,6 +233,11 @@ function Deferred:addCallbacks( callback, errback )
 	if errback then promise:fail( errback ) end
 end
 
+
+
+--====================================================================--
+-- Promise Module Facade
+--====================================================================--
 
 
 return {

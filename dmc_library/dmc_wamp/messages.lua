@@ -360,10 +360,148 @@ end
 -- Publish Message Class
 --====================================================================--
 
+
+
+--[[
+Format:
+* `[PUBLISH, Request|id, Options|dict, Topic|uri]`
+* `[PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list]`
+* `[PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list, ArgumentsKw|dict]`
+--]]
+
+local Publish = inheritsFrom( Message )
+Publish.NAME = "Publish Message Class"
+
+Publish.TYPE = 16  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Publish:_init( params )
+	-- print( "Publish:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.topic = params.topic
+	self.args = params.args
+	self.kwargs = params.kwargs
+
+	-- clean up args
+	local opts = params.options or {}
+	self.options = {
+		acknowledge=opts.acknowledge,
+		exclude_me=opts.exclude_me,
+		exclude=opts.exclude,
+		eligible=opts.eligible,
+		disclose_me=opts.disclose_me
+	}
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- -- Static function
+-- function Publish.parse( wmsg )
+-- 	print( "Publish.parse", wmsg )
+-- 	Utils.print( wmsg )
+
+-- 	local p = {
+-- 		session = wmsg[2],
+-- 		roles = wmsg[3]
+-- 	}
+-- 	return Welcome:new( p )
+
+-- end
+
+
+function Publish:marshal()
+	-- print( "Publish:marshal" )
+
+	local pub_id = Utils.encodeLuaInteger( self.request )
+	local options = Utils.encodeLuaTable( self.options )
+	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+	if self.kwargs then
+		return { Publish.TYPE, pub_id, options, self.topic, self.args, self.kwargs }
+	elseif self.args then
+		return { Publish.TYPE, pub_id, options, self.topic, self.args }
+	else
+		return { Publish.TYPE, pub_id, options, self.topic }
+	end
+
+end
+
+
+
 --====================================================================--
 -- Published Message Class
 --====================================================================--
 
+
+--[[
+Format:
+* `[PUBLISHED, PUBLISH.Request|id, Publication|id]`
+--]]
+
+local Published = inheritsFrom( Message )
+Published.NAME = "Published Message"
+
+Published.TYPE = 17  -- wamp message code
+
+function Published:_init( params )
+	-- print( "Published:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	assert( params.request, "Published Message: missing request" )
+	assert( params.publication, "Published Message: missing publication" )
+
+	self.request = params.request
+	self.publication = params.publication
+
+end
+
+function Published.parse( wmsg )
+	-- print( "Published.parse", wmsg )
+
+	assert( #wmsg > 0 and wmsg[1] == Published.TYPE )
+
+	if #wmsg ~= 3 then
+		error("wrong length, Published")
+	end
+
+	-- TODO: check these
+	local request = wmsg[2]
+	local publication = wmsg[3]
+
+	return Published:new{
+		request=request,
+		publication=publication
+	}
+
+end
+
+function Published:marshal()
+	-- print( "Published:marshal" )
+	return { Published.TYPE, self.request, self.publication }
+end
 
 
 
@@ -1390,6 +1528,8 @@ MessageFactory.Hello = Hello
 MessageFactory.Welcome = Welcome
 MessageFactory.Goodbye = Goodbye
 MessageFactory.Error = Error
+MessageFactory.Publish = Publish
+MessageFactory.Published = Published
 MessageFactory.Subscribe = Subscribe
 MessageFactory.Subscribed = Subscribed
 MessageFactory.Unsubscribe = Unsubscribe
@@ -1412,6 +1552,8 @@ MessageFactory.map = {
 	[Welcome.TYPE] = Welcome,
 	[Goodbye.TYPE] = Goodbye,
 	[Error.TYPE] = Error,
+	[Publish.TYPE] = Publish,
+	[Published.TYPE] = Published,
 	[Subscribe.TYPE] = Subscribe,
 	[Subscribed.TYPE] = Subscribed,
 	[Unsubscribe.TYPE] = Unsubscribe,

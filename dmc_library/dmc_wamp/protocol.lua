@@ -109,6 +109,13 @@ end
 -- Publication Class
 --====================================================================--
 
+local Publication = inheritsFrom( ObjectBase )
+
+function Publication:_init( params )
+	self:superCall( "_init", params )
+	--==--
+	self.id = params.publication_id
+end
 
 
 --====================================================================--
@@ -151,7 +158,7 @@ function Registration:_init( params )
 end
 
 function Registration:unsubscribe()
-	print( "Registration:unsubscribe" )
+	-- print( "Registration:unsubscribe" )
 	return self.session:_unregister( self )
 end
 
@@ -408,7 +415,15 @@ function Session:onMessage( msg )
 	--== Published Message
 
 	elseif msg:isa( MessageFactory.Published ) then
-		error( "not implemented" )
+
+		if not self._publish_reqs[ msg.request ] then
+			error( ProtocolError( "PUBLISHED received for non-pending request ID" ) )
+		end
+
+		local pub_req = table.pop( self._publish_reqs, msg.request )
+		local def, opts = unpack( pub_req )
+
+		self:_resolve_future( def, Publication:new({ publication_id=msg.publication }) )
 
 
 	--== Subscribed Message
@@ -666,7 +681,37 @@ end
 --
 function Session:publish( topic, params )
 	-- print( "Session:publish" )
-	error( "Session:publish:: not implemented")
+	params = params or {}
+	--==--
+
+	assert( topic )
+
+	if not self._transport then
+		error( TransportError() )
+	end
+
+	local options = params.options or {}
+	local request = wamp_utils.id()
+	local msg = MessageFactory.Publish:new{
+		request=request,
+		topic=topic,
+		options=options,
+		args=params.args,
+		kwargs=params.kwargs
+	}
+
+	if options.acknowledge == true then
+		local def = self:_create_future()
+		if params.onSuccess or params.onError then
+			def:addCallbacks( params.onSuccess, params.onError )
+		end
+		self._publish_reqs[ request ] = { def, options }
+		self._transport:send( msg )
+	else
+		self._transport:send( msg )
+		return
+
+	end
 end
 
 
@@ -750,7 +795,8 @@ function Session:call( procedure, params )
 		request = request,
 		procedure = procedure,
 		args = params.args,
-		kwargs = params.kwargs
+		kwargs = params.kwargs,
+		--
 	}
 	msg = MessageFactory.Call:new( p )
 	self._transport:send( msg )
@@ -761,7 +807,7 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ICallee.register`
 --
 function Session:register( endpoint, params )
-	print( "Session:register", endpoint )
+	-- print( "Session:register", endpoint )
 	params = params or {}
 	params.options = params.options or {}
 	--==--
@@ -771,7 +817,7 @@ function Session:register( endpoint, params )
 	end
 
 	local function _register( obj, endpoint, procedure, options )
-		print( "_register" )
+		-- print( "_register" )
 		local request, p, msg
 
 		request = wamp_utils.id()
