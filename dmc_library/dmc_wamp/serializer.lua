@@ -99,7 +99,7 @@ function Serializer:unserialize( payload )
 	msg_class = MessageFactory.map[ raw_msg[1] ]
 
 	if not msg_class then
-		error( "missing class type", raw_msg[1] )
+		error( "missing msg class, msg: " .. tostring( payload ) )
 	else
 		msg = msg_class.parse( raw_msg )
 	end
