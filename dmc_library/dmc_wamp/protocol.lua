@@ -50,9 +50,13 @@ local WebSocket = require( dmc_lib_func.find('dmc_websockets') )
 
 local MessageFactory = require( dmc_lib_func.find('dmc_wamp.messages') )
 local Role = require( dmc_lib_func.find('dmc_wamp.roles') )
+local FutureMixin = require( dmc_lib_func.find('dmc_wamp.future_mix') )
 
 local wamp_utils = require( dmc_lib_func.find('dmc_wamp.utils') )
 local wtypes = require( dmc_lib_func.find('dmc_wamp.types') )
+
+local Errors = require( dmc_lib_func.find('dmc_wamp.exception') )
+local ProtocolError = Errors.ProtocolErrorFactory
 
 
 --====================================================================--
@@ -64,6 +68,23 @@ local ObjectBase = Objects.ObjectBase
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
+
+
+
+--====================================================================--
+-- Endpoint Class
+--====================================================================--
+
+local Endpoint = inheritsFrom( ObjectBase )
+
+function Endpoint:_init( params )
+	self:superCall( "_init", params )
+	--==--
+	self.obj = params.obj
+	self.fn = params.fn
+	self.procedure = params.procedure
+	self.options = params.options
+end
 
 
 
@@ -81,6 +102,12 @@ function Handler:_init( params )
 	self.topic = params.topic
 	self.details_arg = params.details_arg
 end
+
+
+
+--====================================================================--
+-- Publication Class
+--====================================================================--
 
 
 
@@ -103,6 +130,29 @@ end
 function Subscription:unsubscribe()
 	-- print( "Subscription:unsubscribe" )
 	return self.session:_unsubscribe( self )
+end
+
+
+
+--====================================================================--
+-- Registration Class
+--====================================================================--
+
+local Registration = inheritsFrom( ObjectBase )
+
+function Registration:_init( params )
+	self:superCall( "_init", params )
+	--==--
+	self.session = params.session
+	self.id = params.registration_id
+	self.active = true
+
+	self.endpoint = params.endpoint
+end
+
+function Registration:unsubscribe()
+	print( "Registration:unsubscribe" )
+	return self.session:_unregister( self )
 end
 
 
@@ -187,6 +237,9 @@ Session.NAME = "WAMP Session Class"
 
 Session.EVENT = "wamp_session_event"
 Session.ONJOIN = "on_join_wamp_event"
+
+FutureMixin.mixin( Session )
+
 
 function Session:_init( params )
 	-- print( "Session:_init" )
@@ -300,7 +353,7 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onMessage`
 --
-function Session:onMessage( msg, onError )
+function Session:onMessage( msg )
 	-- print( "Session:onMessage" )
 
 	if self._session_id == nil then
@@ -426,8 +479,62 @@ function Session:onMessage( msg, onError )
 			if call_req.onResult then call_req.onResult( p ) end
 		end
 
+
+	--== Invocation Message
+
 	elseif msg:isa( MessageFactory.Invocation ) then
-		error( "not implemented" )
+
+		if self._invocations[ msg.request ] then
+			error( ProtocolError( "Invocation: already received request for this id" ) )
+		end
+
+		local registration = self._registrations[ msg.registration ]
+		if not registration then
+			error( ProtocolError( "Invocation: don't have this registration ID" ) )
+		end
+
+		local endpoint = registration.endpoint
+
+		-- TODO: implement Call Details
+		-- if endpoint.options and endpoint.options.details_arg then
+		-- 	msg.kwargs = msg.kwargs or {}
+
+		-- 	if msg.receive_progress then
+		-- 	else
+		-- 	end
+		-- end
+
+		local def_params, def, def_func
+		local success_f, failure_f
+
+		if not endpoint.obj then
+			def_func = endpoint.fn
+		else
+			def_func = function( ... )
+				endpoint.fn( endpoint.obj, ... )
+			end
+		end
+		def = self:_as_future( def_func, msg.args, msg.kwargs )
+
+		success_f = function( res )
+			-- print("Invocation: success callback")
+			self._invocations[ msg.request ] = nil
+
+			local reply = MessageFactory.Yield:new{
+				request = msg.request,
+				args = res.results,
+				kwargs = res.kwresults
+			}
+			self._transport:send( reply )
+
+		end
+		failure_f = function( err )
+			-- print("Invocation: failure callback")
+			self._invocations[ msg.request ] = nil
+		end
+
+		self._invocations[ msg.request ] = def
+		self:_add_future_callbacks( def, success_f, failure_f )
 
 
 	--== Interrupt Message
@@ -439,13 +546,47 @@ function Session:onMessage( msg, onError )
 	--== Registered Message
 
 	elseif msg:isa( MessageFactory.Registered ) then
-		error( "not implemented" )
+
+		local reg_req = table.pop( self._register_reqs, msg.request )
+		if not reg_req then
+			error( ProtocolError( "REGISTERED received for non-pending request ID" ) )
+		end
+
+		local obj, fn, procedure, options
+		local params, endpoint
+
+		obj, fn, procedure, options = unpack( reg_req )
+
+		params = {
+			obj=obj,
+			fn=fn,
+			procedure=procedure,
+			options=options
+		}
+		endpoint = Endpoint:new( params )
+
+		params = {
+			session=self,
+			registration_id=msg.registration,
+			endpoint=endpoint
+		}
+		self._registrations[ msg.registration ] = Registration:new( params )
 
 
 	--== Unregistered Message
 
 	elseif msg:isa( MessageFactory.Unregistered ) then
-		error( "not implemented" )
+
+		if not self._unregister_reqs[ msg.request ] then
+			error( ProtocolError( "UNREGISTERED received for non-pending request ID" ) )
+		end
+
+		local unreg_req = table.pop( self._unregister_reqs, msg.request )
+		local def, registration = unpack( unreg_req )
+
+		self._registrations[ registration.id ] = nil
+		registration.active = false
+		self:_resolve_future( def, nil )
 
 
 	--== Unregistered Message
@@ -611,7 +752,7 @@ function Session:call( procedure, params )
 		args = params.args,
 		kwargs = params.kwargs
 	}
-	msg = MessageFactory.create( MessageFactory.Call.TYPE, p )
+	msg = MessageFactory.Call:new( p )
 	self._transport:send( msg )
 
 end
@@ -620,10 +761,92 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ICallee.register`
 --
 function Session:register( endpoint, params )
-	error( "Session:register:: not implemented")
+	print( "Session:register", endpoint )
+	params = params or {}
+	params.options = params.options or {}
+	--==--
+
+	if not self._transport and params.onError then
+		params.onError( "transport lost" ); return
+	end
+
+	local function _register( obj, endpoint, procedure, options )
+		print( "_register" )
+		local request, p, msg
+
+		request = wamp_utils.id()
+
+		self._register_reqs[ request ] = { obj, endpoint, procedure, options }
+
+		p = {
+			request = request,
+			procedure = procedure,
+			pkeys = options.pkeys,
+			disclose_caller = options.disclose_caller,
+		}
+		msg = MessageFactory.Register:new( p )
+		self._transport:send( msg )
+
+	end
+
+
+	if type( endpoint ) == 'function' then
+		-- register single callable
+		_register( nil, endpoint, params.procedure, params.options )
+
+	elseif type( endpoint ) == 'table' then
+		-- register all methods of "wamp_procedure"
+		-- TODO
+		error( "WAMP:register(): object endpoint not implemented" )
+	else
+		error( "WAMP:register(): not a proper endpoint type" )
+	end
+
 end
 
 
+function Session:unregister( handler, params )
+	-- print( "Session:unregister", handler, params )
+
+	for i, reg in pairs( self._registrations ) do
+		local endpoint = reg.endpoint
+		if type( handler ) == 'function' and endpoint.fn == handler then
+			reg:unsubscribe()
+		else
+			-- TODO: unregister an object handler
+		end
+	end
+
+end
+
+-- Called from :meth:`autobahn.wamp.protocol.Registration.unregister`
+--
+function Session:_unregister( registration )
+	-- print( "Session:_unregister", registration )
+
+	assert( registration:isa( Registration ) )
+	assert( registration.active )
+	assert( self._registrations[ registration.id ] )
+
+	if not self._transport then
+		error( TransportLostError() )
+	end
+
+	local request, def, msg
+
+	request = wamp_utils.id()
+
+	def = self._create_future()
+	self._unregister_reqs[ request ] = { def, registration }
+
+	msg = MessageFactory.Unregister:new{
+		request=request,
+		registration=registration.id
+	}
+
+	self._transport:send(msg)
+
+end
 
 
 --====================================================================--

@@ -83,6 +83,25 @@ end
 
 
 --====================================================================--
+-- Register Options Class
+--====================================================================--
+
+local RegisterOptions = inheritsFrom( ObjectBase )
+
+function RegisterOptions:_init( params )
+	print( "RegisterOptionsObj:_init" )
+	self:superCall( "_init", params )
+	--==--
+	self.details_arg = params.details_arg
+	self.options = {
+		pkeys=params.pkeys,
+		disclose_caller=params.disclose_caller
+	}
+end
+
+
+
+--====================================================================--
 -- Call Details Class
 --====================================================================--
 
@@ -114,5 +133,6 @@ end
 
 
 return {
-	CloseDetails=CloseDetails
+	CloseDetails=CloseDetails,
+	RegisterOptions=RegisterOptions
 }

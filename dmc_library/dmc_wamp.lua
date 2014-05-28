@@ -118,7 +118,6 @@ dmc_lib_location = dmc_lib_info.location
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_wamp = dmc_lib_data.dmc_wamp or {}
 
@@ -139,6 +138,8 @@ local WebSocket = require( dmc_lib_func.find('dmc_websockets') )
 
 local SerializerFactory = require( dmc_lib_func.find('dmc_wamp.serializer') )
 local wprotocol = require( dmc_lib_func.find('dmc_wamp.protocol') )
+
+local Error = require( dmc_lib_func.find('dmc_wamp.exception') )
 
 
 --====================================================================--
@@ -241,6 +242,52 @@ function Wamp:call( procedure, params )
 	return self._session:call( procedure, params )
 end
 
+
+function Wamp:register( handler, params )
+	print( "Wamp:register", handler )
+	if params.pkeys or params.disclose_caller then
+		params.options = Types.RegisterOptions:new( params )
+	end
+	return self._session:register( handler, params )
+end
+
+function Wamp:yield( topic, callback )
+	print( "Wamp:yield", topic )
+	-- return self._session:subscribe( topic, callback )
+end
+
+function Wamp:unregister( handler, params )
+	print( "Wamp:unregister", handler )
+
+	try{
+		function()
+			self._session:unregister( handler, params )
+		end,
+
+		catch{
+			function(e)
+				print( e, type(e))
+				if type(e)=='string' then
+					error( e )
+				elseif e:isa( Error.ProtocolError ) then
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR,
+						reason="WAMP Protocol Error"
+					}
+				else
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_INTERNAL_ERROR,
+						reason="WAMP Internal Error ({})"
+					}
+				end
+			end
+		}
+	}
+
+	-- return self._session:unsubscribe( topic, callback )
+end
+
+
 -- topic
 -- callback
 function Wamp:subscribe( topic, callback )
@@ -319,13 +366,33 @@ end
 -- coming from websockets
 function Wamp:_onMessage( message )
 	-- print( "Wamp:_onMessage", message )
-	local msg, onError
 
-	onError = function( event )
-	end
+	try{
+		function()
+			local msg = self._serializer:unserialize( message.data )
+			self._session:onMessage( msg, onError )
+		end,
 
-	msg = self._serializer:unserialize( message.data )
-	self._session:onMessage( msg, onError )
+		catch{
+			function(e)
+				print( e, type(e))
+				if type(e)=='string' then
+					error( e )
+				elseif e:isa( Error.ProtocolError ) then
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR,
+						reason="WAMP Protocol Error"
+					}
+				else
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_INTERNAL_ERROR,
+						reason="WAMP Internal Error ({})"
+					}
+				end
+			end
+		}
+	}
+
 end
 
 -- coming from websockets
