@@ -456,7 +456,8 @@ function WebSocket:_receiveFrame()
 
 		end
 
-		-- TODO: do we need to check for another frame here ??
+		-- see if we have more frames to read
+		wsframe.receiveFrame( params )
 
 	end
 
