@@ -340,6 +340,7 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function Utils.encodeLuaInteger( integer )
 	-- print( "Utils.encodeLuaInteger", integer )
+	assert( type(integer) == 'number', "encodeLuaInteger: not a number" )
 	return string.format("<<<%.0f>>>", integer )
 end
 
