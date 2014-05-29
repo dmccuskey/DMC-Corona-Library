@@ -409,9 +409,6 @@ end
 function Wamp:_onMessage( message )
 	-- print( "Wamp:_onMessage", message )
 
-	-- local msg = self._serializer:unserialize( message.data )
-	-- self._session:onMessage( msg, onError )
-
 	try{
 		function()
 			local msg = self._serializer:unserialize( message.data )
