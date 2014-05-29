@@ -1,0 +1,21 @@
+settings =
+{
+
+	plugins =
+	{
+		-- key is the name passed to Lua's 'require()'
+		["plugin.bit"] =
+		{
+			publisherId = "com.coronalabs",
+		},
+	},
+
+	android =
+	{
+		usesPermissions =
+		{
+			-- Required by the webview
+			"android.permission.INTERNET",
+		},
+	},  -- end Android
+}
