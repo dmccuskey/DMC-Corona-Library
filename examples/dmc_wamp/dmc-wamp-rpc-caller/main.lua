@@ -45,16 +45,16 @@ local doWampRPC = function()
 		onResult=function( e )
 			print( ">> WAMP RPC::onResult handler" )
 			if e.data then
-				print( '  data', e.data )
+				print( '>>  data', e.data )
 			end
 			if e.results then
 				for i,v in ipairs( e.results ) do
-					print( '  results', i, v )
+					print( '>>  results', i, v )
 				end
 			end
 			if e.kwresults then
 				for k,v in pairs( e.kwresults ) do
-					print( '  kwresults', k, v )
+					print( '>>  kwresults', k, v )
 				end
 			end
 		end,

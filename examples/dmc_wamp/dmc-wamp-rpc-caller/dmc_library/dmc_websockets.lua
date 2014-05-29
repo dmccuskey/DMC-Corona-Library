@@ -202,6 +202,14 @@ WebSocket.CLOSING_HANDSHAKE = 2
 WebSocket.CLOSED = 3
 
 
+--== Protocol Close Constants
+
+WebSocket.CLOSE_STATUS_CODE_NORMAL = 1000
+WebSocket.CLOSE_STATUS_CODE_GOING_AWAY = 1001
+WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR = 1002
+WebSocket.CLOSE_STATUS_CODE_UNSUPPORTED_DATA = 1003
+
+
 --== State Constants
 
 WebSocket.STATE_CREATE = "state_create"
@@ -448,7 +456,8 @@ function WebSocket:_receiveFrame()
 
 		end
 
-		-- TODO: do we need to check for another frame here ??
+		-- see if we have more frames to read
+		wsframe.receiveFrame( params )
 
 	end
 
@@ -499,9 +508,18 @@ function WebSocket:_sendFrame( msg )
 end
 
 
+function WebSocket:_bailout( params )
+	print("Failing connection", params.code, params.reason )
+	self:_close( params )
+end
+
+
+
 function WebSocket:_close( params )
 	-- print( "WebSocket:_close" )
 	params = params or {}
+	params.code = params.code or 1001
+	params.reason = params.reason or "Going Away"
 	--==--
 	params.reconnect = params.reconnect == nil and true or false
 

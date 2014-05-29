@@ -360,10 +360,148 @@ end
 -- Publish Message Class
 --====================================================================--
 
+
+
+--[[
+Format:
+* `[PUBLISH, Request|id, Options|dict, Topic|uri]`
+* `[PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list]`
+* `[PUBLISH, Request|id, Options|dict, Topic|uri, Arguments|list, ArgumentsKw|dict]`
+--]]
+
+local Publish = inheritsFrom( Message )
+Publish.NAME = "Publish Message Class"
+
+Publish.TYPE = 16  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Publish:_init( params )
+	-- print( "Publish:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.topic = params.topic
+	self.args = params.args
+	self.kwargs = params.kwargs
+
+	-- clean up args
+	local opts = params.options or {}
+	self.options = {
+		acknowledge=opts.acknowledge,
+		exclude_me=opts.exclude_me,
+		exclude=opts.exclude,
+		eligible=opts.eligible,
+		disclose_me=opts.disclose_me
+	}
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- -- Static function
+-- function Publish.parse( wmsg )
+-- 	print( "Publish.parse", wmsg )
+-- 	Utils.print( wmsg )
+
+-- 	local p = {
+-- 		session = wmsg[2],
+-- 		roles = wmsg[3]
+-- 	}
+-- 	return Welcome:new( p )
+
+-- end
+
+
+function Publish:marshal()
+	-- print( "Publish:marshal" )
+
+	local pub_id = Utils.encodeLuaInteger( self.request )
+	local options = Utils.encodeLuaTable( self.options )
+	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+	if self.kwargs then
+		return { Publish.TYPE, pub_id, options, self.topic, self.args, self.kwargs }
+	elseif self.args then
+		return { Publish.TYPE, pub_id, options, self.topic, self.args }
+	else
+		return { Publish.TYPE, pub_id, options, self.topic }
+	end
+
+end
+
+
+
 --====================================================================--
 -- Published Message Class
 --====================================================================--
 
+
+--[[
+Format:
+* `[PUBLISHED, PUBLISH.Request|id, Publication|id]`
+--]]
+
+local Published = inheritsFrom( Message )
+Published.NAME = "Published Message"
+
+Published.TYPE = 17  -- wamp message code
+
+function Published:_init( params )
+	-- print( "Published:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	assert( params.request, "Published Message: missing request" )
+	assert( params.publication, "Published Message: missing publication" )
+
+	self.request = params.request
+	self.publication = params.publication
+
+end
+
+function Published.parse( wmsg )
+	-- print( "Published.parse", wmsg )
+
+	assert( #wmsg > 0 and wmsg[1] == Published.TYPE )
+
+	if #wmsg ~= 3 then
+		error("wrong length, Published")
+	end
+
+	-- TODO: check these
+	local request = wmsg[2]
+	local publication = wmsg[3]
+
+	return Published:new{
+		request=request,
+		publication=publication
+	}
+
+end
+
+function Published:marshal()
+	-- print( "Published:marshal" )
+	return { Published.TYPE, self.request, self.publication }
+end
 
 
 
@@ -889,27 +1027,492 @@ end
 -- Register Message Class
 --====================================================================--
 
+--[[
+Format:
+* `[REGISTER, Request|id, Options|dict, Procedure|uri]`
+--]]
+
+local Register = inheritsFrom( Message )
+Register.NAME = "Register Message Class"
+
+Register.TYPE = 64  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Register:_init( params )
+	-- print( "Register:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.procedure = params.procedure
+	self.pkeys = params.pkeys
+	self.disclose_caller = params.disclose_caller
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- -- Static function
+-- function Register.parse( wmsg )
+-- 	print( "Register.parse", wmsg )
+-- 	Utils.print( wmsg )
+
+-- 	local p = {
+-- 		session = wmsg[2],
+-- 		roles = wmsg[3]
+-- 	}
+-- 	return Welcome:new( p )
+
+-- end
+
+
+function Register:marshal()
+	print( "Register:marshal" )
+
+	local options = {
+		pkeys = self.pkeys,
+		discloseCaller = self.disclose_caller,
+	}
+
+	options = Utils.encodeLuaTable( options )
+	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+	return { Register.TYPE, self.request, options, self.procedure }
+end
+
+
+
 --====================================================================--
 -- Registered Message Class
 --====================================================================--
+
+--[[
+Format:
+* `[REGISTERED, REGISTER.Request|id, Registration|id]`
+--]]
+
+local Registered = inheritsFrom( Message )
+Registered.NAME = "Registered Message Class"
+
+Registered.TYPE = 65  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Registered:_init( params )
+	-- print( "Registered:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.registration = params.registration
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- Static function
+function Registered.parse( wmsg )
+	print( "Registered.parse", wmsg )
+
+	-- Sanity Check
+	assert( #wmsg > 0 and wmsg[1] == Registered.TYPE )
+
+	if #wmsg ~= 3 then
+		error("wrong length, result")
+	end
+
+	local p = {
+		request = wmsg[2],
+		registration = wmsg[3]
+	}
+	return Registered:new( p )
+
+end
+
+
+-- function Registered:marshal()
+-- 	print( "Registered:marshal" )
+
+-- 	local options = {
+-- 		pkeys = self.pkeys,
+-- 		discloseCaller = self.disclose_caller,
+-- 	}
+
+-- 	options = Utils.encodeLuaTable( options )
+-- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+-- 	return { Registered.TYPE, self.request, options, self.procedure }
+-- end
+
+
 
 --====================================================================--
 -- Unregister Message Class
 --====================================================================--
 
+
+--[[
+Format:
+* `[UNREGISTER, Request|id, REGISTERED.Registration|id]`
+--]]
+
+local Unregister = inheritsFrom( Message )
+Unregister.NAME = "Unregister Message Class"
+
+Unregister.TYPE = 66  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Unregister:_init( params )
+	-- print( "Unregister:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.registration = params.registration -- id
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- -- Static function
+-- function Unregister.parse( wmsg )
+-- 	print( "Unregister.parse", wmsg )
+-- 	Utils.print( wmsg )
+
+-- 	local p = {
+-- 		session = wmsg[2],
+-- 		roles = wmsg[3]
+-- 	}
+-- 	return Welcome:new( p )
+
+-- end
+
+
+function Unregister:marshal()
+	print( "Unregister:marshal" )
+
+	local req_id = Utils.encodeLuaInteger( self.request )
+	local reg_id = Utils.encodeLuaInteger( self.registration )
+
+	return { Unregister.TYPE, req_id, reg_id }
+end
+
+
+
+--====================================================================--
+-- Unregistered Message Class
+--====================================================================--
+
+
+local Unregistered = inheritsFrom( Message )
+Unregistered.NAME = "Unregistered Message Class"
+
+Unregistered.TYPE = 67  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Unregistered:_init( params )
+	-- print( "Unregistered:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- Static function
+function Unregistered.parse( wmsg )
+	print( "Unregistered.parse", wmsg )
+
+	-- Sanity Check
+	assert( #wmsg > 0 and wmsg[1] == Unregistered.TYPE )
+
+	if #wmsg ~= 2 then
+		error("wrong length, Unregistered")
+	end
+
+	local request = wmsg[2]
+
+	return Unregistered:new{
+		request=request
+	}
+
+end
+
+
+-- function Unregistered:marshal()
+-- 	print( "Unregistered:marshal" )
+
+-- 	local options = {
+-- 		pkeys = self.pkeys,
+-- 		discloseCaller = self.disclose_caller,
+-- 	}
+
+-- 	options = Utils.encodeLuaTable( options )
+-- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+-- 	return { Unregistered.TYPE, self.request, options, self.procedure }
+-- end
+
+
+
+
 --====================================================================--
 -- Invocation Message Class
 --====================================================================--
+
+--[[
+Formats:
+* `[INVOCATION, Request|id, REGISTERED.Registration|id, Details|dict]`
+* `[INVOCATION, Request|id, REGISTERED.Registration|id, Details|dict, CALL.Arguments|list]`
+* `[INVOCATION, Request|id, REGISTERED.Registration|id, Details|dict, CALL.Arguments|list, CALL.ArgumentsKw|dict]`
+--]]
+
+local Invocation = inheritsFrom( Message )
+Invocation.NAME = "Invocation Message Class"
+
+Invocation.TYPE = 68  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Invocation:_init( params )
+	-- print( "Invocation:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.registration = params.registration
+	self.args = params.args
+	self.kwargs = params.kwargs
+	self.timeout = params.timeout
+	self.receive_progress = params.receive_progress
+	self.caller = params.caller
+	self.authid = params.authid
+	self.authrole = params.authrole
+	self.authmethod = params.authmethod
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- Static function
+function Invocation.parse( wmsg )
+	print( "Invocation.parse", wmsg )
+
+	-- Sanity Check
+	assert( #wmsg > 0 and wmsg[1] == Invocation.TYPE )
+
+	if not Utils.propertyIn( { 4, 5, 6 }, #wmsg ) then
+		error("wrong length, Invocation")
+	end
+
+	local p, details
+
+	p = {
+		request = wmsg[2],
+		registration = wmsg[3],
+		args = wmsg[5],
+		kwargs = wmsg[6],
+	}
+
+	details = wmsg[4] or {}
+	p.timeout = details.timeout
+	p.receive_progress = details.receive_progress
+	p.authid = details.authid
+	p.authrole = details.authrole
+	p.authmethod = details.authmethod
+
+	return Invocation:new( p )
+
+end
+
+
+-- function Invocation:marshal()
+-- 	print( "Invocation:marshal" )
+
+-- 	local options = {
+-- 		pkeys = self.pkeys,
+-- 		discloseCaller = self.disclose_caller,
+-- 	}
+
+-- 	options = Utils.encodeLuaTable( options )
+-- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+
+-- 	return { Invocation.TYPE, self.request, options, self.procedure }
+-- end
+
+
 
 --====================================================================--
 -- Interrupt Message Class
 --====================================================================--
 
+
 --====================================================================--
 -- Yield Message Class
 --====================================================================--
 
+--[[
+Format:
+* `[YIELD, INVOCATION.Request|id, Options|dict]`
+* `[YIELD, INVOCATION.Request|id, Options|dict, Arguments|list]`
+* `[YIELD, INVOCATION.Request|id, Options|dict, Arguments|list, ArgumentsKw|dict]`
+--]]
 
+local Yield = inheritsFrom( Message )
+Yield.NAME = "Yield Message Class"
+
+Yield.TYPE = 70  -- wamp message code
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+function Yield:_init( params )
+	-- print( "Yield:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	--== Sanity Check ==--
+
+	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
+	-- 	error( "Welcome Message: requires parameter 'realm'" )
+	-- end
+	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
+	-- 	error( "Welcome Message: requires parameter 'roles'" )
+	-- end
+
+	--== Create Properties ==--
+
+	self.request = params.request
+	self.args = params.args
+	self.kwargs = params.kwargs
+	self.progress = params.progress
+
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+-- -- Static function
+-- function Yield.parse( wmsg )
+-- 	print( "Yield.parse", wmsg )
+-- 	Utils.print( wmsg )
+
+-- 	local p = {
+-- 		session = wmsg[2],
+-- 		roles = wmsg[3]
+-- 	}
+-- 	return Welcome:new( p )
+
+-- end
+
+
+function Yield:marshal()
+	print( "Yield:marshal" )
+
+	local id = Utils.encodeLuaInteger( self.request )
+	local options = {
+		progress = self.progress,
+	}
+	options = Utils.encodeLuaTable( options )
+
+
+	if self.kwargs then
+		self.kwargs = Utils.encodeLuaTable( self.kwargs )
+		return { Yield.TYPE, id, options, self.args, self.kwargs }
+	elseif self.args then
+		return { Yield.TYPE, id, options, self.args }
+	else
+		return { Yield.TYPE, id, options }
+	end
+end
 
 
 --====================================================================--
@@ -925,6 +1528,8 @@ MessageFactory.Hello = Hello
 MessageFactory.Welcome = Welcome
 MessageFactory.Goodbye = Goodbye
 MessageFactory.Error = Error
+MessageFactory.Publish = Publish
+MessageFactory.Published = Published
 MessageFactory.Subscribe = Subscribe
 MessageFactory.Subscribed = Subscribed
 MessageFactory.Unsubscribe = Unsubscribe
@@ -932,6 +1537,12 @@ MessageFactory.Unsubscribed = Unsubscribed
 MessageFactory.Event = Event
 MessageFactory.Call = Call
 MessageFactory.Result = Result
+MessageFactory.Register = Register
+MessageFactory.Registered = Registered
+MessageFactory.Unregister = Unregister
+MessageFactory.Unregistered = Unregistered
+MessageFactory.Invocation = Invocation
+MessageFactory.Yield = Yield
 
 
 --== Type-Class Mapping
@@ -941,6 +1552,8 @@ MessageFactory.map = {
 	[Welcome.TYPE] = Welcome,
 	[Goodbye.TYPE] = Goodbye,
 	[Error.TYPE] = Error,
+	[Publish.TYPE] = Publish,
+	[Published.TYPE] = Published,
 	[Subscribe.TYPE] = Subscribe,
 	[Subscribed.TYPE] = Subscribed,
 	[Unsubscribe.TYPE] = Unsubscribe,
@@ -948,6 +1561,12 @@ MessageFactory.map = {
 	[Event.TYPE] = Event,
 	[Call.TYPE] = Call,
 	[Result.TYPE] = Result,
+	[Register.TYPE] = Register,
+	[Registered.TYPE] = Registered,
+	[Unregister.TYPE] = Unregister,
+	[Unregistered.TYPE] = Unregistered,
+	[Invocation.TYPE] = Invocation,
+	[Yield.TYPE] = Yield,
 }
 
 
@@ -988,6 +1607,15 @@ function MessageFactory.create( msg_type, params )
 
 	elseif msg_type == Result.TYPE then
 		o = Result:new( params )
+
+	elseif msg_type == Register then
+		o = Register:new( params )
+
+	elseif msg_type == Registered.TYPE then
+		o = Registered:new( params )
+
+	elseif msg_type == Invocation.TYPE then
+		o = Invocation:new( params )
 
 	else
 		error( "ERROR, message factory", msg_type )
