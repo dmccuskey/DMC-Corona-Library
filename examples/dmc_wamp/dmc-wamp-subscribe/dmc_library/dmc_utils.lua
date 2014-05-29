@@ -307,7 +307,8 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function Utils.encodeLuaTable( table_ref )
 	-- print( "Utils.encodeLuaTable", table_ref )
-	if table_ref == nil or Utils.tableSize( table_ref ) == 0 then
+	if table_ref == nil then return table_ref end
+	if Utils.tableSize( table_ref ) == 0 then
 		table_ref = { ['__HACK__']='__PAD__' }
 	end
 	return table_ref
@@ -340,6 +341,7 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function Utils.encodeLuaInteger( integer )
 	-- print( "Utils.encodeLuaInteger", integer )
+	assert( type(integer) == 'number', "encodeLuaInteger: not a number" )
 	return string.format("<<<%.0f>>>", integer )
 end
 

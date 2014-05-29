@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_wamp.serializer
+-- dmc_wamp.types
 --
 --
 -- by David McCuskey
@@ -43,10 +43,15 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local json = require 'json'
-local MessageFactory = require( dmc_lib_func.find('dmc_wamp.messages') )
 local Objects = require( dmc_lib_func.find('dmc_objects') )
+-- local States = require( dmc_lib_func.find('dmc_states') )
 local Utils = require( dmc_lib_func.find('dmc_utils') )
+local WebSocket = require( dmc_lib_func.find('dmc_websockets') )
+
+local MessageFactory = require( dmc_lib_func.find('dmc_wamp.messages') )
+local Role = require( dmc_lib_func.find('dmc_wamp.roles') )
+
+local wamp_utils = require( dmc_lib_func.find('dmc_wamp.utils') )
 
 
 --====================================================================--
@@ -56,123 +61,78 @@ local Utils = require( dmc_lib_func.find('dmc_utils') )
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
+-- local control of development functionality
+local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
--- Serializer Class
+-- Close Details Class
 --====================================================================--
 
-local Serializer = inheritsFrom( ObjectBase )
-Serializer.NAME = "Serializer Class"
+local CloseDetailsObj = inheritsFrom( ObjectBase )
 
-function Serializer:_init( params )
-	-- print( "Serializer:_init" )
-	params = params or {}
+function CloseDetailsObj:_init( params )
+	-- print( "CloseDetailsObj_init" )
 	self:superCall( "_init", params )
 	--==--
-
-	if not self.is_intermediate and not params.serializer then
-		error( "Serializer: requires parameter 'serializer'" )
-	end
-
-	self._serializer = params.serializer
-
-end
-
--- @params msg Message Object
---
--- Implements :func:`autobahn.wamp.interfaces.ISerializer.serialize`
---
-function Serializer:serialize( msg )
-	-- print( "Serializer:serialize", msg.TYPE )
-	return msg:serialize( self._serializer ), self._serializer.BINARY
-end
-
--- Implements :func:`autobahn.wamp.interfaces.ISerializer.unserialize`
---
-function Serializer:unserialize( payload )
-	-- print( "Serializer:unserialize", payload )
-
-	local raw_msg, msg_class, msg
-
-	raw_msg = self._serializer:unserialize( payload )
-	msg_class = MessageFactory.map[ raw_msg[1] ]
-
-	if not msg_class then
-		error( "missing class type", raw_msg[1] )
-	else
-		msg = msg_class.parse( raw_msg )
-	end
-
-	return msg
+	self.reason = params.reason
+	self.message = params.message
 end
 
 
 
 --====================================================================--
--- JSON Serializer
+-- Register Options Class
 --====================================================================--
 
-local JsonSerializer = inheritsFrom( Serializer )
-JsonSerializer.NAME = "Json Serializer Class"
+local RegisterOptions = inheritsFrom( ObjectBase )
 
-JsonSerializer.SERIALIZER_ID = "json"
-
-
-
---====================================================================--
--- JSON Object Serializer
---====================================================================--
-
-local JsonObjSerializer = inheritsFrom( ObjectBase )
-JsonObjSerializer.NAME = "Json Object Serializer Class"
-
-JsonObjSerializer.BINARY = false
-
--- Implements :func:`autobahn.wamp.interfaces.IObjectSerializer.serialize`
---
-function JsonObjSerializer:serialize( msg )
-	-- print( "JsonObjSerializer:serialize", msg )
-	local encoded_json = json.encode( msg )
-	encoded_json = Utils.decodeLuaTable( encoded_json )
-	encoded_json = Utils.decodeLuaInteger( encoded_json )
-	return encoded_json
-end
-
--- Implements :func:`autobahn.wamp.interfaces.IObjectSerializer.unserialize`
---
-function JsonObjSerializer:unserialize( payload )
-	-- print( "JsonObjSerializer:unserialize", payload )
-	return json.decode( payload )
-end
-
-
-
-
---====================================================================--
--- Serializer Factory
---====================================================================--
-
-local SerializerFactory = {}
-
-
-function SerializerFactory.create( s_type, params )
-	-- print( "SerializerFactory.create", s_type )
-	params = params or {}
+function RegisterOptions:_init( params )
+	print( "RegisterOptionsObj:_init" )
+	self:superCall( "_init", params )
 	--==--
-
-	local o
-
-	if s_type == JsonSerializer.SERIALIZER_ID then
-		params.serializer=JsonObjSerializer:new()
-		o = JsonSerializer:new( params )
-
-	else
-		error( "ERROR, serializer factory" )
-	end
-
-	return o
+	self.details_arg = params.details_arg
+	self.options = {
+		pkeys=params.pkeys,
+		disclose_caller=params.disclose_caller
+	}
 end
 
 
-return SerializerFactory
+
+--====================================================================--
+-- Call Details Class
+--====================================================================--
+
+local CallDetails = inheritsFrom( ObjectBase )
+
+function CallDetails:_init( params )
+	self:superCall( "_init", params )
+	--==--
+	self.progress = params.progress
+	self.caller = params.caller
+	self.authid = params.authid
+	self.authrole = params.authrole
+	self.authrole = params.authrole
+end
+
+
+
+
+
+
+--====================================================================--
+-- Close Details Constructor
+--====================================================================--
+
+
+local function CloseDetails( params )
+	return CloseDetailsObj:new( params )
+end
+
+
+return {
+	CloseDetails=CloseDetails,
+	RegisterOptions=RegisterOptions
+}
