@@ -69,6 +69,7 @@ local ObjectBase = Objects.ObjectBase
 -- local control of development functionality
 local LOCAL_DEBUG = false
 
+local tpop = table.pop
 
 
 --====================================================================--
@@ -240,7 +241,7 @@ Implements
 --]]
 
 local Session = inheritsFrom( BaseSession )
-Session.NAME = "WAMP Session Class"
+Session.NAME = "WAMP Session"
 
 Session.EVENT = "wamp_session_event"
 Session.ONJOIN = "on_join_wamp_event"
@@ -248,17 +249,14 @@ Session.ONJOIN = "on_join_wamp_event"
 FutureMixin.mixin( Session )
 
 
+--====================================================================--
+--== Start: Setup DMC Objects
+
 function Session:_init( params )
 	-- print( "Session:_init" )
 	params = params or {}
 	self:superCall( "_init", params )
 	--==--
-
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and ( not params.uri ) then
-	-- 	error( "Session: requires parameter 'uri'" )
-	-- end
 
 	--== Create Properties ==--
 
@@ -287,18 +285,15 @@ function Session:_init( params )
 	-- incoming invocations
 	self._invocations = {}
 
-	--== Object References ==--
-
 end
 
+--== END: Setup DMC Objects
+--====================================================================--
 
-function Session:_initComplete()
-	-- print( "Session:_initComplete" )
-	self:superCall( "_initComplete" )
-	--==--
 
-end
 
+--====================================================================--
+--== Public Methods
 
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onOpen`
 --
@@ -324,9 +319,9 @@ end
 function Session:join( realm )
 	-- print( "Session:join", realm )
 
-	if self._session_id then error( "Session:join : already joined" ) end
+	if self._session_id then error( "Session:join :: already joined" ) end
 
-	local roles, p, msg
+	local roles, msg
 
 	self._goodbye_sent = false
 
@@ -335,12 +330,10 @@ function Session:join( realm )
 		Role.subscriberFeatures,
 	}
 
-	p = {
+	msg = MessageFactory.Hello:new{
 		realm=self._realm,
 		roles=roles
 	}
-	msg = MessageFactory.create( MessageFactory.Hello.TYPE, p )
-
 	self._transport:send( msg )
 end
 
@@ -353,7 +346,7 @@ function Session:disconnect()
 		self._transport:close()
 	else
 		-- transport not available
-		print("transport not available")
+		error("Session:disconnect :: transport not available")
 	end
 end
 
@@ -369,11 +362,11 @@ function Session:onMessage( msg )
 		if msg:isa( MessageFactory.Welcome ) then
 			self._session_id = msg.session
 
+			-- TODO: create session details
 			self:onJoin()
 
 		else
-			-- handle error
-			error( "received message, no session" )
+			error( ProtocolError( "Received %s message, and session is not yet established" % msg.NAME ) )
 		end
 
 		return
@@ -385,8 +378,8 @@ function Session:onMessage( msg )
 	if msg:isa( MessageFactory.Goodbye ) then
 
 		if not self._goodbye_sent then
-			local msg = MessageFactory.create( MessageFactory.Goodbye.TYPE )
-			self._transport:send( msg )
+			local reply = MessageFactory.Goodbye:new()
+			self._transport:send( reply )
 		end
 
 		self._session_id = nil
@@ -397,12 +390,14 @@ function Session:onMessage( msg )
 
 	elseif msg:isa( MessageFactory.Event ) then
 
+		if not self._subscriptions[ msg.subscription ] then
+			error( ProtocolError( "EVENT received for non-subscribed subscription ID {" ) )
+		end
+
 		local sub = self._subscriptions[ msg.subscription ]
 		local p, handler
 
-		if not sub then
-			error( "event received for non-subscribed subscription" ); return
-		end
+		-- TODO: event details
 
 		p = {
 			args=msg.args,
@@ -420,7 +415,7 @@ function Session:onMessage( msg )
 			error( ProtocolError( "PUBLISHED received for non-pending request ID" ) )
 		end
 
-		local pub_req = table.pop( self._publish_reqs, msg.request )
+		local pub_req = tpop( self._publish_reqs, msg.request )
 		local def, opts = unpack( pub_req )
 
 		self:_resolve_future( def, Publication:new({ publication_id=msg.publication }) )
@@ -431,28 +426,24 @@ function Session:onMessage( msg )
 	elseif msg:isa( MessageFactory.Subscribed ) then
 		-- print("onMessage:Subscribed")
 
-		local sub_req = table.pop( self._subscribe_reqs, msg.request )
-		local func, topic
-		local p, handler
-
-		if not sub_req then
-			error( "SUBSCRIBED received for non-pending request ID" ); return
+		if not self._subscribe_reqs[ msg.request ] then
+			error( ProtocolError( "SUBSCRIBED received for non-pending request ID" ) )
 		end
 
-		func, topic = unpack( sub_req )
-		p = {
+		local sub_req = tpop( self._subscribe_reqs, msg.request )
+		local func, topic = unpack( sub_req )
+
+		local handler = Handler:new{
 			fn=func,
 			topic=topic,
 			details_arg=nil
 		}
-		handler = Handler:new( p )
 
-		p = {
+		self._subscriptions[ msg.subscription ] = Subscription:new{
 			session=self,
 			id=msg.subscription,
 			handler=handler
 		}
-		self._subscriptions[ msg.subscription ] = Subscription:new( p )
 
 		-- TODO: send subscribed notice
 		-- p = {
@@ -471,18 +462,22 @@ function Session:onMessage( msg )
 
 	elseif msg:isa( MessageFactory.Result ) then
 
-		local call_req, p
-		call_req = self._call_reqs[ msg.request ]
-
-		if not call_req then
-			error( "RESULT received for non-pending request ID" )
+		if self._call_reqs[ msg.request ] then
+			error( ProtocolError( "RESULT received for non-pending request ID" ) )
 		end
+
+		local call_req
+
+		-- TODO: progressive result, etc
 
 		if msg.progress then
 			-- Progressive result
+			call_req = self._call_reqs[ msg.request ]
 
 		else
 			-- Final result
+			call_req = tpop( self._call_reqs, msg.request )
+
 			if #msg.args == 1 and not msg.kwargs then
 				p = { data=msg.args[1] }
 			else
@@ -503,11 +498,11 @@ function Session:onMessage( msg )
 			error( ProtocolError( "Invocation: already received request for this id" ) )
 		end
 
-		local registration = self._registrations[ msg.registration ]
-		if not registration then
+		if self._registrations[ msg.registration ] then
 			error( ProtocolError( "Invocation: don't have this registration ID" ) )
 		end
 
+		local registration = self._registrations[ msg.registration ]
 		local endpoint = registration.endpoint
 
 		-- TODO: implement Call Details
@@ -562,30 +557,26 @@ function Session:onMessage( msg )
 
 	elseif msg:isa( MessageFactory.Registered ) then
 
-		local reg_req = table.pop( self._register_reqs, msg.request )
-		if not reg_req then
+		if not self._register_reqs[ msg.request ] then
 			error( ProtocolError( "REGISTERED received for non-pending request ID" ) )
 		end
 
-		local obj, fn, procedure, options
-		local params, endpoint
+		local reg_req = tpop( self._register_reqs, msg.request )
 
-		obj, fn, procedure, options = unpack( reg_req )
+		local obj, fn, procedure, options = unpack( reg_req )
 
-		params = {
+		local endpoint = Endpoint:new{
 			obj=obj,
 			fn=fn,
 			procedure=procedure,
 			options=options
 		}
-		endpoint = Endpoint:new( params )
 
-		params = {
+		self._registrations[ msg.registration ] = Registration:new{
 			session=self,
 			registration_id=msg.registration,
 			endpoint=endpoint
 		}
-		self._registrations[ msg.registration ] = Registration:new( params )
 
 
 	--== Unregistered Message
@@ -596,7 +587,7 @@ function Session:onMessage( msg )
 			error( ProtocolError( "UNREGISTERED received for non-pending request ID" ) )
 		end
 
-		local unreg_req = table.pop( self._unregister_reqs, msg.request )
+		local unreg_req = tpop( self._unregister_reqs, msg.request )
 		local def, registration = unpack( unreg_req )
 
 		self._registrations[ registration.id ] = nil
@@ -669,7 +660,7 @@ function Session:leave( params )
 			error( "Already requested to close the session" )
 
 	else
-		local msg = MessageFactory.create( MessageFactory.Goodbye.TYPE, p )
+		local msg = MessageFactory.Goodbye:new( params )
 		self._transport:send( msg )
 		self._goodbye_sent = true
 
@@ -720,20 +711,24 @@ end
 function Session:subscribe( topic, callback )
 	-- print( "Session:subscribe", topic )
 
+	assert( topic )
+
 	if not self._transport then
-		callback( "transport lost" ); return
+		error( TransportLostError() )
 	end
 
-	local request, p, msg
+	-- TODO: register on object
+	-- TODO: change onEvent, onSubscribe ? add params to array
+
+	local request, msg
 
 	request = wamp_utils.id()
 	self._subscribe_reqs[ request ] = { callback, topic }
 
-	p = {
+	msg = MessageFactory.Subscribe{
 		request = request,
 		topic = topic,
 	}
-	msg = MessageFactory.create( MessageFactory.Subscribe.TYPE, p )
 	self._transport:send( msg )
 
 end
@@ -759,17 +754,16 @@ function Session:_unsubscribe( subscription )
 	-- print( "Session:_unsubscribe", subscription )
 
 	if not self._transport then
-		params.eventHandler( "transport lost" ); return
+		error( TransportLostError() )
 	end
 
-	local request, p, msg
+	local request, msg
 
 	request = wamp_utils.id()
-	p = {
+	msg = MessageFactory.Unsubscribe:new{
 		request=request,
 		subscription_id = subscription.id
 	}
-	msg = MessageFactory.create( MessageFactory.Unsubscribe.TYPE, p )
 	self._transport:send( msg )
 
 end
@@ -782,23 +776,23 @@ function Session:call( procedure, params )
 	params.kwargs =  params.kwargs or {}
 	--==--
 
-	if not self._transport and params.onError then
-		params.onError( "transport lost" ); return
+	if not self._transport then
+		error( TransportLostError() )
 	end
 
-	local request, p, msg
+	local request, msg
 
 	request = wamp_utils.id()
+
 	self._call_reqs[ request ] = params
 
-	p = {
+	msg = MessageFactory.Call:new{
 		request = request,
 		procedure = procedure,
 		args = params.args,
 		kwargs = params.kwargs,
 		--
 	}
-	msg = MessageFactory.Call:new( p )
 	self._transport:send( msg )
 
 end
@@ -812,25 +806,24 @@ function Session:register( endpoint, params )
 	params.options = params.options or {}
 	--==--
 
-	if not self._transport and params.onError then
-		params.onError( "transport lost" ); return
+	if not self._transport then
+		error( TransportLostError() )
 	end
 
 	local function _register( obj, endpoint, procedure, options )
 		-- print( "_register" )
-		local request, p, msg
+		local request, msg
 
 		request = wamp_utils.id()
 
 		self._register_reqs[ request ] = { obj, endpoint, procedure, options }
 
-		p = {
+		msg = MessageFactory.Register:new{
 			request = request,
 			procedure = procedure,
 			pkeys = options.pkeys,
 			disclose_caller = options.disclose_caller,
 		}
-		msg = MessageFactory.Register:new( p )
 		self._transport:send( msg )
 
 	end
@@ -895,10 +888,11 @@ function Session:_unregister( registration )
 end
 
 
+
+
 --====================================================================--
 -- Protocol Facade
 --====================================================================--
-
 
 return {
 	Session=Session
