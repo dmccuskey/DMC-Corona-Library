@@ -725,7 +725,7 @@ function Session:subscribe( topic, callback )
 	request = wamp_utils.id()
 	self._subscribe_reqs[ request ] = { callback, topic }
 
-	msg = MessageFactory.Subscribe{
+	msg = MessageFactory.Subscribe:new{
 		request = request,
 		topic = topic,
 	}
