@@ -462,7 +462,7 @@ function Session:onMessage( msg )
 
 	elseif msg:isa( MessageFactory.Result ) then
 
-		if self._call_reqs[ msg.request ] then
+		if not self._call_reqs[ msg.request ] then
 			error( ProtocolError( "RESULT received for non-pending request ID" ) )
 		end
 
@@ -498,7 +498,7 @@ function Session:onMessage( msg )
 			error( ProtocolError( "Invocation: already received request for this id" ) )
 		end
 
-		if self._registrations[ msg.registration ] then
+		if not self._registrations[ msg.registration ] then
 			error( ProtocolError( "Invocation: don't have this registration ID" ) )
 		end
 
