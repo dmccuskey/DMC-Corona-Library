@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_sockets.atcp
+-- dmc_sockets/async_tcp.lua
 --
 --
 -- by David McCuskey
@@ -8,117 +8,47 @@
 
 --[[
 
-Copyright (C) 2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2014 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : Async TCP
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.3"
-
-
---====================================================================--
--- Boot Support Methods
---====================================================================--
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
-
---====================================================================--
--- DMC Library Config
---====================================================================--
-
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
-
--- boot dmc_library with boot script or
--- setup basic defaults if it doesn't exist
---
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
-	}
-end
-
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
-dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
---====================================================================--
--- DMC Library : tcp
---====================================================================--
-
+local VERSION = "0.1.0"
 
 
 --====================================================================--
 -- Imports
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
+local Objects = require 'dmc_objects'
 local socket = require 'socket'
-
-local tcp_socket = require( dmc_lib_func.find('dmc_sockets.tcp') )
+local tcp_socket = require 'dmc_sockets.tcp'
 
 
 --====================================================================--
@@ -136,27 +66,9 @@ local LOCAL_DEBUG = false
 -- Async TCP Socket Class
 --====================================================================--
 
+
 local ATCPSocket = inheritsFrom( tcp_socket )
 ATCPSocket.NAME = "Async TCP Socket Class"
-
-
---== Class Constants
-
--- Connection-Status Constants
-
--- ATCPSocket.NO_SOCKET = 'no_socket'
--- ATCPSocket.NOT_CONNECTED = 'socket_not_connected'
--- ATCPSocket.CONNECTED = 'socket_connected'
--- ATCPSocket.CLOSED = 'socket_closed'
-
-
--- Event Constants
-
--- ATCPSocket.EVENT = 'tcp_socket_event'
-
--- ATCPSocket.CONNECT = 'connect_event'
--- ATCPSocket.READ = 'read_event'
--- ATCPSocket.WRITE = 'write_event'
 
 
 --====================================================================--
@@ -171,22 +83,13 @@ function ATCPSocket:_init( params )
 	--== Create Properties ==--
 
 	self.__timer_is_active = false
-	self._timeout = 2000
+	self._timeout = 6000
 	self._active_coroutine = nil
 	self._coroutine_queue = {}
 
 	self._read_in_process = false
 
-	-- self._host = nil
-	-- self._port = nil
-	-- self._buffer = "" -- string
-	-- self._status = nil
-
-
 	--== Object References ==--
-
-	-- self._socket = nil
-	-- self._master = params.master
 
 end
 
@@ -196,7 +99,6 @@ end
 
 --====================================================================--
 --== Public Methods
-
 
 function ATCPSocket.__getters:timeout( value )
 	self._timeout = value
@@ -211,6 +113,7 @@ function ATCPSocket:connect( host, port, params )
 	self._host = host
 	self._port = port
 	self._onConnect = params.onConnect
+	self._onData = params.onData
 
 
 	if self._status == ATCPSocket.CONNECTED then
@@ -243,6 +146,8 @@ function ATCPSocket:connect( host, port, params )
 				evt.type = self.CONNECT
 				evt.status = self._status
 				evt.emsg = emsg
+
+				self._master:_connect( self )
 
 				self._timer_is_active = false -- do this before calling connect
 
@@ -281,16 +186,14 @@ end
 function ATCPSocket:send( data, callback )
 	-- print( 'ATCPSocket:send', #data, callback )
 
-	if not callback or type( callback ) ~= 'function' then return end
-
+	local bytes, emsg = self._socket:send( data )
 	local evt = {}
 
-	local bytes, emsg = self._socket:send( data )
-	-- print( bytes, emsg )
+	-- print( 'sent', bytes, emsg )
 	evt.error = nil
 	evt.emsg = nil
 
-	callback( evt )
+	if callback then callback( evt ) end
 end
 
 
@@ -481,14 +384,20 @@ end
 
 function ATCPSocket:_doAfterReadAction()
 	-- print( 'ATCPSocket:_doAfterReadAction' )
-	if #self._buffer > 0 then
+	local buff_len = #self._buffer
+	if buff_len > 0 then
 		self:_checkCoroutineQueue()
-		if not self._read_in_process then
-			-- print(self._buffer)
-			self._onConnect( { type=self.READ })
-		end
-
 	end
+	buff_len = #self._buffer
+	if buff_len > 0 and not self._read_in_process then
+		local evt = {
+			type=self.READ,
+			status = self._status,
+			bytes = buff_len
+		}
+		if self._onData then self._onData( evt ) end
+	end
+
 end
 
 

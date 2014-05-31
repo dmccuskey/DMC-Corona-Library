@@ -43,15 +43,15 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
--- local States = require( dmc_lib_func.find('dmc_states') )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
-local WebSocket = require( dmc_lib_func.find('dmc_websockets') )
+local Objects = require 'dmc_objects'
+-- local States = require 'dmc_states'
+local Utils = require 'dmc_utils'
+local WebSocket = require 'dmc_websockets'
 
-local MessageFactory = require( dmc_lib_func.find('dmc_wamp.messages') )
-local Role = require( dmc_lib_func.find('dmc_wamp.roles') )
+local MessageFactory = require 'dmc_wamp.messages'
+local Role = require 'dmc_wamp.roles'
 
-local wamp_utils = require( dmc_lib_func.find('dmc_wamp.utils') )
+local wamp_utils = require 'dmc_wamp.utils'
 
 
 --====================================================================--

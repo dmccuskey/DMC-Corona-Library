@@ -1,4 +1,3 @@
-
 --====================================================================--
 -- dmc_files.lua
 --
@@ -30,15 +29,24 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Files
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- DMC Library Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,12 +76,8 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
-
-require( "dmc_corona_boot" )
+-- Configuration
 
 local dmc_lib_data, dmc_lib_info
 
@@ -91,16 +95,13 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 
-
 --====================================================================--
--- DMC Library : DMC Files
+-- DMC Files
 --====================================================================--
-
 
 
 --====================================================================--
--- DMC Files Config
---====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_files = dmc_lib_data.dmc_files or {}
 
@@ -111,16 +112,12 @@ local DMC_FILES_DEFAULTS = {
 local dmc_files_data = Utils.extend( dmc_lib_data.dmc_files, DMC_FILES_DEFAULTS )
 
 
-
 --====================================================================--
 -- Imports
---====================================================================--
-
-local LuaFile = require 'lua_files'
-local Objects = require 'lua_objects'
 
 local lfs = require( 'lfs' )
-local json = require( 'json' )
+local LuaFile = require 'lua_files'
+local Objects = require 'lua_objects'
 
 
 --====================================================================--
@@ -134,7 +131,6 @@ local inheritsFrom = Objects.inheritsFrom
 --====================================================================--
 -- Corona File Module
 --====================================================================--
-
 
 local File = inheritsFrom( LuaFile )
 File.NAME = "Corona Files Object"
@@ -156,10 +152,8 @@ function File.fileExists( filename, options )
 end
 
 
-
 --====================================================================--
 --== remove() ==--
-
 
 -- item is a path
 function File._removeFile( f_path, f_options )

@@ -30,15 +30,25 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC States
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.1"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,55 +78,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
 
 
 
 --====================================================================--
--- DMC Library : DMC States
+-- DMC States
 --====================================================================--
-
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
 
@@ -129,135 +116,9 @@ local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAUL
 
 --====================================================================--
 -- Imports
---====================================================================--
+
+local States = require 'dmc_lua.lua_states'
 
 
-
---====================================================================--
--- Setup, Constants
---====================================================================--
-
-local States = {}
-
-States._DEBUG = dmc_states_data.debug_active or false
-
-
-
---====================================================================--
--- Support Methods
---====================================================================--
-
-
-
---====================================================================--
--- States Object
---====================================================================--
-
-
---== State API Methods ==--
-
-
-function States._setState( self, state )
-	if States._DEBUG then
-		print( "DMC States::setState: is now >> " .. tostring( state ) )
-	end
-
-	local f = self[ state ]
-	if f then
-		self._curr_state = f
-		self._curr_state_name = state
-	else
-		print( "\n\nERROR: missing state method '" .. tostring( state ) .. "'\n\n")
-	end
-end
-
-
-function States._gotoState( self, state, ... )
-	if States._DEBUG then
-		print( "DMC States::gotoState: " .. tostring( state ) )
-	end
-
-	table.insert( self._state_stack, 1, self._curr_state_name )
-	self:_curr_state( state, ... )
-end
-
-
-function States._gotoPreviousState( self, ... )
-	local state = table.remove( self._state_stack, 1 )
-	if States._DEBUG then
-		print( "DMC States::gotoPreviousState: going to >> " .. tostring( state ) )
-	end
-
-	self:_curr_state( state, ... )
-end
-
-
-function States._getState( self )
-	return self._curr_state_name
-end
-
-
-function States._getPreviousState( self )
-	return self._state_stack[1]
-end
-
-
-function States._pushState( self, state_name )
-	table.insert( self._state_stack, 1, state_name )
-end
-
-
-function States._resetStates( self )
-	if States._DEBUG then
-		print( "DMC States::resetStates" )
-	end
-	self._state_stack = {}
-	self._curr_state = nil
-	self._curr_state_name = ""
-end
-
-
---== Facade API Methods ==--
-
-
-function States._setDebug( value )
-	States._DEBUG = value
-end
-
-
-function States._mixin( obj )
-	if States._DEBUG then
-		print( "DMC States::mixin: ", obj )
-	end
-
-	obj = obj or {}
-
-	-- add variables
-	States._resetStates( obj )
-
-	-- add methods
-	obj.setState = States._setState
-	obj.gotoState = States._gotoState
-	obj.gotoPreviousState = States._gotoPreviousState
-	obj.getState = States._getState
-	obj.getPreviousState = States._getPreviousState
-	obj.pushState = States._pushState
-	obj.resetStates = States._resetStates
-
-	return obj
-end
-
-
-
-
---====================================================================--
--- States Facade Object
---====================================================================--
-
-local StateFacade = {}
-
-StateFacade.setDebug = States._setDebug
-StateFacade.mixin = States._mixin
-
-return StateFacade
+return States
 
