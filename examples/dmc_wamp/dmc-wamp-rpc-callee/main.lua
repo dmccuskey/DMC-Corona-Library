@@ -27,9 +27,9 @@ print( '\n\n##############################################\n\n' )
 --====================================================================--
 -- Imports
 
-local Wamp = require 'dmc_library.dmc_wamp'
+local Wamp = require 'dmc_corona.dmc_wamp'
+local Utils = require 'dmc_utils'
 
-local Utils = require( dmc_lib_func.find('dmc_utils') )
 
 --====================================================================--
 -- Setup, Constants
