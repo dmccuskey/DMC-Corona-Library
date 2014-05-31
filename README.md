@@ -42,13 +42,53 @@ The library gives a lot of flexibility where it is stored in your project. For m
 
   Automatic JSON storage for your app. [Read more...](#dmc_autostore)
 
-* [dmc_objects](#dmc_objects)
+* [dmc_buttons](#dmc_buttons)
 
-  Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
+  Full-featured button set. [Read more...](#dmc_buttons)
+
+* [dmc_dragdrop](#dmc_dragdrop)
+
+  Quick and powerful drag and drop functionality. [Read more...](#dmc_dragdrop)
+
+* [dmc_facebook](#dmc_facebook)
+
+  A better behaved Facebook connector. [Read more...](#dmc_facebook)
+
+* [dmc_files](#dmc_files)
+
+  Read, parse, or save differenct file data. [Read more...](#dmc_files)
+
+* [dmc_kolor](#dmc_kolor)
+
+  Make Corona SDK G1 code run in G2. [Read more...](#dmc_kolor)
 
 * [dmc_kompatible](#dmc_kompatible)
 
   Make Corona SDK G1 code run in G2. [Read more...](#dmc_kompatible)
+
+* [dmc_kozy](#dmc_kozy)
+
+  Brings back old Corona G1 functionality and gives new capabilities for G2. [Read more...](#dmc_kozy)
+
+* [dmc_mockserver](#dmc_mockserver)
+
+  Emulate a data server (eg REST) in your app - great for testing, API integration, etc. [Read more...](#dmc_mockserver)
+
+* [dmc_nicenet](#dmc_nicenet)
+
+  Makes client apps behave when sending data requests to the server. [Read more...](#dmc_nicenet)
+
+* [dmc_objects](#dmc_objects)
+
+  Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
+
+* [dmc_patch](#dmc_patch)
+
+  Mixin beneficial functionality into the Lua language. [Read more...](#dmc_patch)
+
+* [dmc_performance](#dmc_performance)
+
+  Timed performance testing for your app. [Read more...](#dmc_performance)
 
 * [dmc_sockets](#dmc_sockets)
 
@@ -68,7 +108,7 @@ The library gives a lot of flexibility where it is stored in your project. For m
 
 * [dmc_utils](#dmc_utils)
 
-  Miscellaneious utility functions. [Read more...](#dmc_utils)
+  Miscellaneous utility functions for tables, web, etc. [Read more...](#dmc_utils)
 
 * [dmc_wamp](#dmc_wamp)
 
@@ -110,17 +150,158 @@ There is a detailed example in the folder `examples/dmc_autostore/` which shows 
 
 
 
+<a name="dmc_buttons"></a>
+### Module: dmc_buttons ###
+
+This file contains classes to create different types of graphical buttons and button groups. It can create:
+
+* a Push button with optional text label
+* a Radio/Toggle button (on/off state) with optional text label
+* Toggle Group which allows either none or one selection of a group of buttons
+* Radio Group which allows single selection of a group of buttons
+
+
+_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua. If you want an easier example of multi-level inheritance, see `examples/dmc_objects/DMC-Multishapes/`._
+
+(this version is deprecated and will be re-written from ground-up for G2. watch dmc-corona-widgets repo)
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
+
+
+**Examples**
+
+There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library.
+
+
+
+<a name="dmc_dragdrop"></a>
+### Module: dmc_dragdrop ###
+
+Easily incorporate powerful drag and drop functionality into your app.
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_dragdrop.lua
+
+
+**Examples**
+
+There is a detailed example in the folder `examples/dmc_dragdrop/` which shows how to use the `dmc_dragdrop` library.
+
+
+
+<a name="dmc_facebook"></a>
+### Module: dmc_facebook ###
+
+A better behaved, easier to setup Facebook connector.
+
+* Can be used for kiosk-mode apps (many people using it on one device)
+
+* Easier to setup
+
+* Login flow *doesn't leave application* !
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_facebook.lua
+
+
+**Examples**
+
+There is a detailed example in the folder `examples/dmc_facebook/` which shows how to use the `dmc_facebook` library.
+
+
+
+<a name="dmc_files"></a>
+### Module: dmc_files ###
+
+Read and save different files, including JSON, etc.
+
+* Can read in config files, including a customizable format
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_files.lua
+
+
+**Examples**
+
+There is a detailed example in the folder `examples/dmc_files/` which shows how to use the `dmc_files` library.
+
+
+
 ### Module: dmc_kolor ###
 
 `dmc_kolor` is a Lua module which brings back the traditional ways of describing colors using RGBA values ( eg, 255, 180, 34 ) instead of the new way using percentage values (eg, 1, .5, .25 ) brought about by the change to Graphics 2.0.
 
 It also gives additional functionality like the ability to use names when setting object colors like "Aqua" or "Red". The module even includes color tables for all of the X11 color definitions.
 
-[more info...](dmc_kolor/)
 
 **Documentation**
 
 http://docs.davidmccuskey.com/display/docs/dmc_kolor.lua
+
+
+
+<a name="dmc_kompatible"></a>
+### Module: dmc_kompatible ###
+
+A module which allows your legacy Corona Graphics 1.0 code to run in Corona Graphics 2.0.
+
+
+**Documentation**
+
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_kompatible.lua
+
+**Examples**
+
+There are examples in the folder `examples/dmc_kompatible/` which show how to use the `dmc_kompatible` library.
+
+
+
+<a name="dmc_kozy"></a>
+### Module: dmc_kozy ###
+
+Brings back old Corona G1 functionality and gives new capabilities for G2.
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_kozy.lua
+
+
+**Examples**
+
+There is a detailed example in the folder `examples/dmc_kozy/` which shows how to use the `dmc_kozy` library.
+
+
+
+<a name="dmc_mockserver"></a>
+### Module: dmc_mockserver ###
+
+Emulate a data server (eg REST) in your app - great for testing, API integration, etc. If you make network requests to servers (and the API isn't ready) then you want this app. You want it anyway !
+
+* Extremely valuable module when building an app while API is being built too.
+
+  Create full network requests ! (images, data, etc) Your app doesn't know the difference. Plus, as the API is completed, you can allow those requests through for integration, while the other requests are still being answered by Mock Server
+
+* Also can emulate slow network connections, which is crucial for testing asyncronous code.
+
+
+**Documentation**
+
+http://docs.davidmccuskey.com/display/docs/dmc_mockserver.lua
+
+
+**Examples**
+
+There is a detailed example in the folder `examples/dmc_mockserver/` which shows how to use the `dmc_mockserver` library.
 
 
 
@@ -138,33 +319,16 @@ The module will help with:
 
 * **Mock Server Hook**
 
-	You can add a mock server for developent and testing. You can get this with slightly modifying your code.
+	You can add a mock server for developent and testing. You can get this by barely modifying your code.
 
 * **Priority**
 
   You can dynamically set priority for any request still in the queue. All requests can automatically be assigned a default priority value. This is more advanced, so data requests must be written with this in mind.
 
-[more info...](dmc_nicenet/)
 
 **Documentation**
 
 http://docs.davidmccuskey.com/display/docs/dmc_nicenet.lua
-
-
-
-<a name="dmc_kompatible"></a>
-### Module: dmc_kompatible ###
-
-A module which allows your legacy Corona Graphics 1.0 code to run in Corona Graphics 2.0.
-
-
-**Documentation**
-
-Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_kompatible.lua
-
-**Examples**
-
-There are examples in the folder `examples/dmc_kompatible/` which show how to use the `dmc_kompatible` library.
 
 
 
@@ -218,31 +382,24 @@ There are several examples in the folder `examples/dmc_objects/` which show how 
 
 
 
-### dmc_buttons.lua ###
+<a name="dmc_performance"></a>
+### Module: dmc_performance ###
 
-This file contains classes to create different types of graphical buttons and button groups. It can create:
+Timed performance testing for your app.
 
-* a Push button with optional text label
-* a Radio/Toggle button (on/off state) with optional text label
-* Toggle Group which allows either none or one selection of a group of buttons
-* Radio Group which allows single selection of a group of buttons
+* Profile methods, functions, library loading, etc. See where your app is slow.
 
-
-_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua. If you want an easier example of multi-level inheritance, see `examples/dmc_objects/DMC-Multishapes/`._
+* Prints out memory status, etc.
 
 
 **Documentation**
 
-Quick Guide: http://docs.davidmccuskey.com/display/docs/Quick+Guide+-+dmc_buttons
-
-API: http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
-
-Main Docs: http://docs.davidmccuskey.com/display/docs/dmc_buttons+Documentation
+Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_performance.lua
 
 
 **Examples**
 
-There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library. Other examples use the button class as well - check in `examples/dmc_objects/`.
+There are examples in the folder `examples/dmc_performance/` which show how to use the `dmc_performance` library.
 
 
 
@@ -318,9 +475,36 @@ The main intent of this module is to provide an easy way to have objects follow 
 
 Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
 
+
 **Examples**
 
 There are examples in the folder `examples/dmc_trajectory/` which show how to use the `dmc_trajectory` library.
+
+
+
+<a name="dmc_utils"></a>
+### Module: dmc_utils ###
+
+This module is an ever-changing list of helpful utility functions. Ever-changing because, over time, some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
+
+* Audio Functions - getAudioChannel()
+* Callback Functions - createObjectCallback(), getTransitionCompleteFunc()
+* Date Functions - calcTimeBreakdown()
+* Image Functions - imageScale()
+* String Functions - split(), stringFormatting()
+* Table Functions - destroy(), extend(), hasOwnProperty(), print(), propertyIn(), removeFromTable(), shuffle(), tableSize(), tableSlice(), tableLength()
+copy one table into another ( similar to jQuery extend() )
+* Web Functions - parseQuery(), createQuery()
+
+
+**Documentation**
+
+API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
+
+
+**Examples**
+
+As of yet there are no specific examples for `dmc_utils`, however many of the other `dmc_library` modules make use of it. You can check them for examples.
 
 
 
@@ -363,30 +547,6 @@ Quick Guide: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 There are examples in the folder `examples/dmc_websockets/` which show how to use the `dmc_websockets` module.
 
 
-
-<a name="dmc_utils"></a>
-### Module: dmc_utils ###
-
-This module is an ever-changing list of helpful utility functions. Ever-changing because, over time, some functions have been removed and put into their own modules, eg `dmc_performance`. Here are some of the groupings at the moment:
-
-* Audio Functions - getAudioChannel()
-* Callback Functions - createObjectCallback(), getTransitionCompleteFunc()
-* Date Functions - calcTimeBreakdown()
-* Image Functions - imageScale()
-* String Functions - split(), stringFormatting()
-* Table Functions - destroy(), extend(), hasOwnProperty(), print(), propertyIn(), removeFromTable(), shuffle(), tableSize(), tableSlice(), tableLength()
-copy one table into another ( similar to jQuery extend() )
-* Web Functions - parse_query(), create_query()
-
-
-**Documentation**
-
-API: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
-
-
-**Examples**
-
-As of yet there are no specific examples for `dmc_utils`, however many of the other `dmc_library` modules make use of it. You can check them for examples.
 
 
 
