@@ -49,7 +49,7 @@ local Utils = require 'dmc_utils'
 local WebSocket = require 'dmc_websockets'
 
 local MessageFactory = require 'dmc_wamp.messages'
-local Role = require 'dmc_wamp.roles') )
+local Role = require 'dmc_wamp.roles'
 local FutureMixin = require 'dmc_wamp.future_mix'
 
 local wamp_utils = require 'dmc_wamp.utils'

@@ -83,6 +83,11 @@ function FutureMixin.gather_futures( self, futures, consume_exceptions )
 	return DeferredList( {futures}, {consume_errors=consume_exceptions} )
 end
 
+--== Facade API Methods ==--
+
+function FutureMixin._setDebug( value )
+	States._DEBUG = value
+end
 
 function FutureMixin._mixin( obj )
 	if FutureMixin._DEBUG then
@@ -110,8 +115,8 @@ end
 --====================================================================--
 
 
-return = {
-	setDebug = FutureMixin._setDebug
+return {
+	setDebug = FutureMixin._setDebug,
 	mixin = FutureMixin._mixin
 }
 
