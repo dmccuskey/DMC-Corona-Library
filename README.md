@@ -14,13 +14,15 @@ If you have questions or comments you can either:
 
 **Issues**
 
-If you have any issues, please post them here on github: [dmc_library issues](https://github.com/dmccuskey/DMC-Corona-Library/issues)
+If you have any issues, please post them here on github: [dmc-corona-library issues](https://github.com/dmccuskey/DMC-Corona-Library/issues)
 
 
 
 ## Note ##
 
-I'm currently re-organizing the library so that *all* modules go inside of the folder `dmc_library`. If the modules aren't there yet, know that they soon will be.
+The huge re-org is complete. I have touched every module in the library and then some. Be careful.
+
+The library folder has been renamed to `dmc_corona`, since one of my new libraries is called `dmc_lua`.
 
 
 
@@ -28,11 +30,11 @@ I'm currently re-organizing the library so that *all* modules go inside of the f
 
 For easy installation, copy the following items at the root-level of your Corona project:
 
-* The entire `dmc_library` folder
-* `dmc_library_boot.lua`
-* `dmc_library.cfg`
+* The entire `dmc_corona` folder
+* `dmc_corona_boot.lua`
+* `dmc_corona.cfg`
 
-The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more online on how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+dmc_library).
+The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more online on how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+DMC+Corona+Library).
 
 
 
