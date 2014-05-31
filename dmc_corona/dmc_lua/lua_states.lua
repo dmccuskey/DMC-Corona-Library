@@ -157,7 +157,7 @@ end
 --====================================================================--
 
 return {
-	setDebug = States._setDebug
+	setDebug = States._setDebug,
 	mixin = States._mixin
 }
 

@@ -29,6 +29,12 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
+
+
+--====================================================================--
+-- DMC Corona Library : DMC WAMP
+--====================================================================--
+
 --[[
 Wamp support adapted from:
 * AutobahnPython (https://github.com/tavendo/AutobahnPython/)
@@ -40,9 +46,14 @@ Wamp support adapted from:
 local VERSION = "0.1.0"
 
 
+
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -73,47 +84,27 @@ end
 
 
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
 
 
 
 --====================================================================--
--- DMC Library : DMC WAMP
+-- DMC WAMP
 --====================================================================--
-
 
 
 --====================================================================--
@@ -131,15 +122,15 @@ local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 --====================================================================--
 -- Imports
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local States = require( dmc_lib_func.find('dmc_states') )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
-local WebSocket = require( dmc_lib_func.find('dmc_websockets') )
+local Objects = require 'dmc_objects'
+local States = require 'dmc_states'
+local Utils = require 'dmc_utils'
+local WebSocket = require 'dmc_websockets'
 
-local SerializerFactory = require( dmc_lib_func.find('dmc_wamp.serializer') )
-local wprotocol = require( dmc_lib_func.find('dmc_wamp.protocol') )
+local SerializerFactory = require 'dmc_wamp.serializer'
+local wprotocol = require 'dmc_wamp.protocol'
 
-local Error = require( dmc_lib_func.find('dmc_wamp.exception') )
+local Error = require 'dmc_wamp.exception'
 
 
 --====================================================================--

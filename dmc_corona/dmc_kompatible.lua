@@ -30,15 +30,24 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Kompatible
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.1"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,57 +77,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC Kolor
---====================================================================--
-
-
 
 
 
 --====================================================================--
--- DMC Kolor Config
+-- DMC Library : DMC Kompatible
 --====================================================================--
+
+
+--====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_kompatible = dmc_lib_data.dmc_kompatible or {}
 
@@ -136,14 +120,7 @@ local dmc_kompatible_data = Utils.extend( dmc_lib_data.dmc_kompatible, DMC_KOMPA
 
 
 --====================================================================--
--- Imports
---====================================================================--
-
-
-
---====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- reference to the native object
 local _DISPLAY = _G.display
@@ -155,11 +132,8 @@ local dkd = dmc_kompatible_data -- make shorter reference
 local Display, Native
 
 
-
 --====================================================================--
 -- Support Methods
---====================================================================--
-
 
 -- translateRGBToHDR()
 -- translates RGB color sequence to equivalent HDR values

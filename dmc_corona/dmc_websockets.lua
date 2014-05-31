@@ -29,6 +29,12 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
+
+
+--====================================================================--
+-- DMC Corona Library : DMC Websockets
+--====================================================================--
+
 --[[
 
 WebSocket support adapted from:
@@ -44,9 +50,14 @@ WebSocket support adapted from:
 local VERSION = "0.2.0"
 
 
+
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -76,54 +87,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
 
 
 
 --====================================================================--
--- DMC Library : DMC WebSockets
+-- DMC WebSockets
 --====================================================================--
-
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_websockets = dmc_lib_data.dmc_websockets or {}
 
@@ -134,23 +123,22 @@ local DMC_WEBSOCKETS_DEFAULTS = {
 local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSOCKETS_DEFAULTS )
 
 
-
 --====================================================================--
 -- Imports
 
 local mime = require 'mime'
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local Sockets = require( dmc_lib_func.find('dmc_sockets') )
-local States = require( dmc_lib_func.find('dmc_states') )
+local Objects = require 'dmc_objects'
+local Sockets = require 'dmc_sockets'
+local States = require 'dmc_states'
 local urllib = require 'socket.url'
-local Utils = require( dmc_lib_func.find('dmc_utils') )
+local Utils = require 'dmc_utils'
 
-local patch = require( dmc_lib_func.find('dmc_patch') )
+local patch = require 'dmc_patch'
 
 -- websockets helpers
 
-local wsframe = require( dmc_lib_func.find('dmc_websockets.frame') )
-local wshandshake = require( dmc_lib_func.find('dmc_websockets.handshake') )
+local wsframe = require 'dmc_websockets.frame'
+local wshandshake = require 'dmc_websockets.handshake'
 
 
 --====================================================================--
