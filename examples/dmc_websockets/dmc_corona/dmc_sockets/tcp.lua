@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_sockets/tcp.lua
+-- dmc_sockets.tcp
 --
 --
 -- by David McCuskey
@@ -8,45 +8,115 @@
 
 --[[
 
-The MIT License (MIT)
+Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
-Copyright (c) 2014 David McCuskey
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
 
 --]]
 
 
-
---====================================================================--
--- DMC Corona Library : TCP
---====================================================================--
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.3"
+
+
+
+--====================================================================--
+-- Boot Support Methods
+--====================================================================--
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+
+--====================================================================--
+-- DMC Library Config
+--====================================================================--
+
+local dmc_lib_data, dmc_lib_info, dmc_lib_location
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_library_boot" ) end ) then
+	_G.__dmc_library = {
+		dmc_library={
+			location = ''
+		},
+		func = {
+			find=function( name )
+				local loc = ''
+				if dmc_lib_data[name] and dmc_lib_data[name].location then
+					loc = dmc_lib_data[name].location
+				else
+					loc = dmc_lib_info.location
+				end
+				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
+					loc = loc .. '.'
+				end
+				return loc .. name
+			end
+		}
+	}
+end
+
+dmc_lib_data = _G.__dmc_library
+dmc_lib_func = dmc_lib_data.func
+dmc_lib_info = dmc_lib_data.dmc_library
+dmc_lib_location = dmc_lib_info.location
+
+
+
+--====================================================================--
+-- DMC Library : tcp
+--====================================================================--
+
 
 
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
+local Objects = require( dmc_lib_func.find('dmc_objects') )
 local socket = require 'socket'
 
 
@@ -55,7 +125,7 @@ local socket = require 'socket'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-local ObjectBase = Objects.ObjectBase
+local CoronaBase = Objects.CoronaBase
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
@@ -66,7 +136,7 @@ local LOCAL_DEBUG = false
 -- TCP Socket Class
 --====================================================================--
 
-local TCPSocket = inheritsFrom( ObjectBase )
+local TCPSocket = inheritsFrom( CoronaBase )
 TCPSocket.NAME = "TCP Socket Class"
 
 
@@ -86,7 +156,7 @@ TCPSocket.ERR_CONNECTION = 'Operation already in progress'
 TCPSocket.ERR_TIMEOUT = 'timeout'
 TCPSocket.ERR_CLOSED = 'already closed'
 
---== Event Constants
+-- Event Constants
 
 TCPSocket.EVENT = 'tcp_socket_event'
 
@@ -181,7 +251,7 @@ function TCPSocket:connect( host, port, params )
 		-- warning( evt.emsg ) -- waiting for dmc_patch
 		-- print( "TCPSocket:connect:: " .. evt.emsg )
 
-		self:dispatchEvent( self.CONNECT, evt, { merge=true } )
+		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 		return
 	end
 
@@ -193,12 +263,10 @@ function TCPSocket:connect( host, port, params )
 		self._status = TCPSocket.CONNECTED
 		self._socket:settimeout(0)
 
-		self._master:_connect( self )
-
 		evt.status = self._status
 		evt.emsg = nil
 
-		self:dispatchEvent( self.CONNECT, evt, { merge=true } )
+		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
 	else
 		self._status = TCPSocket.NOT_CONNECTED
@@ -206,7 +274,7 @@ function TCPSocket:connect( host, port, params )
 		evt.status = self._status
 		evt.emsg = nil
 
-		self:dispatchEvent( self.CONNECT, evt, { merge=true } )
+		self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
 	end
 
@@ -279,7 +347,7 @@ function TCPSocket:close()
 		-- notice( evt.emsg ) -- waiting for dmc_patch
 		-- print( "TCPSocket:close :" .. evt.emsg )
 
-		-- self:dispatchEvent( self.CONNECT, evt, { merge=true } )
+		-- self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 
 		return
 	end
@@ -306,7 +374,7 @@ function TCPSocket:_createSocket( params )
 	self._status = TCPSocket.NOT_CONNECTED
 
 	self._socket:settimeout( params.timeout )
-	-- self._master:_connect( self )
+	self._master:_connect( self )
 
 end
 
@@ -329,7 +397,7 @@ end
 
 function TCPSocket:_closeSocketDispatch( evt )
 	-- print( 'TCPSocket:_closeSocketDispatch', evt )
-	self:dispatchEvent( self.CONNECT, evt, { merge=true } )
+	self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 end
 
 
@@ -378,13 +446,12 @@ end
 
 function TCPSocket:_doAfterReadAction()
 	-- print( 'TCPSocket:_doAfterReadAction' )
-	local buff_len = #self._buffer
-	if buff_len > 0 then
+	if #self._buffer > 0 then
 		local evt = {
 			status = self._status,
 			bytes = buff_len
 		}
-		self:dispatchEvent( self.READ, evt, { merge=true } )
+		self:_dispatchEvent( self.READ, evt, { merge=true } )
 	end
 end
 

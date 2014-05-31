@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_wamp/exception.lua
+-- dmc_wamp.utils
 --
 --
 -- by David McCuskey
@@ -29,10 +29,10 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
-
---====================================================================--
--- DMC Corona Library : Exception
---====================================================================--
+--[[
+Wamp support adapted from:
+* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
+--]]
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -41,35 +41,25 @@ local VERSION = "0.1.0"
 
 
 --====================================================================--
--- Imports
-
-local Objects = require 'dmc_objects'
-local Error = require 'lua_error'
-
-
---====================================================================--
 -- Setup, Constants
 
--- setup some aliases to make code cleaner
-local inheritsFrom = Objects.inheritsFrom
-
+math.randomseed( os.time() )
 
 
 --====================================================================--
--- Protocol Error Class
---====================================================================--
+-- Support Functions
 
-
-local ProtocolError = inheritsFrom( Error )
-ProtocolError.NAME = "Protocol Error"
+local function id()
+	return math.random(0, 10^14)
+end
 
 
 
 
 --====================================================================--
--- Exception Facade
+-- Utils Facade
 --====================================================================--
 
 return {
-	ProtocolError=ProtocolError,
+	id = id
 }

@@ -29,16 +29,11 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
-
---====================================================================--
--- DMC Corona Library : Message
---====================================================================--
-
-
 --[[
 Wamp support adapted from:
 * AutobahnPython (https://github.com/tavendo/AutobahnPython/)
 --]]
+
 
 -- Semantic Versioning Specification: http://semver.org/
 
@@ -49,8 +44,8 @@ local VERSION = "0.1.0"
 -- Imports
 
 local json = require 'json'
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
+local Objects = require( dmc_lib_func.find('dmc_objects') )
+local Utils = require( dmc_lib_func.find('dmc_utils') )
 
 
 --====================================================================--
@@ -65,7 +60,6 @@ local ObjectBase = Objects.ObjectBase
 --====================================================================--
 -- Message Base Class
 --====================================================================--
-
 
 local Message = inheritsFrom( ObjectBase )
 Message.NAME = "Message Base Class"
@@ -90,7 +84,6 @@ end
 --====================================================================--
 -- Hello Message Class
 --====================================================================--
-
 
 -- Format: `[ HELLO, Realm|uri, Details|dict ]`
 
@@ -147,7 +140,6 @@ end
 -- Welcome Message Class
 --====================================================================--
 
-
 -- Format: `[WELCOME, Session|id, Details|dict]`
 
 local Welcome = inheritsFrom( Message )
@@ -199,13 +191,9 @@ end
 -- Abort Message Class
 --====================================================================--
 
-
-
 --====================================================================--
 -- Challenge Message Class
 --====================================================================--
-
-
 
 --====================================================================--
 -- Authenticate Message Class
@@ -216,7 +204,6 @@ end
 --====================================================================--
 -- Goodbye Message Class
 --====================================================================--
-
 
 -- Format: `[GOODBYE, Details|dict, Reason|uri]`
 
@@ -275,7 +262,6 @@ end
 --====================================================================--
 -- Error Message Class
 --====================================================================--
-
 
 --[[
 Formats:
@@ -373,6 +359,7 @@ end
 --====================================================================--
 -- Publish Message Class
 --====================================================================--
+
 
 
 --[[
@@ -604,7 +591,6 @@ end
 -- Subscribed Message Class
 --====================================================================--
 
-
 --[[
 Format: `[SUBSCRIBE, Request|id, Options|dict, Topic|uri]`
 --]]
@@ -667,7 +653,6 @@ end
 --====================================================================--
 -- Unsubscribe Message Class
 --====================================================================--
-
 
 --[[
 Format: `[UNSUBSCRIBE, Request|id, SUBSCRIBED.Subscription|id]`
@@ -734,7 +719,6 @@ end
 -- Unsubscribed Message Class
 --====================================================================--
 
-
 local Unsubscribed = inheritsFrom( Message )
 Unsubscribed.NAME = "Unsubscribed Message Class"
 
@@ -791,7 +775,6 @@ end
 --====================================================================--
 -- Event Message Class
 --====================================================================--
-
 
 --[[
 Formats:
@@ -865,7 +848,6 @@ end
 --====================================================================--
 -- Call Message Class
 --====================================================================--
-
 
 --[[
 Formats:
@@ -961,7 +943,6 @@ end
 -- Result Message Class
 --====================================================================--
 
-
 --[[
 Formats:
 	* `[RESULT, CALL.Request|id, Details|dict]`
@@ -1046,7 +1027,6 @@ end
 -- Register Message Class
 --====================================================================--
 
-
 --[[
 Format:
 * `[REGISTER, Request|id, Options|dict, Procedure|uri]`
@@ -1122,7 +1102,6 @@ end
 --====================================================================--
 -- Registered Message Class
 --====================================================================--
-
 
 --[[
 Format:
@@ -1350,7 +1329,6 @@ end
 -- Invocation Message Class
 --====================================================================--
 
-
 --[[
 Formats:
 * `[INVOCATION, Request|id, REGISTERED.Registration|id, Details|dict]`
@@ -1458,7 +1436,6 @@ end
 -- Yield Message Class
 --====================================================================--
 
-
 --[[
 Format:
 * `[YIELD, INVOCATION.Request|id, Options|dict]`
@@ -1538,13 +1515,12 @@ function Yield:marshal()
 end
 
 
-
 --====================================================================--
 -- Message Factory
 --====================================================================--
 
-
 local MessageFactory = {}
+
 
 --== Class References
 
@@ -1567,6 +1543,7 @@ MessageFactory.Unregister = Unregister
 MessageFactory.Unregistered = Unregistered
 MessageFactory.Invocation = Invocation
 MessageFactory.Yield = Yield
+
 
 --== Type-Class Mapping
 
@@ -1591,6 +1568,61 @@ MessageFactory.map = {
 	[Invocation.TYPE] = Invocation,
 	[Yield.TYPE] = Yield,
 }
+
+
+function MessageFactory.create( msg_type, params )
+	-- print( "MessageFactory.create", msg_type )
+
+	local o
+
+	if msg_type == Hello.TYPE then
+		o = Hello:new( params )
+
+	elseif msg_type == Welcome.TYPE then
+		o = Welcome:new( params )
+
+	elseif msg_type == Goodbye.TYPE then
+		o = Goodbye:new( params )
+
+	elseif msg_type == Error.TYPE then
+		o = Error:new( params )
+
+	elseif msg_type == Subscribe.TYPE then
+		o = Subscribe:new( params )
+
+	elseif msg_type == Subscribed.TYPE then
+		o = Subscribed:new( params )
+
+	elseif msg_type == Unsubscribe.TYPE then
+		o = Unsubscribe:new( params )
+
+	elseif msg_type == Unsubscribed.TYPE then
+		o = Unsubscribed:new( params )
+
+	elseif msg_type == Event.TYPE then
+		o = Event:new( params )
+
+	elseif msg_type == Call.TYPE then
+		o = Call:new( params )
+
+	elseif msg_type == Result.TYPE then
+		o = Result:new( params )
+
+	elseif msg_type == Register then
+		o = Register:new( params )
+
+	elseif msg_type == Registered.TYPE then
+		o = Registered:new( params )
+
+	elseif msg_type == Invocation.TYPE then
+		o = Invocation:new( params )
+
+	else
+		error( "ERROR, message factory", msg_type )
+	end
+
+	return o
+end
 
 
 return MessageFactory

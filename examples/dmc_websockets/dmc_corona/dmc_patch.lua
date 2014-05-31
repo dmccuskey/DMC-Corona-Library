@@ -1,14 +1,14 @@
 --====================================================================--
--- dmc_states.lua
+-- dmc_patch.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_states.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_patch.lua
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
+Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -32,13 +32,12 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC States
+-- DMC Corona Library : DMC Patch
 --====================================================================--
-
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -98,27 +97,122 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC States
+-- DMC Patch
 --====================================================================--
 
 
 --====================================================================--
 -- Configuration
 
-dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
+dmc_lib_data.dmc_patch = dmc_lib_data.dmc_patch or {}
 
-local DMC_STATES_DEFAULTS = {
-	debug_active=false,
+local DMC_PATCH_DEFAULTS = {
+	string_formatting_active=true,
+	advanced_require_active=false,
+	table_pop=true
 }
 
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
+local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS )
 
 
 --====================================================================--
 -- Imports
 
-local States = require 'lua_states'
+local Utils = require 'dmc_utils'
 
 
-return States
+--====================================================================--
+-- Setup, Constants
 
+local gRequire = _G.require -- save copy
+
+
+
+--====================================================================--
+-- Patch Work
+--====================================================================--
+
+
+--====================================================================--
+--== Python-style string formatting
+
+if dmc_patch_data.string_formatting_active == true then
+	getmetatable("").__mod = Utils.stringFormatting
+end
+
+
+--====================================================================--
+--== Python-style table pop() method
+
+if dmc_patch_data.table_pop == true then
+	table.pop = function( t, v )
+		local res = t[v]
+		t[v] = nil
+		return res
+	end
+end
+
+
+--====================================================================--
+--== Advanced require()
+
+local function init()
+
+	local gRequire = _G.require
+	local dirs = { '', 'libs.' }
+
+	return function( module_name )
+		local found, name, g_error
+		for i,v in ipairs( dirs )  do
+			found, name, g_error = nil, nil, nil
+			local name = v .. module_name
+			local try = function()
+				found = gRequire( name )
+			end
+			-- print( name )
+			local status, err = pcall( try )
+
+			if status then
+				break
+			else
+				-- print( err )
+				if string.find( err, "^error loading module") ~= nil then
+					-- print("ERORR loading")
+					g_error = err
+					break
+
+				elseif string.find( err, "module '.+' not found:resource" ) then
+					-- print("NOT FOUND")
+					if not g_error then
+						g_error = err
+					end
+
+				else
+					g_error = err
+					break
+				end
+			end
+		end
+
+		if found then
+			return found
+		else
+			print( "error importing '%s'" % tostring( module_name ) )
+			-- print( g_error )
+			error( g_error )
+		end
+
+	end
+
+end
+
+if dmc_patch_data.advanced_require_active == true then
+	_G.require = init()
+end
+
+
+
+
+return {
+	-- future facade
+}

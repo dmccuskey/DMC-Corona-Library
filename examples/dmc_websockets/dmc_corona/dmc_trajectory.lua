@@ -34,7 +34,6 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : DMC Trajectory
 --====================================================================--
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "1.1.0"

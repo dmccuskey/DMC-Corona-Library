@@ -1,9 +1,8 @@
 --====================================================================--
--- dmc_wamp/future_mix.lua
---
+-- lua_error.lua
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/lua_error.lua
 --====================================================================--
 
 --[[
@@ -30,10 +29,10 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
---====================================================================--
--- DMC Corona Library : Future Mix
---====================================================================--
 
+--====================================================================--
+-- DMC Lua Library : Lua Error
+--====================================================================--
 
 -- Semantic Versioning Specification: http://semver.org/
 
@@ -43,75 +42,73 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Promises = 'lua_promise'
-local Deferred, maybeDeferred = Promises.Deferred, Promises.maybeDeferred
-
-
-
---====================================================================--
--- Future Mix Container
---====================================================================--
-
-
-local FutureMixin = {}
-
-FutureMixin._DEBUG = false
+local Objects = require 'lua_objects'
 
 
 --====================================================================--
--- Public Functions
+-- Setup, Constants
 
-function FutureMixin.create_future( self )
-	return Deferred:new()
-end
-function FutureMixin.as_future( self, func, args, kwargs )
-	return maybeDeferred( func, args, kwargs )
-end
-function FutureMixin.resolve_future( self, future, value )
-	return future:callback( value )
-end
-function FutureMixin.reject_future( self, future, value )
-	return future:errback( value )
-end
-function FutureMixin.add_future_callbacks( self, future, callback, errback )
-	print( self, future, callback, errback )
-	return future:addCallbacks( callback, errback )
-end
-function FutureMixin.gather_futures( self, futures, consume_exceptions )
-	consume_exceptions = consume_exceptions or true
-
-	return DeferredList( {futures}, {consume_errors=consume_exceptions} )
-end
+-- setup some aliases to make code cleaner
+local inheritsFrom = Objects.inheritsFrom
+local ObjectBase = Objects.ObjectBase
 
 
-function FutureMixin._mixin( obj )
-	if FutureMixin._DEBUG then
-		print( "WAMP FutureMixin::mixin: ", obj.NAME )
+--====================================================================--
+-- Support Functions
+
+-- https://gist.github.com/cwarden/1207556
+
+local function try( funcs )
+	local try_f, catch_f, finally_f = funcs[1], funcs[2], funcs[3]
+	local status, result = pcall(try_f)
+	if not status and catch_f then
+		catch_f(result)
 	end
+	if finally_f then finally_f() end
+	return result
+end
 
-	obj = obj or {}
+local function catch(f)
+	return f[1]
+end
 
-	-- add methods
-	obj._create_future = FutureMixin.create_future
-	obj._as_future = FutureMixin.as_future
-	obj._resolve_future = FutureMixin.resolve_future
-	obj._reject_future = FutureMixin.reject_future
-	obj._add_future_callbacks = FutureMixin.add_future_callbacks
-	obj._gather_futures = FutureMixin.gather_futures
-
-	return obj
+local function finally(f)
+	return f[1]
 end
 
 
 
+--====================================================================--
+-- Error Base Class
+--====================================================================--
+
+local Error = inheritsFrom( ObjectBase )
+Error.NAME = "Error Instance"
+
+function Error:_init( params )
+	-- print( "Message:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	if self.is_intermediate then return end
+
+	self.message = params.message or "ERROR"
+	self.traceback = debug.traceback()
+
+	local mt = getmetatable( self )
+	mt.__tostring = function(e) return "ERROR: "..e.message end
+
+end
+
+
 
 --====================================================================--
--- Future Facade
+-- Error Facade
 --====================================================================--
 
+_G.try = try
+_G.catch = catch
+_G.finally = finally
 
-return = {
-	setDebug = FutureMixin._setDebug
-	mixin = FutureMixin._mixin
-}
-
+return Error

@@ -48,7 +48,7 @@ local VERSION = "0.2.0"
 -- Imports
 
 local mime = require 'mime'
-local patch = require 'dmc_patch'
+local patch = require( dmc_lib_func.find('dmc_patch') )
 
 
 --====================================================================--

@@ -1,14 +1,14 @@
 --====================================================================--
--- dmc_states.lua
+-- bit.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_states.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/bit.lua
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
+Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -32,13 +32,13 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC States
+-- DMC Corona Library : bit
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -98,27 +98,15 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC States
+-- Bit Library Import
 --====================================================================--
 
 
---====================================================================--
--- Configuration
-
-dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
-
-local DMC_STATES_DEFAULTS = {
-	debug_active=false,
-}
-
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
-
-
---====================================================================--
--- Imports
-
-local States = require 'lua_states'
-
-
-return States
-
+local has_bitOp, bitOp = pcall( require, 'plugin.bit' )
+if has_bitOp then
+	print("dmc_library:: Loading faster bitOp plugin")
+	return bitOp
+else
+	print("dmc_library:: Loading slower bitOp library")
+	return require 'libs.bit.numberlua'
+end

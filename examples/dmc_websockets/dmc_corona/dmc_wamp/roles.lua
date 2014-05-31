@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_wamp/future_mix.lua
+-- dmc_wamp.roles
 --
 --
 -- by David McCuskey
@@ -29,10 +29,10 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
-
---====================================================================--
--- DMC Corona Library : Future Mix
---====================================================================--
+--[[
+Wamp support adapted from:
+* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
+--]]
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -43,75 +43,41 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Promises = 'lua_promise'
-local Deferred, maybeDeferred = Promises.Deferred, Promises.maybeDeferred
+local Objects = require( dmc_lib_func.find('dmc_objects') )
+local Utils = require( dmc_lib_func.find('dmc_utils') )
 
 
 
 --====================================================================--
--- Future Mix Container
+-- Subscriber Role Features
 --====================================================================--
 
+local roleSubscriberFeatures = {
+	ROLE = 'subscriber',
 
-local FutureMixin = {}
-
-FutureMixin._DEBUG = false
-
-
---====================================================================--
--- Public Functions
-
-function FutureMixin.create_future( self )
-	return Deferred:new()
-end
-function FutureMixin.as_future( self, func, args, kwargs )
-	return maybeDeferred( func, args, kwargs )
-end
-function FutureMixin.resolve_future( self, future, value )
-	return future:callback( value )
-end
-function FutureMixin.reject_future( self, future, value )
-	return future:errback( value )
-end
-function FutureMixin.add_future_callbacks( self, future, callback, errback )
-	print( self, future, callback, errback )
-	return future:addCallbacks( callback, errback )
-end
-function FutureMixin.gather_futures( self, futures, consume_exceptions )
-	consume_exceptions = consume_exceptions or true
-
-	return DeferredList( {futures}, {consume_errors=consume_exceptions} )
-end
-
-
-function FutureMixin._mixin( obj )
-	if FutureMixin._DEBUG then
-		print( "WAMP FutureMixin::mixin: ", obj.NAME )
-	end
-
-	obj = obj or {}
-
-	-- add methods
-	obj._create_future = FutureMixin.create_future
-	obj._as_future = FutureMixin.as_future
-	obj._resolve_future = FutureMixin.resolve_future
-	obj._reject_future = FutureMixin.reject_future
-	obj._add_future_callbacks = FutureMixin.add_future_callbacks
-	obj._gather_futures = FutureMixin.gather_futures
-
-	return obj
-end
-
-
-
-
---====================================================================--
--- Future Facade
---====================================================================--
-
-
-return = {
-	setDebug = FutureMixin._setDebug
-	mixin = FutureMixin._mixin
+	features = {}
 }
 
+
+
+--====================================================================--
+-- Subscriber Caller Features
+--====================================================================--
+
+local roleCallerFeatures = {
+	ROLE = 'caller',
+
+	features = {}
+}
+
+
+
+
+--====================================================================--
+-- Roles Facade
+--====================================================================--
+
+return {
+	subscriberFeatures=roleSubscriberFeatures,
+	callerFeatures=roleCallerFeatures
+}

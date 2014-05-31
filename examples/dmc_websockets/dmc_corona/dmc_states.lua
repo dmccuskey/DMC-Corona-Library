@@ -35,7 +35,6 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : DMC States
 --====================================================================--
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "1.1.0"
@@ -117,7 +116,7 @@ local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAUL
 --====================================================================--
 -- Imports
 
-local States = require 'lua_states'
+local States = require 'dmc_lua.lua_states'
 
 
 return States

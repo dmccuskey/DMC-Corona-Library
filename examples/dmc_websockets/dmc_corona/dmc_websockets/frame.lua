@@ -49,7 +49,7 @@ local VERSION = "0.1.0"
 -- Imports
 --====================================================================--
 
-local bit = require 'bit'
+local bit = require( dmc_lib_func.find('bit') )
 
 local band = bit.band
 local bor = bit.bor

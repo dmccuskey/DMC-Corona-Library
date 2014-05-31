@@ -646,8 +646,8 @@ function WebSocket:do_state_init( params )
 	Sockets.throttle = self._socket_throttle
 	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
-	print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
-	self._socket:connect( host, port, { onConnect=self._socket_handler, onData=self._socket_handler } )
+	print( "dmc_websockets:: Connecting to '%s'" % self._host )
+	self._socket:connect( host, port, { onConnect=self._socket_handler } )
 
 end
 

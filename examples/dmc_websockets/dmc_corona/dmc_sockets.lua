@@ -8,27 +8,24 @@
 
 --[[
 
-The MIT License (MIT)
+Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
-Copyright (c) 2014 David McCuskey
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
 
 --]]
 
@@ -40,7 +37,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -115,18 +112,18 @@ local DMC_SOCKETS_DEFAULTS = {
 	throttle_level=math.floor( 1000/15 ), -- MEDIUM
 }
 
-local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEFAULTS )
+local dmc_states_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEFAULTS )
 
 
 --====================================================================--
 -- Imports
 
 local Objects = require 'dmc_objects'
-local socket = require 'socket'
 local Utils = require 'dmc_utils'
+local socket = require 'socket'
 
 local tcp_socket = require 'dmc_sockets.tcp'
-local atcp_socket = require 'dmc_sockets.async_tcp'
+local atcp_socket = require 'dmc_sockets.atcp'
 
 
 --====================================================================--
@@ -134,7 +131,7 @@ local atcp_socket = require 'dmc_sockets.async_tcp'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-local ObjectBase = Objects.ObjectBase
+local CoronaBase = Objects.CoronaBase
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
@@ -147,9 +144,8 @@ local Singleton = nil
 -- Sockets Class
 --====================================================================--
 
-
-local Sockets = inheritsFrom( ObjectBase )
-Sockets.NAME = "Sockets Instance"
+local Sockets = inheritsFrom( CoronaBase )
+Sockets.NAME = "Sockets Class"
 
 Sockets.VERSION = VERSION
 
@@ -166,7 +162,6 @@ Sockets.MEDIUM = math.floor( 1000/15 )  -- ie, 15 FPS
 Sockets.HIGH = math.floor( 1000/1 )  -- ie, 1 FPS
 
 Sockets.DEFAULT = Sockets.MEDIUM
-
 
 
 --====================================================================--
@@ -212,11 +207,11 @@ function Sockets:_initComplete()
 	--==--
 
 	-- initialize using setters
-	self.check_reads = dmc_sockets_data.check_reads
-	self.check_writes = dmc_sockets_data.check_writes
+	self.check_reads = dmc_states_data.check_reads
+	self.check_writes = dmc_states_data.check_writes
 
-	if type( dmc_sockets_data.throttle_level ) == 'number' then
-		self.throttle = dmc_sockets_data.throttle_level
+	if type( dmc_states_data.throttle_level ) == 'number' then
+		self.throttle = dmc_states_data.throttle_level
 	else
 		self.throttle = Sockets.DEFAULT
 	end
@@ -243,7 +238,7 @@ end
 
 
 function Sockets.__setters:throttle( value )
-	-- print( 'Sockets.__setters:throttle', value )
+	-- print( 'Sockets.__setters:check_reads', value )
 
 	--== Sanity Check
 
@@ -363,15 +358,15 @@ end
 
 
 -- @param socket DMC TCP Socket
-function Sockets:_connect( sock )
-	-- print( 'Sockets:_connect', sock )
-	self:_addSocket( sock )
+function Sockets:_connect( socket )
+	-- print( 'Sockets:_connect', socket )
+	self:_addSocket( socket )
 end
 
 -- @param socket DMC TCP Socket
-function Sockets:_disconnect( sock )
-	-- print( 'Sockets:_disconnect', sock )
-	self:_removeSocket( sock )
+function Sockets:_disconnect( socket )
+	-- print( 'Sockets:_disconnect', socket )
+	self:_removeSocket( socket )
 end
 
 
@@ -388,19 +383,21 @@ function Sockets:_removeSockets()
 end
 
 
-function Sockets:_addSocket( sock )
-	-- print( "Sockets:_addSocket", sock )
+function Sockets:_addSocket( socket )
+	-- print( "Sockets:_addSocket", socket )
 
-	local raw_sock = sock._socket
+	local raw_sock = socket._socket
 	local key
 
 	-- save TCP lookup
-	key = tostring( sock )
-	self._sockets[ key ] = sock
+	key = tostring( socket )
+	self._sockets[ key ] = socket
 
 	-- save socket lookup
 	key = tostring( raw_sock )
-	self._raw_socks[ key ] = sock
+	-- need to modify key, because user-data changes after socket connect
+	key = string.gsub( key, 'master', 'client' )
+	self._raw_socks[ key ] = socket
 
 	-- save raw socket in list
 	table.insert( self._raw_socks_list, raw_sock )
@@ -412,10 +409,10 @@ function Sockets:_addSocket( sock )
 end
 
 
-function Sockets:_removeSocket( sock )
-	-- print( "Sockets:_removeSocket", sock )
+function Sockets:_removeSocket( socket )
+	-- print( "Sockets:_removeSocket", socket )
 
-	local raw_sock = sock._socket
+	local raw_sock = socket._socket
 	local key
 
 	Utils.removeFromTable( self._raw_socks_list, raw_sock )
@@ -423,7 +420,7 @@ function Sockets:_removeSocket( sock )
 	key = tostring( raw_sock )
 	self._raw_socks[ key ] = nil
 
-	key = tostring( sock )
+	key = tostring( socket )
 	self._sockets[ key ] = nil
 
 	if #self._raw_socks_list == 0 then
@@ -442,24 +439,27 @@ function Sockets:_checkConnections()
 
 	for i, rs in ipairs( s_read ) do
 		-- print( i, rs )
-		local sock = self._raw_socks[ tostring( rs ) ]
-		if sock then sock:_readStatus( 'ok' )
-		else
-			print( "ERROR IN SOCKET ")
-		end
+		local socket = self._raw_socks[ tostring( rs ) ]
+		socket:_readStatus( 'ok' )
 	end
 
 	for i, rs in ipairs( s_write ) do
 		-- print( i, rs )
-		local sock = self._raw_socks[ tostring( rs ) ]
-		sock:_writeStatus( 'ok' )
+		local socket = self._raw_socks[ tostring( rs ) ]
+		socket:_writeStatus( 'ok' )
 	end
 
 end
 
 
+
+
+
+
 --====================================================================--
 --== Event Handlers
+
+
 
 function Sockets:_createSocketCheckHandler( value )
 	-- print("Sockets:_createSocketCheckHandler", value )
@@ -467,13 +467,19 @@ function Sockets:_createSocketCheckHandler( value )
 	local last_check = system.getTimer()
 
 	local f = function( event )
-		-- local current_time = system.getTimer()
-		-- print( current_time, last_check, timeout )
+		local current_time = system.getTimer()
+		if current_time - last_check > timeout then
 			self:_checkConnections()
+			last_check = current_time
+		end
+
 	end
 
 	return f
+
 end
+
+
 
 
 --====================================================================--

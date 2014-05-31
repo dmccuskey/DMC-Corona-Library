@@ -1,139 +1,51 @@
 --====================================================================--
--- dmc_utils.lua
+-- lua_utils.lua
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_utils.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/lua_utils.lua
 --====================================================================--
 
 --[[
 
-Copyright (C) 2011-2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2014 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
 
 --====================================================================--
--- DMC Corona Library : DMC Utils
+-- DMC Lua Library : Lua Utils
 --====================================================================--
-
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
-
-
-
---====================================================================--
--- DMC Corona Library Config
---====================================================================--
+local VERSION = "0.1.0"
 
 
 --====================================================================--
--- Support Functions
+-- Setup, Constants
 
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
---====================================================================--
--- Configuration
-
-local dmc_lib_data, dmc_lib_info
-
--- boot dmc_library with boot script or
--- setup basic defaults if it doesn't exist
---
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
-	_G.__dmc_corona = {
-		dmc_corona={},
-	}
-end
-
-dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
-
-
-
---====================================================================--
--- DMC Utils
---====================================================================--
-
-
---====================================================================--
--- Configuration
-
-dmc_lib_data.dmc_utils = dmc_lib_data.dmc_utils or {}
-
-local DMC_UTILS_DEFAULTS = {
-	-- none
-}
-
-local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS )
-
-
-
---====================================================================--
--- Audio Functions
---====================================================================--
-
-
--- getAudioChannel( options )
--- simplifies getting an audio channel from Corona SDK
--- automatically sets volume and channel
---
--- @params opts table: with properties: volume, channel
---
-function Utils.getAudioChannel( opts )
-	opts = opts or {}
-	opts.volume = opts.volume == nil and 1.0 or opts.volume
-	opts.channel = opts.channel == nil and 1 or opts.channel
-	--==--
-	local ac = audio.findFreeChannel( opts.channel )
-	audio.setVolume( opts.volume, { channel=ac } )
-	return ac
-end
+local Utils = {}
 
 
 
@@ -149,9 +61,9 @@ end
 -- @param method the method to call
 --
 function Utils.createObjectCallback( object, method )
-	if object == nil or method == nil then
-		error( "ERROR: missing object or method in createObjectCallback()" )
-	end
+	assert( object ~= nil, "missing object in Utils.createObjectCallback" )
+	assert( method ~= nil, "missing method in Utils.createObjectCallback" )
+
 	return function( ... )
 		return method( object, ... )
 	end
@@ -159,6 +71,9 @@ end
 
 
 function Utils.getTransitionCompleteFunc( count, callback )
+	assert( type(count)=='number' )
+	assert( type(callback)=='function' )
+
 	local total = 0
 	local func = function(...)
 		total = total + 1
@@ -172,7 +87,6 @@ end
 --====================================================================--
 -- Date Functions
 --====================================================================--
-
 
 --[[
 
@@ -238,7 +152,6 @@ end
 -- Image Functions
 --====================================================================--
 
-
 -- imageScale()
 -- container, image - table with width/height keys
 -- returns scale
@@ -273,7 +186,6 @@ end
 -- JSON/Lua Functions
 --====================================================================--
 
-
 --[[
 These functions fix the issue that arises when working with JSON and
 the duality of tables/arrays in Lua.
@@ -291,8 +203,7 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function Utils.encodeLuaTable( table_ref )
 	-- print( "Utils.encodeLuaTable", table_ref )
-	if table_ref == nil then return table_ref end
-	if Utils.tableSize( table_ref ) == 0 then
+	if table_ref == nil or Utils.tableSize( table_ref ) == 0 then
 		table_ref = { ['__HACK__']='__PAD__' }
 	end
 	return table_ref
@@ -325,7 +236,6 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function Utils.encodeLuaInteger( integer )
 	-- print( "Utils.encodeLuaInteger", integer )
-	assert( type(integer) == 'number', "encodeLuaInteger: not a number" )
 	return string.format("<<<%.0f>>>", integer )
 end
 
@@ -344,7 +254,6 @@ end
 --====================================================================--
 -- Math Functions
 --====================================================================--
-
 
 function Utils.getUniqueRandom( include, exclude )
 	--print( "Utils.getUniqueRandom" )
@@ -393,11 +302,23 @@ function Utils.getUniqueRandom( include, exclude )
 end
 
 
+-- hexDump()
+-- pretty-print data in hex table
+--
+function Utils.hexDump( buf )
+	for i=1,math.ceil(#buf/16) * 16 do
+		if (i-1) % 16 == 0 then io.write(string.format('%08X  ', i-1)) end
+		io.write( i > #buf and '   ' or string.format('%02X ', buf:byte(i)) )
+		if i %  8 == 0 then io.write(' ') end
+		if i % 16 == 0 then io.write( buf:sub(i-16+1, i):gsub('%c','.'), '\n' ) end
+	end
+end
+
+
 
 --====================================================================--
 -- String Functions
 --====================================================================--
-
 
 -- split string up in parts, using separator
 -- returns array of pieces
@@ -433,7 +354,6 @@ end
 --====================================================================--
 -- Table Functions
 --====================================================================--
-
 
 -- destroy()
 -- Deletes all of the items in a table structure.
@@ -471,6 +391,9 @@ end
 --
 function Utils.extend( fromTable, toTable )
 
+	if not fromTable or not toTable then
+		error( "table can't be nil" )
+	end
 	function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
@@ -669,14 +592,40 @@ end
 -- Web Functions
 --====================================================================--
 
+-- http://lua-users.org/wiki/StringRecipes
+function Utils.urlEncode( str )
+	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
 
--- parse_query()
+	str = string.gsub (str, "+", " ")
+	str = string.gsub (str, "%%(%x%x)",
+		function(h) return string.char(tonumber(h,16)) end)
+	str = string.gsub (str, "\r\n", "\n")
+	return str
+end
+
+-- http://lua-users.org/wiki/StringRecipes
+function Utils.urlEncode( str )
+	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+
+	if (str) then
+		str = string.gsub (str, "\n", "\r\n")
+		str = string.gsub (str, "([^%w %-%_%.%~])",
+				function (c) return string.format ("%%%02X", string.byte(c)) end)
+		str = string.gsub (str, " ", "+")
+	end
+	return str
+end
+
+
+-- parseQuery()
 -- splits an HTTP query string (eg, 'one=1&two=2' ) into its components
 --
 -- @param  str  string containing url-type key/value pairs
 -- @returns a table with the key/value pairs
 --
-function Utils.parse_query( str )
+function Utils.parseQuery( str )
+	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+
 	local t = {}
 	if str ~= nil then
 		for k, v in string.gmatch( str, "([^=&]+)=([^=&]+)") do
@@ -686,11 +635,20 @@ function Utils.parse_query( str )
 	return t
 end
 
-function Utils.create_query( tbl )
+-- createQuery()
+-- creates query string from table items
+--
+-- @param tbl table as dictionary
+-- returns query string
+--
+function Utils.createQuery( tbl )
+	assert( type(tbl)=='table', "Utils.createQuery: input not a table" )
+
+	local encode = Utils.urlEncode
 	local str = ''
 	for k,v in pairs( tbl ) do
 		if str ~= '' then str = str .. '&' end
-		str = str .. tostring( k ) .. '=' .. url_encode( tostring(v) )
+		str = str .. tostring( k ) .. '=' .. encode( tostring(v) )
 	end
 	return str
 end
