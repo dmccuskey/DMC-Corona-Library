@@ -31,229 +31,284 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Corona Boot
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.1"
+local VERSION = "1.2.0"
 
 
 --====================================================================--
--- Setup Support Methods
+-- Imports
+
+local ok, json = pcall( require, 'json' )
+if not ok then json = nil end
+
+
+--====================================================================--
+-- Setup Support
 --====================================================================--
 
-local Utils = {} -- make copying from dmc_utils easier
+--== Start lua_files copies ==--
 
---== Start dmc_utils copies ==--
+local File = {}
 
-Utils.IO_ERROR = "io_error"
-Utils.IO_SUCCESS = "io_success"
+--====================================================================--
+--== readFile() ==--
 
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-function Utils.readFile( file_path, options )
-	-- print( "Utils.readFile", file_path )
-
+function File.readFile( file_path, options )
+	-- print( "File.readFile", file_path )
+	assert( type(file_path)=='string', "file path is not string" )
+	assert( #file_path>0 )
 	options = options or {}
-	if options.lines == nil then options.lines = true end
+	options.lines = options.lines == nil and true or options.lines
+	--==--
 
-	local contents -- either string or table of strings
-	local ret_val = {} -- an array, [ status, content ]
+	local fh, contents
 
-	if file_path == nil then
-		local ret_val = { Utils.IO_ERROR, "file path is NIL" }
+	fh = assert( io.open(file_path, 'r') )
+
+	if options.lines == false then
+		-- read contents in one big string
+		contents = fh:read( '*all' )
 
 	else
-		local fh, reason = io.open( file_path, "r" )
-		if fh == nil then
-			print("ERROR: datastore load settings: " .. tostring( reason ) )
-			ret_val = { Utils.IO_ERROR, reason }
+		-- read all contents of file into a table
+		contents = {}
+		for line in fh:lines() do
+			table.insert( contents, line )
+		end
 
-		else
-			if options.lines == false then
-				-- read contents in one big string
-				contents = fh:read( '*all' )
+	end
 
-			else
-				-- read all contents of file into a table
-				contents = {}
-				for line in fh:lines() do
-					table.insert( contents, line )
-				end
+	io.close( fh )
 
-			end
-
-			ret_val = { Utils.IO_SUCCESS, contents }
-			io.close( fh )
-
-		end  -- fh == nil
-	end  -- file_path == nil
-
-	return ret_val[1], ret_val[2]
+	return contents
 end
 
-function Utils.readConfigFile( file_path, options )
-	-- print( "Utils.readConfigFile", file_path )
-
+function File.readFileLines( file_path, options )
 	options = options or {}
 	options.lines = true
-	options.default_section = options.default_section or nil -- no default here
+	return File.readFile( file_path, options )
+end
 
-	local status, contents = Utils.readFile( file_path, options )
+function File.readFileContents( file_path, options )
+	options = options or {}
+	options.lines = false
+	return File.readFile( file_path, options )
+end
 
-	if status == Utils.IO_ERROR then return nil end
 
-	local data = {}
-	local curr_section = options.default_section
-	if curr_section ~= nil and not data[curr_section] then
-		data[curr_section]={}
-	end
+--====================================================================--
+--== read/write JSONFile() ==--
 
-	local function castValue( v, t )
-		local ret = nil
-
-		if t == 'PATH' or t == 'FILE' then
-			ret = string.gsub( v, '[/\\]', "." )
-		elseif t == 'BOOL' or t == 'BOOLEAN' then
-			if v == 'true' then
-				ret = true
-			elseif v == 'false' then
-				ret = false
-			end
-		elseif t == 'INT' or t == 'INTEGER' then
-			ret = tonumber( v )
-		elseif t == 'STR' or t == 'STRING' then
-			ret = v
-		end
-
-		if ret == nil then ret = v end -- return orig value
-
- 		return ret
-	end
-
-	local function processSectionLine( line )
-		local key
-		key = line:match( "%[([%w_]+)%]" )
-		key = string.lower( key ) -- use only lowercase inside of module
-		return key
-	end
-
-	local function processKeyLine( line )
-		local k, v, key, val
-		-- print( line )
-		local parts = { nil, 'STRING', nil } -- holds key, type, value
-		k, v = line:match( "([%w_:]+)%s*=%s*([%w_./\\]+)" )
-		parts[3] = v -- value
-		local i = 1
-		for x in k:gmatch( "[%a_]+" ) do
-			parts[i] = x
-		  i = i + 1
-		end
-		-- print( tostring(parts[1]) .. " (".. tostring( parts[2]) .. ") = " .. tostring(parts[3]) )
-
-		key = string.lower( parts[1] ) -- use only lowercase inside of module
-		val = castValue( parts[3], parts[2]  )
-		-- print( key, val, type(val) )
-		return key, val
-	end
-
-	local is_valid = true
-	local is_section
-	local key, val
-	for _, line in ipairs( contents ) do
-		-- print( line )
-		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
-		is_key = ( string.find( line, '%w', 1, false ) == 1 )
-		-- print( is_section, is_key )
-
-		if is_section then
-			curr_section = processSectionLine( line )
-			if not data[curr_section] then data[curr_section]={} end
-		elseif is_key and curr_section ~= nil then
-			key, val = processKeyLine( line )
-			data[curr_section][key] = val
-		end
-	end
-
+function File.convertLuaToJson( lua_data )
+	assert( type(lua_data)=='table' )
+	--==--
+	return json.encode( lua_data )
+end
+function File.convertJsonToLua( json_str )
+	assert( type(json_str)=='string' )
+	assert( #json_str > 0 )
+	--==--
+	local data = json.decode( json_str )
+	assert( data~=nil, "Error reading JSON file, probably malformed data" )
 	return data
 end
 
---== End dmc_utils copies ==--
+
+--====================================================================--
+--== readConfigFile() ==--
+
+function File.getLineType( line )
+	-- print( "File.getLineType", #line, line )
+	assert( type(line)=='string' )
+	--==--
+	local is_section, is_key = false, false
+	if #line > 0 then
+		is_section = ( string.find( line, '%[%w', 1, false ) == 1 )
+		is_key = ( string.find( line, '%w', 1, false ) == 1 )
+	end
+	return is_section, is_key
+end
+
+function File.processSectionLine( line )
+	-- print( "File.processSectionLine", line )
+	assert( type(line)=='string' )
+	assert( #line > 0 )
+	--==--
+	local key = line:match( "%[([%w_]+)%]" )
+	return string.lower( key ) -- use only lowercase inside of module
+end
+
+function File.processKeyLine( line )
+	-- print( "File.processKeyLine", line )
+	assert( type(line)=='string' )
+	assert( #line > 0 )
+	--==--
+
+	-- split up line
+	local raw_key, raw_val = line:match( "([%w_:]+)%s*=%s*(.+)" )
+
+	-- split up key parts
+	local keys = {}
+	for k in string.gmatch( raw_key, "([^:]+)") do
+		table.insert( keys, #keys+1, k )
+	end
+
+	-- process key and value
+	local key_name, key_type = unpack( keys )
+	key_name = File.processKeyName( key_name )
+	key_type = File.processKeyType( key_type )
+
+	-- get final value
+	if not key_type or type(key_type)~='string' then
+		key_value = File.castTo_string( raw_val )
+
+	else
+		local method = 'castTo_'..key_type
+		if File[ method ] then
+			key_value = File[method]( raw_val )
+		end
+	end
+
+	return key_name, key_value
+end
+
+function File.processKeyName( name )
+	-- print( "File.processKeyName", name )
+	assert( type(name)=='string' )
+	assert( #name > 0 )
+	--==--
+	return string.lower( name ) -- use only lowercase inside of module
+end
+function File.processKeyType( name )
+	-- print( "File.processKeyType", name )
+	--==--
+	if type(name)=='string' then
+		name = string.lower( name ) -- use only lowercase inside of module
+	end
+	return name
+end
+
+
+function File.castTo_bool( value )
+	assert( value=='true' or value == 'false' )
+	--==--
+	if value == 'true' then return true
+	else return false end
+end
+function File.castTo_file( value )
+	return File.castTo_string( value )
+end
+function File.castTo_int( value )
+	assert( type(value)=='string' )
+	--==--
+	return tonumber( value )
+end
+function File.castTo_json( value )
+	assert( type(value)=='string' )
+	--==--
+	return File.convertJsonToLua( value )
+end
+function File.castTo_path( value )
+	assert( type(value)=='string' )
+	--==--
+	return string.gsub( value, '[/\\]', "." )
+end
+function File.castTo_string( value )
+	assert( type(value)~='nil' or type(value)~='table' )
+	return tostring( value )
+end
+
+
+function File.parseFileLines( lines, options )
+	-- print( "parseFileLines", #lines )
+	assert( options.default_section ~= nil )
+	--==--
+
+	local curr_section = options.default_section
+
+	local config_data = {}
+	config_data[ curr_section ]={}
+
+	for _, line in ipairs( lines ) do
+		local is_section, is_key = File.getLineType( line )
+		-- print( line, is_section, is_key )
+
+		if is_section then
+			curr_section = File.processSectionLine( line )
+			if not config_data[ curr_section ] then
+				config_data[ curr_section ]={}
+			end
+
+		elseif is_key then
+			local key, val = File.processKeyLine( line )
+			config_data[ curr_section ][key] = val
+
+		end
+	end
+
+	return config_data
+end
+
+-- @param file_path string full path to file
+--
+function File.readConfigFile( file_path, options )
+	-- print( "File.readConfigFile", file_path )
+	options = options or {}
+	options.default_section = options.default_section or File.DEFAULT_CONFIG_SECTION
+	--==--
+
+	return File.parseFileLines( File.readFileLines( file_path ), options )
+end
+
+--== End lua_files copies ==--
 
 
 
 --====================================================================--
--- Setup DMC Library Config
+-- Setup DMC Corona Library Config
 --====================================================================--
 
--- This is standard code to bootstrap the dmc_library
--- it looks for a configuration file to read in
+-- This is standard code to bootstrap the dmc-corona-library
+-- it looks for a configuration file to read
 
-local DMC_LIBRARY_CONFIG_FILE = 'dmc_library.cfg'
-local DMC_LIBRARY_DEFAULT_SECTION = 'dmc_library'
+local DMC_CORONA_CONFIG_FILE = 'dmc_corona.cfg'
+local DMC_CORONA_DEFAULT_SECTION = 'dmc_corona'
 
-local dmc_lib_data, dmc_lib_info -- variable 'aliases'
+local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
--- check to see if a module has tried to read in our config file
-if _G.__dmc_library == nil then
-
+-- no module has yet tried to read in a config file
+if _G.__dmc_corona == nil then
 	local file_path, config_data
-	file_path = system.pathForFile( DMC_LIBRARY_CONFIG_FILE, system.ResourceDirectory )
-	if file_path == nil then
-		config_data = {}
-	else
-		config_data = Utils.readConfigFile( file_path, { default_section=DMC_LIBRARY_DEFAULT_SECTION } )
+	file_path = system.pathForFile( DMC_CORONA_CONFIG_FILE, system.ResourceDirectory )
+	if file_path ~= nil then
+		config_data = File.readConfigFile( file_path, { default_section=DMC_CORONA_DEFAULT_SECTION } )
 	end
 
-	_G.__dmc_library = config_data
-	dmc_lib_data = _G.__dmc_library  -- set 'alias'
+	-- create/store config data
+	_G.__dmc_corona = config_data or {}
+	dmc_lib_data = _G.__dmc_corona
+	-- create/setup library default
+	dmc_lib_data.dmc_corona = dmc_lib_data.dmc_corona or {}
+	dmc_lib_info = dmc_lib_data.dmc_corona
 
-	dmc_lib_data.dmc_library = dmc_lib_data.dmc_library or {}
-	dmc_lib_info = dmc_lib_data.dmc_library  -- set 'alias'
-
-	if dmc_lib_info.location == nil then
-		dmc_lib_info.location = ''
-	else
-		dmc_lib_info.location = string.gsub( dmc_lib_info.location, '[/\\]', "." )
-	end
-
-	--== Setup utility functions
-
-	dmc_lib_data.func = {}
-
-	-- create find() utility
-	dmc_lib_data.func.find = function( name )
-		local loc = ''
-		if dmc_lib_data[name] and dmc_lib_data[name].location then
-			loc = dmc_lib_data[name].location
-		else
-			loc = dmc_lib_info.location
+	-- enhance lua search path
+	if dmc_lib_info.lua_path then
+		local path_info = dmc_lib_info.lua_path
+		local sys_path = system.pathForFile( system.ResourceDirectory )
+		local lua_paths = { package.path }
+		for i=#path_info, 1, -1 do
+			local dir = path_info[i]
+			local path = table.concat( { sys_path, dir, '?.lua;' }, '/' )
+			table.insert( lua_paths, 1, path )
 		end
-		if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-			loc = loc .. '.'
-		end
-		return loc .. name
+		package.path = table.concat( lua_paths, '' )
+		-- print( package.path )
 	end
 
 end
