@@ -10,7 +10,7 @@ There are examples and documentation available. Look in the `examples` folder fo
 
 If you have questions or comments you can either:
 * post to the Corona forums: http://forums.coronalabs.com
-* send me an email: dmc-corona-lib at davidmccuskey com
+* send me an email: corona-lib at davidmccuskey com
 
 **Issues**
 
