@@ -117,7 +117,7 @@ local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAUL
 --====================================================================--
 -- Imports
 
-local States = require 'dmc_lua.lua_states'
+local States = require 'lua_states'
 
 
 return States
