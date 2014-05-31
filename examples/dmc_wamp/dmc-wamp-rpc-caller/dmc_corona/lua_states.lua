@@ -119,11 +119,14 @@ function States._resetStates( self )
 	self._curr_state_name = ""
 end
 
+
 --== Facade API Methods ==--
+
 
 function States._setDebug( value )
 	States._DEBUG = value
 end
+
 
 function States._mixin( obj )
 	if States._DEBUG then

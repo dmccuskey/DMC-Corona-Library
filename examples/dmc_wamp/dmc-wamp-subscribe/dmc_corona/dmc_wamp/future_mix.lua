@@ -43,7 +43,7 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Promises = 'lua_promise'
+local Promises = require 'lua_promise'
 local Deferred, maybeDeferred = Promises.Deferred, Promises.maybeDeferred
 
 
