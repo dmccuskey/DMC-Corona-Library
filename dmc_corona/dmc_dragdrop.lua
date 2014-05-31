@@ -31,12 +31,93 @@ DEALINGS IN THE SOFTWARE.
 
 
 
--- =========================================================
+--====================================================================--
+-- DMC Corona Library : DMC Buttons
+--====================================================================--
+
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "0.4.0"
+
+
+
+--====================================================================--
+-- DMC Corona Library Config
+--====================================================================--
+
+
+--====================================================================--
+-- Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+-- Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
+
+
+
+--====================================================================--
+-- DMC Drag Drop
+--====================================================================--
+
+
+--====================================================================--
+-- Configuration
+
+dmc_lib_data.dmc_dragdrop = dmc_lib_data.dmc_dragdrop or {}
+
+local DMC_DRAGDROP_DEFAULTS = {
+	debug_active=false,
+}
+
+local dmc_states_data = Utils.extend( dmc_lib_data.dmc_dragdrop, DMC_DRAGDROP_DEFAULTS )
+
+
+--====================================================================--
 -- Imports
--- =========================================================
 
 -- import DMC Objects file
-local Objects = require( "dmc_objects" )
+local Objects = require 'dmc_objects'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom

@@ -3,7 +3,7 @@
 --
 --
 -- by David McCuskey
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_nicenet.lua
 --====================================================================--
 
 --[[
@@ -30,15 +30,25 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Nice Net
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,92 +78,56 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC NiceNet
---====================================================================--
-
 
 
 
 --====================================================================--
--- DMC NiceNet Config
+-- DMC Nice Net
 --====================================================================--
+
+
+--====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_nicenet = dmc_lib_data.dmc_nicenet or {}
 
 local DMC_NICENET_DEFAULTS = {
-	default_color_space='RGB',
 	cache_is_active=false,
 	make_global=false,
-	-- named_color_file, no default,
-	-- named_color_format, no default,
 }
 
 local dmc_nicenet_data = Utils.extend( dmc_lib_data.dmc_nicenet, DMC_NICENET_DEFAULTS )
 
 
-
 --====================================================================--
 -- Imports
---====================================================================--
 
-local Objects = require( dmc_lib_func.find( 'dmc_objects' ) )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
-
+local Objects = require 'dmc_objects'
+local Utils = require 'dmc_utils'
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local CoronaBase = Objects.CoronaBase
-
-
---====================================================================--
--- Support Methods
---====================================================================--
 
 
 
@@ -161,9 +135,11 @@ local CoronaBase = Objects.CoronaBase
 -- Network Command Class
 --====================================================================--
 
+
 local NetworkCommand = inheritsFrom( CoronaBase )
 NetworkCommand.NAME = "Network Command"
 
+--== Class Constants
 
 -- priority constants
 NetworkCommand.HIGH = 1
@@ -182,8 +158,8 @@ NetworkCommand.STATE_RESOLVED = 'state_resolved'
 NetworkCommand.STATE_REJECTED = 'state_rejected'
 NetworkCommand.STATE_CANCELLED = 'state_cancelled'
 
-
 --== Event Constants
+
 NetworkCommand.EVENT = "network_command_event"
 NetworkCommand.UPDATED = "network_command_updated_event"
 
@@ -191,17 +167,17 @@ NetworkCommand.STATE_UPDATED = "state_updated"
 NetworkCommand.PRIORITY_UPDATED = "priority_updated"
 
 
+--====================================================================--
+--== Start: Setup DMC Objects
 
 function NetworkCommand:_init( params )
 	--print( "NetworkCommand:_init ", params )
+	params = params or {}
 	self:superCall( "_init" )
 	--==--
 
-	params = params or {}
-
 	--== Create Properties ==--
 
-	self._params = params
 	self._type = params.type
 	self._state = self.STATE_PENDING
 	self._priority = params.priority or self.LOW
@@ -213,8 +189,6 @@ function NetworkCommand:_init( params )
 	-- params
 
 	self._net_id = nil -- id from network.* call, can use to cancel
-
-	--== Display Groups ==--
 
 	--== Object References ==--
 
@@ -235,16 +209,17 @@ function NetworkCommand:_undoInitComplete()
 	self:superCall( "_undoInitComplete" )
 end
 
-
-
 --== END: Setup DMC Objects
+--====================================================================--
 
+
+--====================================================================--
+--== Public Methods
 
 function NetworkCommand.__getters:key()
 	--print( "NetworkCommand.__getters:key" )
 	return tostring( self )
 end
-
 
 
 -- getter/setter, command type
@@ -326,8 +301,6 @@ function NetworkCommand:execute()
 
 end
 
-
-
 -- cancel
 -- cancel the network call
 --
@@ -342,15 +315,14 @@ function NetworkCommand:cancel()
 end
 
 
+--====================================================================--
 --== Private Methods
 
 -- none
 
 
-
-
---== Event Methods
-
+--====================================================================--
+--== Event Handlers
 
 
 -- _dispatchEvent
@@ -373,8 +345,6 @@ function NetworkCommand:_dispatchEvent( e_type, data )
 
 	self:dispatchEvent( e )
 end
-
-
 
 
 
@@ -401,20 +371,17 @@ NiceNetwork.EVENT = "nicenet_event"
 NiceNetwork.QUEUE_UPDATE = "nicenet_queue_updated_event"
 
 
-
+--====================================================================--
 --== Start: Setup DMC Objects
-
 
 function NiceNetwork:_init( params )
 	--print( "NiceNetwork:_init" )
-	self:superCall( "_init" )
-	--==--
-
 	params = params or {}
+	self:superCall( "_init", params )
+	--==--
 
 	--== Create Properties ==--
 
-	self._params = params
 	self._default_priority = params.default_priority or NiceNetwork.LOW
 
 	-- TODO: hook this up to params
@@ -424,8 +391,6 @@ function NiceNetwork:_init( params )
  	self._active_queue = nil
  	-- dict of Pending Command Objects, keyed on object raw id
  	self._pending_queue = nil
-
-	--== Display Groups ==--
 
 	--== Object References ==--
 
@@ -456,12 +421,12 @@ function NiceNetwork:_undoInitComplete()
 	self:superCall( "_undoInitComplete" )
 end
 
-
 --== END: Setup DMC Objects
+--====================================================================--
 
 
+--====================================================================--
 --== Public Methods
-
 
 -- this is a replacement for Corona network.request()
 --[[
@@ -581,9 +546,8 @@ function NiceNetwork:upload( url, method, listener, params, filename, basedir, c
 end
 
 
+--====================================================================--
 --== Private Methods
-
-
 
 function NiceNetwork:_insertCommand( params )
 	--print( "NiceNetwork:_insertCommand ", command.type )
@@ -669,10 +633,8 @@ function NiceNetwork:_broadcastStatus()
 end
 
 
-
-
---== Event Methods
-
+--====================================================================--
+--== Event Handlers
 
 -- this is the network command event handler
 -- using name of the event as method name
@@ -693,7 +655,6 @@ function NiceNetwork:network_command_event( event )
 		end
 	end
 end
-
 
 
 -- _dispatchEvent

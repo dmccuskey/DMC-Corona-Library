@@ -29,27 +29,86 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Touch Manager
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.1.0"
 
 
---===================================================================--
--- Imports
---===================================================================--
+
+--====================================================================--
+-- DMC Corona Library Config
+--====================================================================--
+
+
+--====================================================================--
+-- Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+-- Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
+
+
+
+--====================================================================--
+-- DMC Touch Manager
+--====================================================================--
 
 
 --===================================================================--
 -- Setup, Constants
---===================================================================--
 
 system.activate("multitouch")
 
 
 --===================================================================--
 -- Support Functions
---===================================================================--
-
 
 -- createObjectTouchHandler()
 --
@@ -102,7 +161,7 @@ local createObjectTouchHandler = function( mgr, obj )
 
 			end
 
-		end			
+		end
 
 		return false
 	end
@@ -111,18 +170,19 @@ end
 
 
 --===================================================================--
--- Touch Manager Object
+-- Touch Manager Class
 --===================================================================--
 
-local TouchManager = {}
 
+local TouchManager = {}
 
 --== Constants ==--
 
 TouchManager._objects = {} -- keyed on obj ; object keys: obj, handler
-TouchManager._touches = {} -- keyed on event.id ; object keys: obj, handler 
+TouchManager._touches = {} -- keyed on event.id ; object keys: obj, handler
 
 
+--====================================================================--
 --== Private Methods ==--
 
 function TouchManager:_getRegisteredObject( obj )
@@ -143,8 +203,8 @@ function TouchManager:_setRegisteredTouch( event_id, value )
 end
 
 
+--====================================================================--
 --== Public Methods / API ==--
-
 
 -- register()
 --
@@ -207,6 +267,7 @@ end
 --== puts touch manager in control of global (runtime) touch events ==--
 
 Runtime:addEventListener( "touch", createObjectTouchHandler( TouchManager ) )
+
 
 
 return TouchManager

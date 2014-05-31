@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : DMC Sockets
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.2.0"
@@ -147,9 +148,9 @@ local Singleton = nil
 local Sockets = inheritsFrom( CoronaBase )
 Sockets.NAME = "Sockets Class"
 
-Sockets.VERSION = VERSION
-
 --== Class Constants
+
+Sockets.VERSION = VERSION
 
 Sockets.NO_BLOCK = 0
 Sockets.TCP = 'tcp'

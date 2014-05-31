@@ -43,8 +43,8 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
+local Objects = require 'dmc_objects'
+local Utils = require 'dmc_utils'
 
 
 

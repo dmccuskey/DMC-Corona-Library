@@ -5,7 +5,6 @@
 -- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_performance.lua
 --====================================================================--
 
-
 --[[
 
 Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
@@ -30,15 +29,25 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Performance
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- DMC Library Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,55 +77,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC Files
---====================================================================--
 
 
 
 --====================================================================--
--- DMC Files Config
+-- DMC Performance
 --====================================================================--
+
+
+--====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_performance = dmc_lib_data.dmc_performance or {}
 
@@ -127,25 +113,14 @@ local DMC_PERFORMANCE_DEFAULTS = {
 local dmc_performance_data = Utils.extend( dmc_lib_data.dmc_performance, DMC_PERFORMANCE_DEFAULTS )
 
 
-
---====================================================================--
--- Imports
---====================================================================--
-
-
-
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local Perf = {}
 
 
-
 --====================================================================--
 -- Support Methods
---====================================================================--
-
 
 local function castValue( v )
 	local ret = nil
@@ -168,9 +143,8 @@ end
 --====================================================================--
 
 
-
+--====================================================================--
 --== Time Marker ==--
-
 
 local firstTimeMarker = nil
 local lastTimeMarker = nil
@@ -211,12 +185,10 @@ function Perf.markTimeDiff( marker1, marker2 )
 end
 
 
-
+--====================================================================--
 --== Memory Monitor ==--
 
-
 local memoryWatcherCallback = nil
-
 
 -- Memory Monitor function
 
@@ -275,6 +247,8 @@ if dmc_performance_data.memory_active then
 	dmc_performance_data.memory_active = castValue( dmc_performance_data.memory_active )
 	Perf.watchMemory( dmc_performance_data.memory_active )
 end
+
+
 
 
 return Perf

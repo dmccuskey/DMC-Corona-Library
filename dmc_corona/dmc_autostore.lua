@@ -30,16 +30,94 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Autostore
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.2"
+local VERSION = "1.1.0"
+
+
+
+--====================================================================--
+-- DMC Corona Library Config
+--====================================================================--
+
+
+--====================================================================--
+-- Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+-- Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
+
+
+
+--====================================================================--
+-- DMC Autostore
+--====================================================================--
+
+
+--====================================================================--
+-- Configuration
+
+dmc_lib_data.dmc_autostore = dmc_lib_data.dmc_autostore or {}
+
+local DMC_AUTOSTORE_DEFAULTS = {
+	debug_active=false,
+}
+
+local dmc_states_data = Utils.extend( dmc_lib_data.dmc_autostore, DMC_AUTOSTORE_DEFAULTS )
 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
-local json = require( "json" )
+local json = require 'json'
 
 
 
@@ -61,10 +139,8 @@ local TableProxy
 local createTableProxy
 
 
-
 --====================================================================--
--- Support Methods
---====================================================================--
+-- Support Functions
 
 
 -- extend()
@@ -97,11 +173,8 @@ function extend( fromTable, toTable )
 end
 
 
-
-
 --====================================================================--
 -- Base File I/O Functions
---====================================================================--
 
 -- read/write flags
 local Response = {}
@@ -114,7 +187,7 @@ Response.SUCCESS = "io_success"
 -- options.lines = false
 local function readFile( file_path, options )
 	local opts = options or {}
-	if opts.lines == nil then opts.lines = true end 
+	if opts.lines == nil then opts.lines = true end
 
 	local contents = {}
 	local ret_val = {} -- an array, [ status, content ]
@@ -169,7 +242,7 @@ end
 
 
 -- addPixieDust()
--- 
+--
 --
 addPixieDust = function( obj, parent )
 	--print( "adding pixie dust: " .. tostring( obj ) )
@@ -178,7 +251,7 @@ addPixieDust = function( obj, parent )
 	local proxy = createTableProxy( obj )
 	local mt = {}
 	mt.__dmc = {
-			p = proxy
+		p = proxy
 	}
 	setmetatable( obj, mt )
 
@@ -260,7 +333,7 @@ function TableProxy:__data()
 end
 
 
--- The following are methods to interface with the table library 
+-- The following are methods to interface with the table library
 -- since the table library doesn't "eat its own dogfood"
 
 

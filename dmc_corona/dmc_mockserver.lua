@@ -3,7 +3,7 @@
 --
 --
 -- by David McCuskey
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_mockserver.lua
 --====================================================================--
 
 --[[
@@ -30,18 +30,27 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Mock Server
+--====================================================================--
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
-
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- DMC Library Support Methods
+-- DMC Corona Library Config
 --====================================================================--
 
-local Utils = {}
+
+--====================================================================--
+-- Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
 
 function Utils.extend( fromTable, toTable )
 
@@ -69,56 +78,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC Mock Server
---====================================================================--
-
 
 
 
 --====================================================================--
--- DMC Mock Server Config
+-- DMC Mock Server
 --====================================================================--
+
+
+--====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_mockserver = dmc_lib_data.dmc_mockserver or {}
 
@@ -126,26 +111,21 @@ local DMC_MOCKSERVER_DEFAULTS = {
 	-- none
 }
 
-local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_mockserver, DMC_MOCKSERVER_DEFAULTS )
-
-
+local dmc_mockserver_data = Utils.extend( dmc_lib_data.dmc_mockserver, DMC_MOCKSERVER_DEFAULTS )
 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
-local json = require( "json" )
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
-local Files = require( dmc_lib_func.find('dmc_files') )
-
+local Files = require 'dmc_files'
+local json = require 'json'
+local Objects = require 'dmc_objects'
+local Utils = require 'dmc_utils'
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -157,22 +137,21 @@ local CoronaBase = Objects.CoronaBase
 -- Mock Server Class
 --====================================================================--
 
+
 local MockServer = inheritsFrom( CoronaBase )
 MockServer.NAME = "DMC Library Mock Server"
-
 
 MockServer.REQUEST_DELAY = 500 -- milliseconds
 
 
+--====================================================================--
 --== Start: Setup DMC Objects
-
 
 function MockServer:_init( params )
 	-- print( "MockServer:_init" )
+	params = params or {}
 	self:superCall( "_init", params )
 	--==--
-
-	params = params or {}
 
 	--== Create Properties ==--
 
@@ -188,8 +167,6 @@ function MockServer:_init( params )
 
 end
 
-
-
 -- _initComplete()
 --
 function MockServer:_initComplete()
@@ -202,7 +179,6 @@ function MockServer:_initComplete()
 	-- setup network.* API on object
 	self.request = self:createCallback( self._request )
 
-
 	self:addFilter( function( url, method ) return true end )
 
 end
@@ -213,7 +189,11 @@ function MockServer:_undoInitComplete()
 end
 
 --== END: Setup DMC Objects
+--====================================================================--
 
+
+--====================================================================--
+--== Public Methods
 
 function MockServer:respondWith( method, url, response )
 	-- print( "MockServer:respondWith", method, url, response )
@@ -237,6 +217,9 @@ function MockServer:addFilter( func )
 end
 
 
+--====================================================================--
+--== Private Methods
+
 function MockServer:_findResponse( url, method )
 	-- print( "MockServer:_findResponse", url, method  )
 
@@ -255,7 +238,6 @@ function MockServer:_findResponse( url, method )
 
 	-- add data, event
 	if action then
-
 
 		local path = table.concat( { self._base_path, action[3] }, '/' )
 		local file_path = system.pathForFile( path, system.ResourceDirectory )
@@ -290,7 +272,6 @@ function MockServer:_findResponse( url, method )
 
 end
 
-
 function MockServer:_mockHandlesRequest( url, method )
 
 	local response = true
@@ -301,7 +282,6 @@ function MockServer:_mockHandlesRequest( url, method )
 
 	return response
 end
-
 
 function MockServer:_request( url, method, callback, params )
 	-- print( "MockServer:_request", url, method  )
@@ -322,6 +302,11 @@ function MockServer:_request( url, method, callback, params )
 
 end
 
+
+--====================================================================--
+--== Event Handlers
+
+-- none
 
 
 

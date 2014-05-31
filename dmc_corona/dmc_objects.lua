@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : DMC Objects
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "1.1.0"
