@@ -8,37 +8,49 @@
 
 --[[
 
-Copyright (C) 2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2014 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Sockets
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.1"
+local VERSION = "0.1.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -68,55 +80,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
 
 
 
 --====================================================================--
--- DMC Library : DMC Sockets
+-- DMC Sockets
 --====================================================================--
-
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_sockets = dmc_lib_data.dmc_sockets or {}
 
@@ -126,28 +115,26 @@ local DMC_SOCKETS_DEFAULTS = {
 	throttle_level=math.floor( 1000/15 ), -- MEDIUM
 }
 
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEFAULTS )
+local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEFAULTS )
 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local Utils = require( dmc_lib_func.find('dmc_utils') )
+local Objects = require 'dmc_objects'
 local socket = require 'socket'
+local Utils = require 'dmc_utils'
 
-local tcp_socket = require( dmc_lib_func.find('dmc_sockets.tcp') )
-local atcp_socket = require( dmc_lib_func.find('dmc_sockets.atcp') )
+local tcp_socket = require 'dmc_sockets.tcp'
+local atcp_socket = require 'dmc_sockets.async_tcp'
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-local CoronaBase = Objects.CoronaBase
+local ObjectBase = Objects.ObjectBase
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
@@ -155,12 +142,14 @@ local LOCAL_DEBUG = false
 local Singleton = nil
 
 
+
 --====================================================================--
 -- Sockets Class
 --====================================================================--
 
-local Sockets = inheritsFrom( CoronaBase )
-Sockets.NAME = "Sockets Class"
+
+local Sockets = inheritsFrom( ObjectBase )
+Sockets.NAME = "Sockets Instance"
 
 Sockets.VERSION = VERSION
 
@@ -223,11 +212,11 @@ function Sockets:_initComplete()
 	--==--
 
 	-- initialize using setters
-	self.check_reads = dmc_states_data.check_reads
-	self.check_writes = dmc_states_data.check_writes
+	self.check_reads = dmc_sockets_data.check_reads
+	self.check_writes = dmc_sockets_data.check_writes
 
-	if type( dmc_states_data.throttle_level ) == 'number' then
-		self.throttle = dmc_states_data.throttle_level
+	if type( dmc_sockets_data.throttle_level ) == 'number' then
+		self.throttle = dmc_sockets_data.throttle_level
 	else
 		self.throttle = Sockets.DEFAULT
 	end
@@ -254,7 +243,7 @@ end
 
 
 function Sockets.__setters:throttle( value )
-	-- print( 'Sockets.__setters:check_reads', value )
+	-- print( 'Sockets.__setters:throttle', value )
 
 	--== Sanity Check
 
@@ -374,15 +363,15 @@ end
 
 
 -- @param socket DMC TCP Socket
-function Sockets:_connect( socket )
-	-- print( 'Sockets:_connect', socket )
-	self:_addSocket( socket )
+function Sockets:_connect( sock )
+	-- print( 'Sockets:_connect', sock )
+	self:_addSocket( sock )
 end
 
 -- @param socket DMC TCP Socket
-function Sockets:_disconnect( socket )
-	-- print( 'Sockets:_disconnect', socket )
-	self:_removeSocket( socket )
+function Sockets:_disconnect( sock )
+	-- print( 'Sockets:_disconnect', sock )
+	self:_removeSocket( sock )
 end
 
 
@@ -399,21 +388,19 @@ function Sockets:_removeSockets()
 end
 
 
-function Sockets:_addSocket( socket )
-	-- print( "Sockets:_addSocket", socket )
+function Sockets:_addSocket( sock )
+	-- print( "Sockets:_addSocket", sock )
 
-	local raw_sock = socket._socket
+	local raw_sock = sock._socket
 	local key
 
 	-- save TCP lookup
-	key = tostring( socket )
-	self._sockets[ key ] = socket
+	key = tostring( sock )
+	self._sockets[ key ] = sock
 
 	-- save socket lookup
 	key = tostring( raw_sock )
-	-- need to modify key, because user-data changes after socket connect
-	key = string.gsub( key, 'master', 'client' )
-	self._raw_socks[ key ] = socket
+	self._raw_socks[ key ] = sock
 
 	-- save raw socket in list
 	table.insert( self._raw_socks_list, raw_sock )
@@ -425,10 +412,10 @@ function Sockets:_addSocket( socket )
 end
 
 
-function Sockets:_removeSocket( socket )
-	-- print( "Sockets:_removeSocket", socket )
+function Sockets:_removeSocket( sock )
+	-- print( "Sockets:_removeSocket", sock )
 
-	local raw_sock = socket._socket
+	local raw_sock = sock._socket
 	local key
 
 	Utils.removeFromTable( self._raw_socks_list, raw_sock )
@@ -436,7 +423,7 @@ function Sockets:_removeSocket( socket )
 	key = tostring( raw_sock )
 	self._raw_socks[ key ] = nil
 
-	key = tostring( socket )
+	key = tostring( sock )
 	self._sockets[ key ] = nil
 
 	if #self._raw_socks_list == 0 then
@@ -455,27 +442,24 @@ function Sockets:_checkConnections()
 
 	for i, rs in ipairs( s_read ) do
 		-- print( i, rs )
-		local socket = self._raw_socks[ tostring( rs ) ]
-		socket:_readStatus( 'ok' )
+		local sock = self._raw_socks[ tostring( rs ) ]
+		if sock then sock:_readStatus( 'ok' )
+		else
+			print( "ERROR IN SOCKET ")
+		end
 	end
 
 	for i, rs in ipairs( s_write ) do
 		-- print( i, rs )
-		local socket = self._raw_socks[ tostring( rs ) ]
-		socket:_writeStatus( 'ok' )
+		local sock = self._raw_socks[ tostring( rs ) ]
+		sock:_writeStatus( 'ok' )
 	end
 
 end
 
 
-
-
-
-
 --====================================================================--
 --== Event Handlers
-
-
 
 function Sockets:_createSocketCheckHandler( value )
 	-- print("Sockets:_createSocketCheckHandler", value )
@@ -483,19 +467,13 @@ function Sockets:_createSocketCheckHandler( value )
 	local last_check = system.getTimer()
 
 	local f = function( event )
-		local current_time = system.getTimer()
-		if current_time - last_check > timeout then
+		-- local current_time = system.getTimer()
+		-- print( current_time, last_check, timeout )
 			self:_checkConnections()
-			last_check = current_time
-		end
-
 	end
 
 	return f
-
 end
-
-
 
 
 --====================================================================--

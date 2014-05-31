@@ -7,7 +7,7 @@
 
 --[[
 
-Copyright (C) 2012-2013 David McCuskey. All Rights Reserved.
+Copyright (C) 2012-2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -29,19 +29,99 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
--- =========================================================
--- Constants
--- =========================================================
+
+--====================================================================--
+-- DMC Corona Library : DMC Trajectory
+--====================================================================--
+
+
+-- Semantic Versioning Specification: http://semver.org/
+
+local VERSION = "1.1.0"
+
+
+
+--====================================================================--
+-- DMC Corona Library Config
+--====================================================================--
+
+
+--====================================================================--
+-- Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+-- Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
+
+
+
+--====================================================================--
+-- DMC Trajectory
+--====================================================================--
+
+
+--====================================================================--
+-- Configuration
+
+dmc_lib_data.dmc_trajectory = dmc_lib_data.dmc_trajectory or {}
+
+local DMC_TRAJECTORY_DEFAULTS = {
+}
+
+local dmc_trajectory_data = Utils.extend( dmc_lib_data.dmc_trajectory, DMC_TRAJECTORY_DEFAULTS )
+
+
+
+--====================================================================--
+-- Setup, Constants
 
 local gGRAVITY = 9.8
 local RAD_TO_DEG = 180 / math.pi
 
 
-
--- =========================================================
+--====================================================================--
 -- Support Functions
--- =========================================================
-
 
 -- createAngleIterator()
 -- returns a function which calculates the angle of the trajectory
@@ -102,6 +182,7 @@ local function createAngleIterator( Vx, Vy, params )
 end
 
 
+
 -- performTransition()
 -- creates and runs a function which calculates and controls moving an object
 -- through a parabolic/ballistic path
@@ -136,7 +217,7 @@ local function performTransition( obj, ballistic, transition )
 		angleIterator = function( x, y ) return obj.rotation end
 	end
 
-	
+
 	-- create the iterator to control the transition
 
 	positionIterator = function( event )
@@ -151,9 +232,9 @@ local function performTransition( obj, ballistic, transition )
 
 		-- calculate how long we have been running
 		-- this is milliseconds past
-		Tt = event.time - Ts 
+		Tt = event.time - Ts
 
-		if Tt < Ttt then 
+		if Tt < Ttt then
 			--== still time in transition ==--
 
 			-- calculate ballistic time given Corona time
@@ -200,11 +281,9 @@ local function performTransition( obj, ballistic, transition )
 end
 
 
-
--- =========================================================
--- Trajectory Object
--- =========================================================
-
+--====================================================================--
+-- Trajectory Object Setup
+--====================================================================--
 
 local Trajectory = {}
 
@@ -223,7 +302,7 @@ function Trajectory.t_Given_Vy_pB_pE( Vy, pB, pE )
 	local Vyd -- velocity at destination
 	local Dy = pE[2] - pB[2]  -- distance between points, Y direction
 	local t
-	
+
 	-- velocity at target, to help calculate time
 	Vyd = math.sqrt( math.pow( Vy, 2 ) + 2 * gGRAVITY * Dy )
 	--print( "dy, vy, vy ", Dy, Vyd, Vy )
@@ -236,6 +315,7 @@ function Trajectory.t_Given_Vy_pB_pE( Vy, pB, pE )
 	return t
 
 end
+
 
 -- Vx_Given_t_pB_pE
 -- static method to calculate the velocity in the x direction
@@ -282,7 +362,7 @@ end
 -- t (int): time in seconds
 --
 -- returns (int): distance in meters, Y direction
--- 
+--
 function Trajectory.y_Given_vy_t( Vy, t )
 	return Vy * t - 0.5 * gGRAVITY * t * t
 end
