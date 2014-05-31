@@ -29,6 +29,12 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
+
+
+--====================================================================--
+-- DMC Corona Library : DMC Websockets
+--====================================================================--
+
 --[[
 
 WebSocket support adapted from:
@@ -39,16 +45,19 @@ WebSocket support adapted from:
 --]]
 
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -78,54 +87,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
 
 
 
 --====================================================================--
--- DMC Library : DMC WebSockets
+-- DMC WebSockets
 --====================================================================--
-
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_websockets = dmc_lib_data.dmc_websockets or {}
 
@@ -136,29 +123,26 @@ local DMC_WEBSOCKETS_DEFAULTS = {
 local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSOCKETS_DEFAULTS )
 
 
-
 --====================================================================--
 -- Imports
---====================================================================--
 
 local mime = require 'mime'
-local Objects = require( dmc_lib_func.find('dmc_objects') )
-local Sockets = require( dmc_lib_func.find('dmc_sockets') )
-local States = require( dmc_lib_func.find('dmc_states') )
+local Objects = require 'dmc_objects'
+local Sockets = require 'dmc_sockets'
+local States = require 'dmc_states'
 local urllib = require 'socket.url'
-local Utils = require( dmc_lib_func.find('dmc_utils') )
+local Utils = require 'dmc_utils'
 
-local patch = require( dmc_lib_func.find('dmc_patch') )
+local patch = require 'dmc_patch'
 
 -- websockets helpers
 
-local wsframe = require( dmc_lib_func.find('dmc_websockets.frame') )
-local wshandshake = require( dmc_lib_func.find('dmc_websockets.handshake') )
+local wsframe = require 'dmc_websockets.frame'
+local wshandshake = require 'dmc_websockets.handshake'
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -171,6 +155,7 @@ local encode_base64 = mime.b64
 local rand = math.random
 local char = string.char
 local concat = table.concat
+
 
 
 --====================================================================--
@@ -205,6 +190,14 @@ WebSocket.CLOSING_HANDSHAKE = 2
 WebSocket.CLOSED = 3
 
 
+--== Protocol Close Constants
+
+WebSocket.CLOSE_STATUS_CODE_NORMAL = 1000
+WebSocket.CLOSE_STATUS_CODE_GOING_AWAY = 1001
+WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR = 1002
+WebSocket.CLOSE_STATUS_CODE_UNSUPPORTED_DATA = 1003
+
+
 --== State Constants
 
 WebSocket.STATE_CREATE = "state_create"
@@ -224,7 +217,6 @@ WebSocket.ONOPEN = 'onopen'
 WebSocket.ONMESSAGE = 'onmessage'
 WebSocket.ONERROR = 'onerror'
 WebSocket.ONCLOSE = 'onclose'
-
 
 
 --====================================================================--
@@ -286,10 +278,8 @@ end
 
 
 
-
 --====================================================================--
 --== Public Methods
-
 
 function WebSocket.__setters:throttle( value )
 	-- print( 'WebSocket.__setters:throttle', value )
@@ -325,11 +315,29 @@ function WebSocket:close()
 end
 
 
-
-
 --====================================================================--
 --== Private Methods
 
+function WebSocket:_onOpen()
+	-- print( "WebSocket:_onOpen" )
+	self:_dispatchEvent( self.ONOPEN )
+end
+
+-- msg: data, ftype
+function WebSocket:_onMessage( msg )
+	-- print( "WebSocket:_onMessage", msg )
+	self:_dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+end
+
+function WebSocket:_onClose()
+	-- print( "WebSocket:_onClose" )
+	self:_dispatchEvent( self.ONCLOSE )
+end
+
+function WebSocket:_onError( ecode, emsg )
+	-- print( "WebSocket:_onError", ecode, emsg )
+	self:_dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
+end
 
 
 function WebSocket:_doHttpConnect()
@@ -351,7 +359,8 @@ function WebSocket:_doHttpConnect()
 
 	callback = function( event )
 		if event.error then
-			self:_dispatchEvent( self.ONERROR, {error="failed to send the handshake request: " .. err })
+			self:_onError( -1, "failed to send the handshake request: " .. err )
+
 			self:_close( { reconnect=false } )
 		end
 	end
@@ -372,7 +381,7 @@ function WebSocket:_handleHttpRespose()
 	local callback = function( event )
 		-- print( "WebSocket:_handleHttpRespose callback" )
 		if not event.data then
-			print( event.emsg )
+			-- print( event.emsg )
 			self:_close( { reconnect=false } )
 
 		else
@@ -401,8 +410,7 @@ function WebSocket:_receiveFrame()
 	-- check current state
 
 	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-		local evt = { error=true, emsg="WebSocket is not connected" }
-		self:_dispatchEvent( WebSocket.ONERROR, evt, {merge=true} )
+		self:_onError( -1, "WebSocket is not connected" )
 	end
 
 	-- setup frame callbacks
@@ -412,7 +420,7 @@ function WebSocket:_receiveFrame()
 		local ftype, data = event.type, event.data
 
 		if not data and not str_find(err, ": timeout", 1, true) then
-			self:_dispatchEvent( WebSocket.ONERROR, {error=err} )
+			self:_onError( -1, err )
 
 		elseif ftype == 'continuation' then
 			print( 'TODO: frame', data, ftype, err )
@@ -420,7 +428,7 @@ function WebSocket:_receiveFrame()
 
 		elseif ftype == 'text' or ftype == 'binary' then
 			local msg = { data=data, type=ftype }
-			self:_dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+			self:_onMessage( msg )
 
 		elseif ftype == 'close' then
 			local code, reason = wsframe.decodeCloseFrameData( data )
@@ -436,7 +444,8 @@ function WebSocket:_receiveFrame()
 
 		end
 
-		-- TODO: do we need to check for another frame here ??
+		-- see if we have more frames to read
+		wsframe.receiveFrame( params )
 
 	end
 
@@ -466,7 +475,7 @@ function WebSocket:_sendFrame( msg )
 	local onFrameCallback = function( event )
 		-- print("received built frame: size", #event.frame )
 		if not event.frame then
-			self:_dispatchEvent( self.ONERROR, {error=event.emsg} )
+			self:_onError( -1, event.emsg )
 		else
 			-- process frame
 			local socketCallback = function( event )
@@ -487,9 +496,18 @@ function WebSocket:_sendFrame( msg )
 end
 
 
+function WebSocket:_bailout( params )
+	print("Failing connection", params.code, params.reason )
+	self:_close( params )
+end
+
+
+
 function WebSocket:_close( params )
 	-- print( "WebSocket:_close" )
 	params = params or {}
+	params.code = params.code or 1001
+	params.reason = params.reason or "Going Away"
 	--==--
 	params.reconnect = params.reconnect == nil and true or false
 
@@ -561,7 +579,6 @@ function WebSocket:_sendMessage( msg )
 end
 
 
-
 function WebSocket:_addMessageToQueue( msg )
 	-- print( "WebSocket:_addMessageToQueue" )
 	table.insert( self._msg_queue, msg )
@@ -576,11 +593,8 @@ function WebSocket:_processMessageQueue()
 end
 
 
-
-
---======================================================--
+--====================================================================--
 --== START: STATE MACHINE
-
 
 function WebSocket:state_create( next_state, params )
 	-- print( "WebSocket:state_create >>", next_state )
@@ -737,7 +751,7 @@ function WebSocket:do_state_connected( params )
 
 	self:_processMessageQueue()
 
-	self:_dispatchEvent( self.ONOPEN )
+	self:_onOpen()
 
 end
 function WebSocket:state_connected( next_state, params )
@@ -747,6 +761,9 @@ function WebSocket:state_connected( next_state, params )
 
 	if next_state == WebSocket.STATE_CLOSING then
 		self:do_state_closing_connection( params )
+
+	elseif next_state == WebSocket.STATE_CLOSED then
+		self:do_state_closed( params )
 
 	else
 		print( "WARNING :: WebSocket:state_connected %s" % tostring( next_state ) )
@@ -813,7 +830,7 @@ function WebSocket:do_state_closed( params )
 
 	print( "dmc_websockets:: Server connection closed" )
 
-	self:_dispatchEvent( self.ONCLOSE, {} )
+	self:_onClose()
 
 end
 function WebSocket:state_closed( next_state, params )
@@ -830,17 +847,13 @@ function WebSocket:state_closed( next_state, params )
 
 end
 
-
 --== END: STATE MACHINE
---======================================================--
-
+--====================================================================--
 
 
 
 --====================================================================--
 --== Event Handlers
-
-
 
 function WebSocket:_socketEvent_handler( event )
 	-- print( "WebSocket:_socketEvent_handler", event.type )
@@ -855,7 +868,6 @@ function WebSocket:_socketEvent_handler( event )
 		else
 			self:gotoState( WebSocket.STATE_CLOSED )
 		end
-
 
 	elseif event.type == sock.READ then
 

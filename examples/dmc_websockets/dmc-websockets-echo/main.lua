@@ -1,25 +1,34 @@
+--====================================================================--
+-- Websockets Echo
+--
+-- Communicate with Websockets echo server
+--
+-- by David McCuskey
+--
+-- Sample code is MIT licensed, the same license which covers Lua itself
+-- http://en.wikipedia.org/wiki/MIT_License
+-- Copyright (C) 2014 David McCuskey. All Rights Reserved.
+--====================================================================--
+
+
 print( '\n\n##############################################\n\n' )
 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
--- local Utils = require( "dmc_library.dmc_utils" )
-local WebSockets = require 'dmc_library.dmc_websockets'
+local WebSockets = require 'dmc_corona.dmc_websockets'
+-- local Utils = require( "dmc_corona.dmc_utils" )
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local ws, p
 
 
 --====================================================================--
 -- Support Functions
---====================================================================--
-
 
 local function sendMessages()
 
@@ -50,7 +59,6 @@ end
 
 --====================================================================--
 -- Main Functions
---====================================================================--
 
 local function webSocketsEvent_handler( event )
 

@@ -29,15 +29,24 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
+--====================================================================--
+-- DMC Corona Library : DMC Objects
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.4"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
--- DMC Library Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -67,56 +76,32 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC Objects
---====================================================================--
-
 
 
 
 --====================================================================--
--- DMC Object Config
+-- DMC Objects
 --====================================================================--
+
+
+--====================================================================--
+-- Configuration
 
 dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
 
@@ -127,18 +112,14 @@ local DMC_OBJECTS_DEFAULTS = {
 local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEFAULTS )
 
 
-
--- =========================================================
+--====================================================================--
 -- Imports
--- =========================================================
 
-local Utils = require( dmc_lib_func.find('dmc_utils') )
-
+local Utils = require 'dmc_utils'
 
 
--- =========================================================
+--====================================================================--
 -- Class Support Functions
--- =========================================================
 
 -- printObject()
 -- print out the keys contained within a table.
@@ -494,10 +475,237 @@ function Object:createCallback( method )
 end
 
 
--- =========================================================
--- CoronaBase Class
--- =========================================================
 
+--====================================================================--
+-- Object Base Class
+--====================================================================--
+
+local ObjectBase = inheritsFrom( Object )
+ObjectBase.NAME = "Object Base"
+
+
+--====================================================================--
+--== Start: Setup DMC Objects
+
+-- _init()
+-- initialize the object - setting the view
+--
+function ObjectBase:_init( options )
+	-- OVERRIDE THIS
+	--== Create Properties ==--
+	self.__event_listeners = {} -- holds event listeners
+	--[[
+	event listeners key'd by:
+	* <event name>::<function>
+	* <event name>::<object>
+	{
+		<event name> = {
+			'event::function' = func,
+			'event::object' = object (table)
+		}
+	}
+	--]]
+	--== Object References ==--
+end
+-- _undoInit()
+-- remove items added during _init()
+--
+function ObjectBase:_undoInit( options )
+	-- OVERRIDE THIS
+	self.__event_listeners = nil
+end
+
+
+-- _initComplete()
+-- any setup after object is done being created
+--
+function ObjectBase:_initComplete()
+	-- OVERRIDE THIS
+end
+-- _undoInitComplete()
+-- remove any items added during _initComplete()
+--
+function ObjectBase:_undoInitComplete()
+	-- OVERRIDE THIS
+end
+
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+
+--====================================================================--
+--== Public Methods
+
+-- new()
+-- class constructor
+--
+function ObjectBase:new( params )
+	params = params or {}
+	--==--
+
+	local o = self:_bless()
+
+	-- set flag if this is an Intermediate class
+	if params.__setIntermediate == true then
+		o.is_intermediate = true
+		params.__setIntermediate = nil
+	else
+		o.is_intermediate = false
+	end
+
+	o:_init( params )
+
+	-- skip these if we're an intermediate class (eg, subclass)
+	if rawget( o, 'is_intermediate' ) == false then
+		o:_initComplete()
+	end
+
+	return o
+end
+
+-- addEventListener()
+--
+function ObjectBase:addEventListener( e_name, listener )
+	-- print( "ObjectBase:addEventListener", e_name, listener );
+
+	-- Sanity Check
+
+	if not e_name or type(e_name)~='string' then
+		error( "ERROR addEventListener: event name must be string", 2 )
+	end
+	if not listener and not Utils.propertyIn( {'function','table'}, type(listener) ) then
+		error( "ERROR addEventListener: listener must be a function or object", 2 )
+	end
+
+	-- Processing
+
+	local events, listeners, key
+
+	events = self.__event_listeners
+	if not events[ e_name ] then events[ e_name ] = {} end
+	listeners = events[ e_name ]
+
+	key = self:_createEventListenerKey( e_name, listener )
+	if listeners[ key ] then
+		print("WARNING:: ObjectBase:addEventListener, already have listener")
+	else
+		listeners[ key ] = listener
+	end
+
+end
+
+-- dispatchEvent( event, data, params )
+--
+function ObjectBase:dispatchEvent( e_type, data, params )
+	-- print( "ObjectBase:dispatchEvent", e_type );
+	params = params or {}
+	if params.merge == nil then params.merge = false end
+	--==--
+	local e
+
+	if params.merge and type( data ) == 'table' then
+		e = data
+		e.name = self.EVENT
+		e.type = e_type
+		e.target = self
+
+	else
+		e = {
+			name=self.EVENT,
+			type=e_type,
+			target=self,
+			data=data
+		}
+
+	end
+
+	self:_dispatchEvent( e )
+end
+
+-- removeEventListener()
+--
+function ObjectBase:removeEventListener( e_name, listener )
+	-- print( "ObjectBase:removeEventListener" );
+
+	local listeners, key
+
+	listeners = self.__event_listeners[ e_name ]
+	if not listeners or type(listeners)~= 'table' then
+		print("WARNING:: ObjectBase:removeEventListener, no listeners found")
+	end
+
+	key = self:_createEventListenerKey( e_name, listener )
+
+	if not listeners[ key ] then
+		print("WARNING:: ObjectBase:removeEventListener, listener not found")
+	else
+		listeners[ key ] = nil
+	end
+
+end
+
+-- removeSelf()
+--
+function ObjectBase:removeSelf()
+	-- print( "ObjectBase:removeSelf" );
+
+	-- skip these if we're an intermediate class (eg, subclass)
+	if rawget( self, 'is_intermediate' ) == false then
+		self:_undoInitComplete()
+	end
+
+	self:_undoInit()
+end
+
+
+--====================================================================--
+--== Private Methods
+
+-- callback is either function or object (table)
+function ObjectBase:_createEventListenerKey( e_name, callback )
+	return e_name .. "::" .. tostring( callback )
+end
+
+
+function ObjectBase:_dispatchEvent( event )
+	-- print( "ObjectBase:_dispatchEvent", event.name );
+	local e_name, listeners
+
+	e_name = event.name
+	if not e_name or not self.__event_listeners[ e_name ] then return end
+
+	listeners = self.__event_listeners[ e_name ]
+	if type(listeners)~='table' then return end
+
+	for k, callback in pairs( listeners ) do
+
+		if type( callback) == 'function' then
+		 	callback( event )
+
+		elseif type( callback )=='table' and callback[e_name] then
+			local method = callback[e_name]
+			method( callback, event )
+
+		else
+			print( "WARNING: ObjectBase dispatchEvent", e_name )
+
+		end
+	end
+end
+
+
+--====================================================================--
+--== Event Handlers
+
+-- none
+
+
+
+
+--====================================================================--
+-- CoronaBase Class
+--====================================================================--
 
 local CoronaBase = inheritsFrom( Object )
 CoronaBase.NAME = "Corona Base"
@@ -686,11 +894,11 @@ end
 
 -- _dispatchEvent
 --
-function Object:_dispatchEvent( e_type, data, params )
+function CoronaBase:_dispatchEvent( e_type, data, params )
 	-- print( "Object:_dispatchEvent ", e_type, data )
-
 	params = params or {}
 	if params.merge == nil then params.merge = false end
+	--==--
 
 	-- setup custom event
 	local e = {
@@ -1165,6 +1373,7 @@ end
 local Objects = {
 	inheritsFrom = inheritsFrom,
 	Object = Object,
+	ObjectBase = ObjectBase,
 	CoronaBase = CoronaBase,
 	CoronaPhysics = CoronaPhysics,
 }

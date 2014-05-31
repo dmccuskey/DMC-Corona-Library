@@ -1,5 +1,5 @@
 --====================================================================--
--- atcp.lua (part of dmc_sockets.lua)
+-- dmc_sockets.atcp
 --
 --
 -- by David McCuskey
@@ -32,8 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.2"
-
+local VERSION = "0.1.3"
 
 
 --====================================================================--
@@ -115,7 +114,6 @@ dmc_lib_location = dmc_lib_info.location
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local Objects = require( dmc_lib_func.find('dmc_objects') )
 local socket = require 'socket'
@@ -125,13 +123,13 @@ local tcp_socket = require( dmc_lib_func.find('dmc_sockets.tcp') )
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
@@ -159,8 +157,6 @@ ATCPSocket.NAME = "Async TCP Socket Class"
 -- ATCPSocket.CONNECT = 'connect_event'
 -- ATCPSocket.READ = 'read_event'
 -- ATCPSocket.WRITE = 'write_event'
-
-
 
 
 --====================================================================--
@@ -198,11 +194,8 @@ end
 --====================================================================--
 
 
-
-
 --====================================================================--
 --== Public Methods
-
 
 
 function ATCPSocket.__getters:timeout( value )
@@ -460,12 +453,8 @@ function ATCPSocket:receiveUntilNewline( callback )
 end
 
 
-
-
 --====================================================================--
 --== Private Methods
-
-
 
 function ATCPSocket.__setters:_timer_is_active( value )
 	-- print( 'ATCPSocket.__setters:_timer_is_active', value )
@@ -484,7 +473,8 @@ end
 
 
 function ATCPSocket:_closeSocketDispatch( evt )
-	-- print( 'ATCPSocket:_closeSocketDispatch' )
+	-- print( 'ATCPSocket:_closeSocketDispatch', evt )
+	evt.type = self.CONNECT
 	if self._onConnect then self._onConnect( evt ) end
 end
 
@@ -522,12 +512,8 @@ function ATCPSocket:_checkCoroutineQueue()
 end
 
 
-
-
 --====================================================================--
 --== Event Handlers
-
-
 
 function ATCPSocket:_socketsEvent_handler( event )
 	-- print( 'ATCPSocket:_socketsEvent_handler', event )
@@ -539,6 +525,8 @@ function ATCPSocket:enterFrame( event )
 	-- print( 'ATCPSocket:enterFrame', event )
 	self:_checkCoroutineQueue()
 end
+
+
 
 
 return ATCPSocket

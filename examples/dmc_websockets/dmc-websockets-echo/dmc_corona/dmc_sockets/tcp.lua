@@ -1,5 +1,5 @@
 --====================================================================--
--- tcp.lua (part of dmc_sockets.lua)
+-- dmc_sockets.tcp
 --
 --
 -- by David McCuskey
@@ -115,7 +115,6 @@ dmc_lib_location = dmc_lib_info.location
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local Objects = require( dmc_lib_func.find('dmc_objects') )
 local socket = require 'socket'
@@ -123,7 +122,6 @@ local socket = require 'socket'
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -131,6 +129,7 @@ local CoronaBase = Objects.CoronaBase
 
 -- local control of development functionality
 local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
@@ -164,7 +163,6 @@ TCPSocket.EVENT = 'tcp_socket_event'
 TCPSocket.CONNECT = 'connect_event'
 TCPSocket.READ = 'read_event'
 TCPSocket.WRITE = 'write_event'
-
 
 
 --====================================================================--
@@ -210,10 +208,8 @@ end
 
 
 
-
 --====================================================================--
 --== Public Methods
-
 
 function TCPSocket.__getters:status()
 	return self._status
@@ -362,12 +358,8 @@ function TCPSocket:close()
 end
 
 
-
-
 --====================================================================--
 --== Private Methods
-
-
 
 function TCPSocket:_createSocket( params )
 	-- print( 'TCPSocket:_createSocket' )
@@ -402,8 +394,9 @@ function TCPSocket:_closeSocket()
 
 end
 
+
 function TCPSocket:_closeSocketDispatch( evt )
-	-- print( 'TCPSocket:_closeSocketDispatch' )
+	-- print( 'TCPSocket:_closeSocketDispatch', evt )
 	self:_dispatchEvent( self.CONNECT, evt, { merge=true } )
 end
 
@@ -450,6 +443,7 @@ function TCPSocket:_readStatus( status )
 
 end
 
+
 function TCPSocket:_doAfterReadAction()
 	-- print( 'TCPSocket:_doAfterReadAction' )
 	if #self._buffer > 0 then
@@ -462,15 +456,12 @@ function TCPSocket:_doAfterReadAction()
 end
 
 
-
 function TCPSocket:_writeStatus( status )
 	print( 'TCPSocket:_writeStatus', status )
 
 	-- TODO: hook up write notification
 	-- this is likely to be different than the read
 end
-
-
 
 
 --====================================================================--

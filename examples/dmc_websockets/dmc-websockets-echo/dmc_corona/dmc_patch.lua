@@ -31,15 +31,23 @@ DEALINGS IN THE SOFTWARE.
 
 
 
+--====================================================================--
+-- DMC Corona Library : DMC Patch
+--====================================================================--
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
--- Boot Support Methods
+-- DMC Corona Library Config
 --====================================================================--
+
+
+--====================================================================--
+-- Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -69,59 +77,39 @@ function Utils.extend( fromTable, toTable )
 end
 
 
-
 --====================================================================--
--- DMC Library Config
---====================================================================--
+-- Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- boot dmc_library with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
+dmc_lib_data = _G.__dmc_corona
 dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
+
 
 
 --====================================================================--
--- DMC Library : DMC Patch
+-- DMC Patch
 --====================================================================--
-
 
 
 --====================================================================--
 -- Configuration
---====================================================================--
 
 dmc_lib_data.dmc_patch = dmc_lib_data.dmc_patch or {}
 
 local DMC_PATCH_DEFAULTS = {
 	string_formatting_active=true,
-	advanced_require_active=false
+	advanced_require_active=false,
+	table_pop=true
 }
 
 local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS )
@@ -129,16 +117,15 @@ local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
-local Utils = require( dmc_lib_func.find('dmc_utils') )
+local Utils = require 'dmc_utils'
 
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local gRequire = _G.require -- save copy
+
 
 
 --====================================================================--
@@ -146,20 +133,28 @@ local gRequire = _G.require -- save copy
 --====================================================================--
 
 
-
 --====================================================================--
---== Patch to create Python-style string formatting
-
+--== Python-style string formatting
 
 if dmc_patch_data.string_formatting_active == true then
 	getmetatable("").__mod = Utils.stringFormatting
 end
 
 
+--====================================================================--
+--== Python-style table pop() method
+
+if dmc_patch_data.table_pop == true then
+	table.pop = function( t, v )
+		local res = t[v]
+		t[v] = nil
+		return res
+	end
+end
+
 
 --====================================================================--
---== Patch for advanced require()
-
+--== Advanced require()
 
 local function init()
 

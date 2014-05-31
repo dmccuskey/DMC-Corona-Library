@@ -39,15 +39,13 @@ WebSocket support adapted from:
 --]]
 
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 --====================================================================--
 -- Imports
---====================================================================--
 
 local mime = require 'mime'
 local patch = require( dmc_lib_func.find('dmc_patch') )
@@ -55,7 +53,6 @@ local patch = require( dmc_lib_func.find('dmc_patch') )
 
 --====================================================================--
 -- Setup, Constants
---====================================================================--
 
 local mbase64_encode = mime.b64
 local mrandom = math.random
@@ -65,8 +62,6 @@ local tconcat = table.concat
 
 --====================================================================--
 -- Support Functions
---====================================================================--
-
 
 local function generateKey( params )
 
@@ -98,10 +93,10 @@ local function createHttpRequest( params )
 		proto_header = ""
 
 	elseif type( protos ) == "table" then
-		proto_header = "Sec-WebSocket-Protocol: %s \r\n" % tconcat( protos, "," )
+		proto_header = tconcat( protos, "," )
 
 	else
-		proto_header = "Sec-WebSocket-Protocol: %s \r\n" % protos
+		proto_header = protos
 	end
 
 	key = generateKey()
@@ -111,9 +106,11 @@ local function createHttpRequest( params )
 		"GET %s HTTP/1.1\r\n" % path,
 		"Upgrade: websocket\r\n",
 		"Host: %s:%s\r\n" % { host, port },
-		"Sec-WebSocket-Key: %s%s\r\n" % { key, proto_header },
+		"Sec-WebSocket-Key: %s\r\n" % key ,
+		"Sec-WebSocket-Protocol: %s\r\n" % proto_header,
 		"Sec-WebSocket-Version: 13\r\n",
-		"Connection: Upgrade\r\n\r\n"
+		"Connection: Upgrade\r\n",
+		"\r\n"
 	}
 
 	return tconcat( req_t, "" )
@@ -122,7 +119,12 @@ end
 
 local function checkHttpResponse( params )
 	-- print( "handshake:checkHttpResponse" )
-
+	params = params or {}
+	--==--
+	-- TODO: check response
+	-- for i,v in ipairs( params.data ) do
+	-- 	print(i,v)
+	-- end
 	return true
 end
 
