@@ -593,8 +593,8 @@ end
 --====================================================================--
 
 -- http://lua-users.org/wiki/StringRecipes
-function Utils.urlEncode( str )
-	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+function Utils.urlDecode( str )
+	assert( type(str)=='string', "Utils.urlDecode: input not a string" )
 
 	str = string.gsub (str, "+", " ")
 	str = string.gsub (str, "%%(%x%x)",
@@ -605,7 +605,7 @@ end
 
 -- http://lua-users.org/wiki/StringRecipes
 function Utils.urlEncode( str )
-	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+	assert( type(str)=='string', "Utils.urlEncode: input not a string" )
 
 	if (str) then
 		str = string.gsub (str, "\n", "\r\n")

@@ -294,6 +294,7 @@ function File.processSectionLine( line )
 	assert( #line > 0 )
 	--==--
 	local key = line:match( "%[([%w_]+)%]" )
+	assert( type(key) ~= 'nil' )
 	return string.lower( key ) -- use only lowercase inside of module
 end
 
@@ -304,13 +305,18 @@ function File.processKeyLine( line )
 	--==--
 
 	-- split up line
-	local raw_key, raw_val = line:match( "([%w_:]+)%s*=%s*(.+)" )
+	local raw_key, raw_val = line:match( "([%w_:]+)%s*=%s*(.-)%s*$" )
 
 	-- split up key parts
 	local keys = {}
 	for k in string.gmatch( raw_key, "([^:]+)") do
 		table.insert( keys, #keys+1, k )
 	end
+
+	local q1, q2, trim
+	q1, trim, q2 = raw_val:match( "^(['\"]?)(.-)(['\"]?)$" )
+
+	assert( q1 == q2, "quotes must match" )
 
 	-- process key and value
 	local key_name, key_type = unpack( keys )
@@ -319,12 +325,12 @@ function File.processKeyLine( line )
 
 	-- get final value
 	if not key_type or type(key_type)~='string' then
-		key_value = File.castTo_string( raw_val )
+		key_value = File.castTo_string( trim )
 
 	else
 		local method = 'castTo_'..key_type
 		if File[ method ] then
-			key_value = File[method]( raw_val )
+			key_value = File[method]( trim )
 		end
 	end
 
@@ -349,7 +355,7 @@ end
 
 
 function File.castTo_bool( value )
-	assert( value=='true' or value == 'false' )
+	assert( type(value)=='string' )
 	--==--
 	if value == 'true' then return true
 	else return false end
@@ -360,7 +366,9 @@ end
 function File.castTo_int( value )
 	assert( type(value)=='string' )
 	--==--
-	return tonumber( value )
+	local num = tonumber( value )
+	assert( type(num) == 'number' )
+	return num
 end
 function File.castTo_json( value )
 	assert( type(value)=='string' )
@@ -373,7 +381,7 @@ function File.castTo_path( value )
 	return string.gsub( value, '[/\\]', "." )
 end
 function File.castTo_string( value )
-	assert( type(value)~='nil' or type(value)~='table' )
+	assert( type(value)~='nil' and type(value)~='table' )
 	return tostring( value )
 end
 
