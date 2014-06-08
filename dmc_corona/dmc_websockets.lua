@@ -127,13 +127,15 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSO
 -- Imports
 
 local mime = require 'mime'
-local Objects = require 'dmc_objects'
-local Sockets = require 'dmc_sockets'
-local States = require 'dmc_states'
 local urllib = require 'socket.url'
-local Utils = require 'dmc_utils'
 
-local patch = require 'dmc_patch'
+local Objects = require 'lua_objects'
+local Patch = require( 'lua_patch' )()
+local StatesMix = require 'lua_states'
+local Utils = require 'lua_utils'
+
+local Sockets = require 'dmc_sockets'
+
 
 -- websockets helpers
 
@@ -146,10 +148,7 @@ local wshandshake = require 'dmc_websockets.handshake'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-local CoronaBase = Objects.CoronaBase
-
--- local control of development functionality
-local LOCAL_DEBUG = false
+local ObjectBase = Objects.ObjectBase
 
 local encode_base64 = mime.b64
 local rand = math.random
@@ -162,17 +161,16 @@ local concat = table.concat
 -- WebSocket Class
 --====================================================================--
 
-local WebSocket = inheritsFrom( CoronaBase )
+
+local WebSocket = inheritsFrom( ObjectBase )
 WebSocket.NAME = "WebSocket Class"
 
-States.mixin( WebSocket )
-
+StatesMix.mixin( WebSocket )
 
 --== Message Type Constants
 
 WebSocket.TEXT = 'text'
 WebSocket.BINARY = 'binary'
-
 
 --== Throttle Constants
 
@@ -181,7 +179,6 @@ WebSocket.LOW = Sockets.LOW
 WebSocket.MEDIUM = Sockets.MEDIUM
 WebSocket.HIGH = Sockets.HIGH
 
-
 --== Connection-Status Constants
 
 WebSocket.NOT_ESTABLISHED = 0
@@ -189,14 +186,12 @@ WebSocket.ESTABLISHED = 1
 WebSocket.CLOSING_HANDSHAKE = 2
 WebSocket.CLOSED = 3
 
-
 --== Protocol Close Constants
 
 WebSocket.CLOSE_STATUS_CODE_NORMAL = 1000
 WebSocket.CLOSE_STATUS_CODE_GOING_AWAY = 1001
 WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR = 1002
 WebSocket.CLOSE_STATUS_CODE_UNSUPPORTED_DATA = 1003
-
 
 --== State Constants
 
@@ -207,7 +202,6 @@ WebSocket.STATE_HTTP_NEGOTIATION = "state_http_negotiation"
 WebSocket.STATE_CONNECTED = "state_connected"
 WebSocket.STATE_CLOSING = "state_closing_connection"
 WebSocket.STATE_CLOSED = "state_closed"
-
 
 --== Event Constants
 
@@ -275,7 +269,6 @@ end
 
 --== END: Setup DMC Objects
 --====================================================================--
-
 
 
 --====================================================================--
@@ -849,7 +842,6 @@ end
 
 --== END: STATE MACHINE
 --====================================================================--
-
 
 
 --====================================================================--
