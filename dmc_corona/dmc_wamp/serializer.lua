@@ -44,9 +44,11 @@ local VERSION = "0.1.0"
 -- Imports
 
 local json = require 'json'
+
+local Objects = require 'lua_objects'
+local Utils = require 'lua_utils'
+
 local MessageFactory = require 'dmc_wamp.messages'
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
 
 
 --====================================================================--
