@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Lua Library : Lua Error
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.1.0"
@@ -82,6 +83,7 @@ end
 -- Error Base Class
 --====================================================================--
 
+
 local Error = inheritsFrom( ObjectBase )
 Error.NAME = "Error Instance"
 
@@ -97,7 +99,9 @@ function Error:_init( params )
 	self.traceback = debug.traceback()
 
 	local mt = getmetatable( self )
-	mt.__tostring = function(e) return "ERROR: "..e.message end
+	mt.__tostring = function(e)
+		return table.concat({"ERROR: ",e.message,"\n",e.traceback})
+	end
 
 end
 
