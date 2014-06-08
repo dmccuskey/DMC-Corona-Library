@@ -49,8 +49,9 @@ local VERSION = "0.1.0"
 -- Imports
 
 local json = require 'json'
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
+
+local Objects = require 'lua_objects'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--

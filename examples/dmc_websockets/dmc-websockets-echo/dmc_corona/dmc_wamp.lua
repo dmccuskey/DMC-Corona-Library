@@ -122,15 +122,16 @@ local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
-local States = require 'dmc_states'
-local Utils = require 'dmc_utils'
+local Objects = require 'lua_objects'
+local States = require 'lua_states'
+local Utils = require 'lua_utils'
+
 local WebSocket = require 'dmc_websockets'
 
+local Error = require 'dmc_wamp.exception'
 local SerializerFactory = require 'dmc_wamp.serializer'
 local wprotocol = require 'dmc_wamp.protocol'
 
-local Error = require 'dmc_wamp.exception'
 
 
 --====================================================================--
@@ -148,9 +149,9 @@ local LOCAL_DEBUG = false
 -- Wamp Class
 --====================================================================--
 
+
 local Wamp = inheritsFrom( WebSocket )
 Wamp.NAME = "Wamp Class"
-
 
 --== Event Constants
 
@@ -191,7 +192,6 @@ end
 
 --== END: Setup DMC Objects
 --====================================================================--
-
 
 
 --====================================================================--

@@ -43,8 +43,8 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
 local Error = require 'lua_error'
+local Objects = require 'lua_objects'
 
 
 --====================================================================--
@@ -69,6 +69,7 @@ ProtocolError.NAME = "Protocol Error"
 --====================================================================--
 -- Exception Facade
 --====================================================================--
+
 
 return {
 	ProtocolError=ProtocolError,

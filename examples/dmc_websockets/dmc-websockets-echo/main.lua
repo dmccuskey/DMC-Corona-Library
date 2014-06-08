@@ -88,4 +88,3 @@ ws = WebSockets{
 	uri='ws://echo.websocket.org'
 }
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )
-ws:connect()

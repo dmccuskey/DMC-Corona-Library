@@ -234,6 +234,9 @@ function WebSocket:_init( params )
 	self._port = params.port
 	self._protocols = params.protocols
 
+	self._auto_connect = params.auto_connect == nil and true or params.auto_connect
+	self._auto_reconnect = params.auto_reconnect or false
+
 	self._msg_queue = {}
 	self._current_frame = nil -- used to build data from frames
 
@@ -258,11 +261,14 @@ function WebSocket:_init( params )
 end
 
 
--- function WebSocket:_initComplete()
--- 	-- print( "WebSocket:_initComplete" )
--- 	self:superCall( "_initComplete" )
--- 	--==--
--- end
+function WebSocket:_initComplete()
+	-- print( "WebSocket:_initComplete" )
+	self:superCall( "_initComplete" )
+	--==--
+	if self._auto_connect == true then 
+		self:connect()
+	end
+end
 
 --== END: Setup DMC Objects
 --====================================================================--

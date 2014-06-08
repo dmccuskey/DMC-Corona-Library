@@ -43,14 +43,15 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
+local Objects = require 'lua_objects'
+local Utils = require 'lua_utils'
 
 
 
 --====================================================================--
 -- Subscriber Role Features
 --====================================================================--
+
 
 local roleSubscriberFeatures = {
 	ROLE = 'subscriber',

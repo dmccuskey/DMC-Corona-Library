@@ -43,15 +43,8 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
--- local States = require 'dmc_states'
-local Utils = require 'dmc_utils'
-local WebSocket = require 'dmc_websockets'
-
-local MessageFactory = require 'dmc_wamp.messages'
-local Role = require 'dmc_wamp.roles'
-
-local wamp_utils = require 'dmc_wamp.utils'
+local Objects = require 'lua_objects'
+-- local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -61,14 +54,12 @@ local wamp_utils = require 'dmc_wamp.utils'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
--- local control of development functionality
-local LOCAL_DEBUG = false
-
 
 
 --====================================================================--
 -- Close Details Class
 --====================================================================--
+
 
 local CloseDetailsObj = inheritsFrom( ObjectBase )
 
@@ -85,6 +76,7 @@ end
 --====================================================================--
 -- Register Options Class
 --====================================================================--
+
 
 local RegisterOptions = inheritsFrom( ObjectBase )
 
@@ -105,6 +97,7 @@ end
 -- Call Details Class
 --====================================================================--
 
+
 local CallDetails = inheritsFrom( ObjectBase )
 
 function CallDetails:_init( params )
@@ -116,7 +109,6 @@ function CallDetails:_init( params )
 	self.authrole = params.authrole
 	self.authrole = params.authrole
 end
-
 
 
 
