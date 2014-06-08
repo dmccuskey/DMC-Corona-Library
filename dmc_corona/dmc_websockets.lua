@@ -258,14 +258,11 @@ function WebSocket:_init( params )
 end
 
 
-function WebSocket:_initComplete()
-	-- print( "WebSocket:_initComplete" )
-	self:superCall( "_initComplete" )
-	--==--
-
-	self:gotoState( WebSocket.STATE_INIT )
-
-end
+-- function WebSocket:_initComplete()
+-- 	-- print( "WebSocket:_initComplete" )
+-- 	self:superCall( "_initComplete" )
+-- 	--==--
+-- end
 
 --== END: Setup DMC Objects
 --====================================================================--
@@ -273,6 +270,12 @@ end
 
 --====================================================================--
 --== Public Methods
+
+function WebSocket:connect()
+	-- print( 'WebSocket:connect' )
+	self:gotoState( WebSocket.STATE_INIT )
+end
+
 
 function WebSocket.__setters:throttle( value )
 	-- print( 'WebSocket.__setters:throttle', value )
@@ -313,23 +316,23 @@ end
 
 function WebSocket:_onOpen()
 	-- print( "WebSocket:_onOpen" )
-	self:_dispatchEvent( self.ONOPEN )
+	self:dispatchEvent( self.ONOPEN )
 end
 
 -- msg: data, ftype
 function WebSocket:_onMessage( msg )
 	-- print( "WebSocket:_onMessage", msg )
-	self:_dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+	self:dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
 end
 
 function WebSocket:_onClose()
 	-- print( "WebSocket:_onClose" )
-	self:_dispatchEvent( self.ONCLOSE )
+	self:dispatchEvent( self.ONCLOSE )
 end
 
 function WebSocket:_onError( ecode, emsg )
 	-- print( "WebSocket:_onError", ecode, emsg )
-	self:_dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
+	self:dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
 end
 
 
@@ -490,7 +493,7 @@ end
 
 
 function WebSocket:_bailout( params )
-	print("Failing connection", params.code, params.reason )
+	-- print("Failing connection", params.code, params.reason )
 	self:_close( params )
 end
 
@@ -674,7 +677,7 @@ function WebSocket:do_state_not_connected( params )
 	self:setState( WebSocket.STATE_NOT_CONNECTED )
 
 	-- do after state set
-	print("dmc_websockets:: Sending WebSocket request to server ")
+	print("dmc_websockets:: Sending WebSocket connect request to server ")
 	self:_doHttpConnect()
 
 end
@@ -707,7 +710,7 @@ function WebSocket:do_state_http_negotiation( params )
 	self:setState( WebSocket.STATE_HTTP_NEGOTIATION )
 
 	-- do this after setting state
-	print("dmc_websockets:: Reading WebSocket response from server ")
+	print("dmc_websockets:: Reading WebSocket connect response from server ")
 	self:_handleHttpRespose()
 
 end
