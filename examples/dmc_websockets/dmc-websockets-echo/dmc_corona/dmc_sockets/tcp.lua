@@ -46,7 +46,7 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lua_objects'
 local socket = require 'socket'
 
 
@@ -57,14 +57,12 @@ local socket = require 'socket'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
--- local control of development functionality
-local LOCAL_DEBUG = false
-
 
 
 --====================================================================--
 -- TCP Socket Class
 --====================================================================--
+
 
 local TCPSocket = inheritsFrom( ObjectBase )
 TCPSocket.NAME = "TCP Socket Class"
@@ -135,7 +133,6 @@ end
 
 --== END: Setup DMC Objects
 --====================================================================--
-
 
 
 --====================================================================--

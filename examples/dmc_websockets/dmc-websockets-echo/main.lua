@@ -24,7 +24,7 @@ local WebSockets = require 'dmc_corona.dmc_websockets'
 --====================================================================--
 -- Setup, Constants
 
-local ws, p
+local ws
 
 
 --====================================================================--
@@ -61,7 +61,7 @@ end
 -- Main Functions
 
 local function webSocketsEvent_handler( event )
-
+	-- print( "webSocketsEvent_handler", event.type )
 	local evt_type = event.type
 
 	if evt_type == ws.ONOPEN then
@@ -84,8 +84,8 @@ local function webSocketsEvent_handler( event )
 	end
 end
 
-p = {
+ws = WebSockets{
 	uri='ws://echo.websocket.org'
 }
-ws = WebSockets:new( p )
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )
+ws:connect()
