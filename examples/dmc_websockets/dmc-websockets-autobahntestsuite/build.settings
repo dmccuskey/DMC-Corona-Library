@@ -1,0 +1,12 @@
+settings =
+{
+
+	android =
+	{
+		usesPermissions =
+		{
+			-- Required by the webview
+			"android.permission.INTERNET",
+		},
+	},  -- end Android
+}
