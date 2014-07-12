@@ -38,6 +38,7 @@ SOFTWARE.
 -- DMC Corona Library : TCP
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.1.0"
@@ -48,6 +49,7 @@ local VERSION = "0.1.0"
 
 local Objects = require 'lua_objects'
 local socket = require 'socket'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -57,6 +59,8 @@ local socket = require 'socket'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
+local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
@@ -65,8 +69,7 @@ local ObjectBase = Objects.ObjectBase
 
 
 local TCPSocket = inheritsFrom( ObjectBase )
-TCPSocket.NAME = "TCP Socket Class"
-
+TCPSocket.NAME = "TCP Socket"
 
 --== Class Constants
 
@@ -212,6 +215,9 @@ end
 
 function TCPSocket:send( data )
 	-- print( 'TCPSocket:send', #data )
+	if LOCAL_DEBUG then
+		Utils.hexDump( data )
+	end
 	return self._socket:send( data )
 end
 
@@ -349,7 +355,9 @@ function TCPSocket:_readStatus( status )
 	local buff_tmp, buff_len
 
 	local bytes, emsg, partial = self._socket:receive( '*a' )
-	-- print( 'dataReady', bytes, emsg, partial )
+	if LOCAL_DEBUG then
+		print( 'TCP:dataReady', bytes, emsg, partial )
+	end
 
 	if bytes == nil and emsg == 'closed' then
 		self:close()
@@ -367,6 +375,8 @@ function TCPSocket:_readStatus( status )
 	if buff_tmp then
 		self._buffer = table.concat( buff_tmp )
 	end
+
+	-- Utils.hexDump( self._buffer )
 
 	self:_doAfterReadAction()
 

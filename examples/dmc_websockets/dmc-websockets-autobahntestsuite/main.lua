@@ -31,6 +31,7 @@ local ws
 local test_idx = 0
 local current_test = nil -- test case record
 
+local LOCAL_DEBUG = false
 
 --====================================================================--
 -- Support Functions
@@ -40,36 +41,40 @@ local ws_handler
 
 
 ws_handler = function( event )
-	print( "ws_handler", event.type )
+	-- print( "ws_handler", event.type )
 	local evt_type = event.type
 
 	if evt_type == ws.ONOPEN then
-		print( 'Received event: ONOPEN' )
+		if LOCAL_DEBUG then
+			print( 'Received event: ONOPEN' )
+		end
 
 	elseif evt_type == ws.ONMESSAGE then
 		local msg = event.message
-
-		print( "Received event: ONMESSAGE, len", #msg.data )
-		-- print( "message text: '" .. tostring( msg.data ) .. "'\n\n" )
+		if LOCAL_DEBUG then
+			print( "Received event: ONMESSAGE, len", #msg.data )
+		end
 		ws:send( msg.data )
-		-- timer.performWithDelay( 1000, function() ws:close() end )
 
 	elseif evt_type == ws.ONCLOSE then
-		print( "Received event: ONCLOSE" )
-
+		if LOCAL_DEBUG then
+			print( 'Received event: ONCLOSE' )
+		end
 		gotoNextTest()
 
 	elseif evt_type == ws.ONERROR then
-		print( "Received event: ONERROR" )
-		-- Utils.print( event )
+		if LOCAL_DEBUG then
+			print( 'Received event: ONERROR' )
+			Utils.print( event )
+		end
 
 	end
 end
 
 doTest = function( test_case )
 	local out = {
-		"\n\n=== dmc_websockets: doTest ===\n",
-		"%s : %s\n\n" % { test_case.id, test_case.desc }
+		-- "\n\n=== dmc_websockets: doTest ===\n",
+		"Performing Test %s : %s\n" % { test_case.id, test_case.desc }
 	}
 	print( table.concat( out, '' ) )
 
@@ -80,9 +85,9 @@ doTest = function( test_case )
 
 	-- create new socket
 	ws = WebSockets{
-		uri='ws://192.168.0.102:9001/runCase?case=%s&agent=%s' % { test_case.index, 'dmc_websockets/1.1' },
-		throttle=WebSockets.OFF,
-		-- port=9002
+		uri='ws://192.168.0.102:9001/runCase?case=%s&agent=%s' % { test_case.index, WebSockets.USER_AGENT },
+		-- uri='ws://192.168.3.120:9001/runCase?case=%s&agent=%s' % { test_case.index, WebSockets.USER_AGENT },
+		-- throttle=WebSockets.OFF,
 	}
 	ws:addEventListener( ws.EVENT, ws_handler )
 
@@ -94,8 +99,10 @@ gotoNextTest = function()
 	if test_idx <= #test_cases then
 		current_test = test_cases[ test_idx ]
 		doTest( current_test )
+
 	else
-		print( "dmc_websockets: Testing is complete" )
+		print( "\n\ndmc_websockets: Autobahn Testing is complete" )
+
 	end
 end
 
@@ -103,4 +110,5 @@ end
 --====================================================================--
 -- Main Functions
 
+print( "dmc_websockets: Start Autobahn Testing\n\n" )
 gotoNextTest()
