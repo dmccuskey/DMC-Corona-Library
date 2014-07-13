@@ -64,6 +64,22 @@ local ProtocolError = inheritsFrom( Error )
 ProtocolError.NAME = "Protocol Error"
 
 
+function ProtocolError:_init( params )
+	-- print( "ProtocolError:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	if not self.is_intermediate then
+		assert( params.code, "missing protocol code")
+	end
+
+	self.code = params.code
+	self.reason = params.reason or ""
+
+end
+
+
 
 
 --====================================================================--

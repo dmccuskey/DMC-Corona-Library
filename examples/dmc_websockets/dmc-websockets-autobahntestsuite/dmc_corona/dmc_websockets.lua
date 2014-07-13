@@ -459,36 +459,30 @@ end
 
 
 function WebSocket:_receiveFrame()
-	-- print( "WebSocket:_receiveFrame" )
+	print( "WebSocket:_receiveFrame" )
 
-	local state = self:getState()
-	local sock = self._socket
+	local ws_types = ws_frame.type
+	local ws_close = ws_frame.close
 
 	-- check current state
-
+	local state = self:getState()
 	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
 		self:_onError( -1, "WebSocket is not connected" )
 	end
 
-	--== setup frame-processing info
-
-	local params = {
-		bytearray=self._ba
-	}
-
-	params.onFrame = function( event )
-		-- print("got frame", event.type, event.fin )
-		-- print("got data", event.data ) -- when testing, this could be A LOT of data
-		local ftype, fin, data = event.type, event.fin, event.data
+	local function handleWSFrame( frame_info )
+		-- print("got frame", frame_info.type, frame_info.fin )
+		-- print("got data", frame_info.data ) -- when testing, this could be A LOT of data
+		local fcode, ftype, fin, data = frame_info.opcode, frame_info.type, frame_info.fin, frame_info.data
 		if LOCAL_DEBUG then
 			print( "Received msg type:" % ftype )
 		end
 
-		if ftype == 'continuation' then
+		if fcode == ws_types.continuation then
 			if not self:_insertFrameData( data ) then
 				self:_bailout{
-					code=ws_frame.close.PROTO_ERR.code,
-					reason=ws_frame.close.PROTO_ERR.reason,
+					code=ws_close.PROTO_ERR.code,
+					reason=ws_close.PROTO_ERR.reason,
 				}
 				return
 			end
@@ -497,11 +491,11 @@ function WebSocket:_receiveFrame()
 				self:_onMessage( msg )
 			end
 
-		elseif ftype == 'text' or ftype == 'binary' then
+		elseif fcode == ws_types.text or fcode == ws_types.binary then
 			if not self:_insertFrameData( data, ftype ) then
 				self:_bailout{
-					code=ws_frame.close.PROTO_ERR.code,
-					reason=ws_frame.close.PROTO_ERR.reason,
+					code=ws_close.PROTO_ERR.code,
+					reason=ws_close.PROTO_ERR.reason,
 				}
 				return
 			end
@@ -510,21 +504,21 @@ function WebSocket:_receiveFrame()
 				self:_onMessage( msg )
 			end
 
-		elseif ftype == 'close' then
+		elseif fcode == ws_types.close then
 			local code, reason = ws_frame.decodeCloseFrameData( data )
 			local evt = {
-				code=code or ws_frame.close.OK.code,
-				reason=reason or ws_frame.close.OK.reason,
+				code=code or ws_close.OK.code,
+				reason=reason or ws_close.OK.reason,
 				from_server=true
 			}
 			self:_close( evt )
 
-		elseif ftype == 'ping' then
+		elseif fcode == ws_types.ping then
 			if self:getState() == WebSocket.STATE_CONNECTED then
 				self:_sendPong( data )
 			end
 
-		elseif ftype == 'pong' then
+		elseif fcode == ws_types.pong then
 			-- pass
 
 		end
@@ -537,7 +531,7 @@ function WebSocket:_receiveFrame()
 		local position = self._ba.pos -- save in case of errors
 		try{
 			function()
-				ws_frame.receiveFrame( params )
+				handleWSFrame( ws_frame.receiveFrame( self._ba ) )
 			end,
 			catch{
 				function(e)
@@ -550,18 +544,25 @@ function WebSocket:_receiveFrame()
 
 	--== handle error
 
-	if err:isa( BufferError ) then
+	if not err.isa then
+		print( "Unknown Error", err.message )
+		self:_bailout{
+			code=CLOSE_CODES.INTERNAL.code,
+			reason=CLOSE_CODES.INTERNAL.reason
+		}
+
+	elseif err:isa( BufferError ) then
 		-- pass, not enough data to read another frame
 
 	elseif err:isa( ws_error.ProtocolError ) then
 		print( "Protocol Error:", err.message )
 		self:_bailout{
-			code=ws_frame.close.PROTO_ERR.code,
-			reason=ws_frame.close.PROTO_ERR.reason,
+			code=err.code,
+			reason=err.reason,
 		}
 
 	else
-		print( "Unknown Error", err.message )
+		print( "Unknown Error", err.code, err.reason, err.message )
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason

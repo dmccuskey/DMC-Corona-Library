@@ -112,15 +112,19 @@ local CLOSE_CODES = {
 	GOING_AWAY = { code=1001, reason="Going Away" },
 	PROTO_ERR = { code=1002, reason="Termination due to protocol error" },
 	UNHANDLED_DATA = { code=1003, reason="Cannot accept data type" },
+	-- 1004, reserved for future use, DO NOT USE
 	RESERVED_1004 = { code=1004, reason="reserved, DO NOT USE" },
-	RESERVED_1005 = { code=1005, reason="reserved, no status code received" },
-	RESERVED_1006 = { code=1006, reason="reserved, do no use" },
+	-- 1005, internal use only, No status code received
+	NO_STATUS_CODE = { code=1005, reason="No status code received" },
+	-- 1006, internal use only, Abnormal Close, eg without Close frame
+	CONNECTION_CLOSE_ERR = { code=1006, reason="Connection closed abnormally" },
 	INVALID_DATA = { code=1007, reason="invalid data received" },
 	POLICY_VIOLATION = { code=1008, reason="internal policy violation" },
 	MSG_SIZE_ERR = { code=1009, reason="message is too big for processing" },
 	EXTENSION_ERR = { code=1010, reason="expected extension negotiation (client)" },
 	UNEXPECTED_ERR = { code=1011, reason="unexpected internal error" },
-	RESERVED_1015 = { code=1015, reason="TLS handshake failure" },
+	-- 1015, internal use only, TLS handshake error
+	TLS_HANDSHAKE_ERR = { code=1015, reason="TLS handshake failure" },
 
 }
 local VALID_CLOSE_CODES = {
@@ -234,7 +238,6 @@ readFrameHeader = function( frame, bytearray )
 	frame.type, frame.payload = data:byte( 1, 2 )
 end
 
-
 -- process frame type info
 processFrameType = function( frame )
 	-- print( "processFrameType" )
@@ -244,23 +247,28 @@ processFrameType = function( frame )
 	-- print( '>>>>', frame.opcode, frame.fin )
 
 	if band( frame.type, bit_6_4 ) ~= 0 then
-		error( ProtocolError{ message="Data packet too large for control framexx" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Data packet too large for control frame" })
 		return
 	end
 
 	if frame.opcode >= 0x3 and frame.opcode <= 0x7 then
-		error( ProtocolError{ message="Received reserved non-control frames" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Received reserved non-control frame" } )
 		return
 	end
 
 	if frame.opcode >= 0xb and frame.opcode <= 0xf then
-		error( ProtocolError{ message="Received reserved control frames" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Received reserved control frame" } )
 		return
 	end
 end
 
-
--- read header and payload info
+-- process frame payload info
 processFramePayload = function( frame, bytearray )
 -- print( "processFramePayload", bytearray.pos )
 
@@ -283,13 +291,17 @@ processFramePayload = function( frame, bytearray )
 		if data:byte(1) ~= 0 or data:byte(2) ~= 0 or
 			data:byte(3) ~= 0 or data:byte(4) ~= 0
 		then
-			error( ProtocolError{ message="Payload length too large" } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Payload length too large" } )
 			return
 		end
 
 		local byte_5 = data:byte(5)
 		if band( byte_5, bit_7 ) ~= 0 then
-			error( ProtocolError{ message="Payload length too large" } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Payload length too large" } )
 			return
 		end
 
@@ -299,13 +311,13 @@ processFramePayload = function( frame, bytearray )
 												data:byte(8) )
 
 	else
-		error( ProtocolError{ message="Invalid payload size" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Invalid payload size" } )
 
 	end
 
 end
-
-
 
 -- verify frame payload
 verifyFramePayload = function( frame, bytearray )
@@ -314,11 +326,15 @@ verifyFramePayload = function( frame, bytearray )
 	-- control frame check
 	if band( frame.opcode, bit_4 ) ~= 0 then
 		if frame.payload_len > SML_FRAME_SIZE then
-			error( ProtocolError{ message="Data packet too large for control frame<<<" } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Data packet too large for control frame<<<" } )
 			return
 		end
 		if not frame.fin then
-			error( ProtocolError{ message="Fragmented control frame" } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Fragmented control frame" } )
 			return
 		end
 	end
@@ -331,7 +347,6 @@ verifyFramePayload = function( frame, bytearray )
 
 end
 
-
 -- process frame mask
 readMaskData = function( frame, bytearray )
 	-- print( "readMaskData", bytearray.pos )
@@ -341,18 +356,18 @@ readMaskData = function( frame, bytearray )
 	readPayloadData( frame, bytearray )
 end
 
-
-
--- process frame mask
+-- read actual payload data
 readPayloadData = function( frame, bytearray )
 	-- print( "readPayloadData", bytearray.pos )
 
 	local bytes = frame.payload_len
 	local data
 
-	-- Check size for Close frame
+	-- Verify Close frame size
 	if frame.opcode == FRAME_TYPE.close and not ( bytes == 0 or bytes >= 2 ) then
-		error( ProtocolError{ message="Data packet wrong size for Close frame" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Data packet wrong size for Close frame" } )
 		return
 	end
 
@@ -370,17 +385,21 @@ readPayloadData = function( frame, bytearray )
 
 	frame.data = data
 
-	-- Check information for Close frame
+	-- Verify Close frame code
 	if frame.opcode == FRAME_TYPE.close and bytes >= 2 then
 		local code, reason = decodeCloseFrameData( data )
 
 		if code >=0 and code <= 999 then
-			error( ProtocolError{ message="Invalid close code: %s" % code } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Invalid close code: %s" % code } )
 			return
 
 		elseif code >= 1000 and code <= 2999 then
 			if not Utils.propertyIn( VALID_CLOSE_CODES, code ) then
-				error( ProtocolError{ message="Invalid close code: %s" % code } )
+				error( ProtocolError{
+					code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+					message="Invalid close code: %s" % code } )
 				return
 			end
 
@@ -392,16 +411,11 @@ end
 
 -- @params params
 -- bytearray ByteArray instance
--- onFrame callback function
 --
-local function receiveWSFrame( params )
+local function receiveWSFrame( bytearray )
 	-- print( "receiveWSFrame" )
-	params = params or {}
-	assert( params.bytearray and params.bytearray:isa( ByteArray ), "ReceiveFrame() requires byte array for data container" )
+	assert( bytearray and bytearray:isa( ByteArray ), "ReceiveFrame() requires byte array for data container" )
 	--==--
-
-	local ba = params.bytearray
-	local onFrame = params.onFrame
 
 	-- Frame info structure
 	local frame = {
@@ -415,15 +429,17 @@ local function receiveWSFrame( params )
 		-- data="", actual frame data/payload
 	}
 
-	readFrameHeader( frame, ba )
-	processFrameType( frame, ba )
-	processFramePayload( frame, ba )
-	verifyFramePayload( frame, ba )
+	readFrameHeader( frame, bytearray )
+	processFrameType( frame, bytearray )
+	processFramePayload( frame, bytearray )
+	verifyFramePayload( frame, bytearray )
 
-	if onFrame then
-		onFrame( { type=FRAME_TYPE[ frame.opcode ], data=frame.data, fin=frame.fin } )
-	end
-
+	return {
+		opcode=frame.opcode,
+		type=FRAME_TYPE[ frame.opcode ],
+		data=frame.data,
+		fin=frame.fin
+	}
 end
 
 
@@ -475,7 +491,9 @@ local function buildFrame( params )
 		tinsert( frame, int_to_bytes( low ) )
 
 	else
-		error( ProtocolError{ message="Data packet too big for protocol" } )
+		error( ProtocolError{
+			code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+			message="Data packet too big for protocol" } )
 
 	end
 
@@ -511,7 +529,7 @@ local function buildWSFrames( params )
 
 	local data = params.data or ""
 	local opcode = params.opcode or FRAME_TYPE.text
-	local masked = params.masked or true
+	local masked = params.masked == nil and true or params.masked
 	local onFrame = params.onFrame
 
 	local max_frame_size = params.max_frame_size
@@ -530,7 +548,9 @@ local function buildWSFrames( params )
 	-- control frame check
 	if band( opcode, bit_4 ) ~= 0 then
 		if data_len > SML_FRAME_SIZE then
-			error( ProtocolError{ message="Data packet too large for control frame123" } )
+			error( ProtocolError{
+				code=CLOSE_CODES.PROTO_ERR.code, reason=CLOSE_CODES.PROTO_ERR.code,
+				message="Data packet too large for control frame" } )
 			return
 		end
 	end
@@ -540,7 +560,7 @@ local function buildWSFrames( params )
 	repeat
 
 		local divisor, chunk, fin
-		local p, frame
+		local frame
 
 		if max_frame_size then
 			divisor = max_frame_size
@@ -551,9 +571,6 @@ local function buildWSFrames( params )
 		else
 			divisor = LRG_FRAME_SIZE
 		end
-
-		-- TEST
-		-- divisor = MED_FRAME_SIZE
 
 		if data_len <= divisor then
 			chunk = data
@@ -566,15 +583,12 @@ local function buildWSFrames( params )
 		data_len = #data
 		fin = ( data_len == 0 )
 
-		p = {
+		frame = buildFrame{
 			data=chunk,
 			fin=fin,
 			masked=masked,
 			opcode=opcode
 		}
-		frame = buildFrame( p )
-
-		-- print( '>build', #chunk, divisor )
 
 		if onFrame and frame then
 			evt = { frame=frame }
@@ -609,7 +623,6 @@ decodeCloseFrameData = function( data )
 	local _,code,reason
 	if data then
 		if #data > 1 then
-			--_,code = sunpack(data,'>H')
 			code = getunsigned_2bytes_bigendian(data)
 		end
 		if #data > 2 then
@@ -629,12 +642,12 @@ end
 return {
 
 	type = FRAME_TYPE,
+	close = CLOSE_CODES,
 	size = {
 		SMALL = SML_FRAME_SIZE,
 		MEDIUM = MED_FRAME_SIZE,
 		LARGE = LRG_FRAME_SIZE
 	},
-	close = CLOSE_CODES,
 
 	receiveFrame = receiveWSFrame,
 	buildFrames = buildWSFrames,
