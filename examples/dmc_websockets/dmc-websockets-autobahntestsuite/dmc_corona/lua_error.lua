@@ -88,7 +88,7 @@ local Error = inheritsFrom( ObjectBase )
 Error.NAME = "Error Instance"
 
 function Error:_init( params )
-	-- print( "Message:_init" )
+	-- print( "Error:_init" )
 	params = params or {}
 	self:superCall( "_init", params )
 	--==--
