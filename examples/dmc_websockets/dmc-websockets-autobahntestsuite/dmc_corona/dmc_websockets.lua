@@ -459,7 +459,7 @@ end
 
 
 function WebSocket:_receiveFrame()
-	print( "WebSocket:_receiveFrame" )
+	-- print( "WebSocket:_receiveFrame" )
 
 	local ws_types = ws_frame.type
 	local ws_close = ws_frame.close
@@ -545,7 +545,7 @@ function WebSocket:_receiveFrame()
 	--== handle error
 
 	if not err.isa then
-		print( "Unknown Error", err.message )
+		print( "Unknown Error", err )
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
