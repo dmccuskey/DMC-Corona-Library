@@ -29,6 +29,13 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
+
+
+--====================================================================--
+-- DMC Corona Library : WebSocket Handshake
+--====================================================================--
+
+
 --[[
 
 WebSocket support adapted from:
@@ -41,7 +48,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "1.0.0"
 
 
 --====================================================================--
@@ -59,12 +66,13 @@ local mrandom = math.random
 local schar = string.char
 local tconcat = table.concat
 
+local LOCAL_DEBUG = false
+
 
 --====================================================================--
 -- Support Functions
 
 local function generateKey( params )
-
 	local key = schar(
 		mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff),
 		mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff),
@@ -72,13 +80,11 @@ local function generateKey( params )
 		mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff), mrandom(0,0xff)
 	)
 	return mbase64_encode( key )
-
 end
 
 
 local function createHttpRequest( params )
 	-- print( "handshake:createHttpRequest" )
-
 	params = params or {}
 
 	local host, port, path = params.host, params.port, params.path
@@ -87,7 +93,6 @@ local function createHttpRequest( params )
 	local proto_header --, sock_opts
 	local bytes, key
 	local req_t, req
-
 
 	if not protos then
 		proto_header = ""
@@ -113,16 +118,20 @@ local function createHttpRequest( params )
 		"\r\n"
 	}
 
+	if LOCAL_DEBUG then
+		print( "Request Header" )
+		print( tconcat( req_t, "" ) )
+	end
 	return tconcat( req_t, "" )
 end
 
 
-local function checkHttpResponse( params )
+-- @param response array of lines from http response string
+--
+local function checkHttpResponse( response )
 	-- print( "handshake:checkHttpResponse" )
-	params = params or {}
-	--==--
 	-- TODO: check response
-	-- for i,v in ipairs( params.data ) do
+	-- for i,v in ipairs( response ) do
 	-- 	print(i,v)
 	-- end
 	return true
@@ -132,5 +141,4 @@ end
 return {
 	createRequest = createHttpRequest,
 	checkResponse = checkHttpResponse
-
 }

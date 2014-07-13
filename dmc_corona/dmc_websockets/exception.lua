@@ -1,8 +1,9 @@
 --====================================================================--
--- lua_error.lua
+-- dmc_websockets/exception.lua
+--
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/lua_error.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 --====================================================================--
 
 --[[
@@ -29,20 +30,20 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
-
 --====================================================================--
--- DMC Lua Library : Lua Error
+-- DMC Corona Library : Exception
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "0.1.0"
 
 
 --====================================================================--
 -- Imports
 
+local Error = require 'lua_error'
 local Objects = require 'lua_objects'
 
 
@@ -51,70 +52,46 @@ local Objects = require 'lua_objects'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-local ObjectBase = Objects.ObjectBase
-
-
---====================================================================--
--- Support Functions
-
--- based on https://gist.github.com/cwarden/1207556
-
-local function try( funcs )
-	local try_f, catch_f, finally_f = funcs[1], funcs[2], funcs[3]
-	local status, result = pcall(try_f)
-	if not status and catch_f then
-		catch_f(result)
-	end
-	if finally_f then finally_f() end
-	return result
-end
-
-local function catch(f)
-	return f[1]
-end
-
-local function finally(f)
-	return f[1]
-end
 
 
 
 --====================================================================--
--- Error Base Class
+-- Protocol Error Class
 --====================================================================--
 
 
-local Error = inheritsFrom( ObjectBase )
-Error.NAME = "Error Instance"
+local ProtocolError = inheritsFrom( Error )
+ProtocolError.NAME = "Protocol Error"
 
-function Error:_init( params )
-	-- print( "Error:_init" )
+
+function ProtocolError:_init( params )
+	-- print( "ProtocolError:_init" )
 	params = params or {}
 	self:superCall( "_init", params )
 	--==--
 
-	if self.is_intermediate then return end
-
-	self.message = params.message or "ERROR"
-	self.traceback = debug.traceback()
-
-	local mt = getmetatable( self )
-	mt.__tostring = function(e)
-		return table.concat({"ERROR: ",e.message,"\n",e.traceback})
+	if not self.is_intermediate then
+		assert( params.code, "missing protocol code")
 	end
+
+	self.code = params.code
+	self.reason = params.reason or ""
 
 end
 
 
 
+
 --====================================================================--
--- Error Facade
+-- Exception Facade
 --====================================================================--
 
--- create Globals
-_G.try = try
-_G.catch = catch
-_G.finally = finally
+local function ProtocolErrorFactory( message )
+	-- print( "ProtocolErrorFactory", message )
+	return ProtocolError:new{ message=message }
+end
 
-
-return Error
+return {
+	ProtocolError=ProtocolError,
+	ProtocolErrorFactory=ProtocolErrorFactory,
+}
