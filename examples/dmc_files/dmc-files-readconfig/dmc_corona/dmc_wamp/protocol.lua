@@ -43,13 +43,11 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
--- local States = require 'dmc_states'
-local Utils = require 'dmc_utils'
-local WebSocket = require 'dmc_websockets'
+local Objects = require 'lua_objects'
+local Utils = require 'lua_utils'
 
 local MessageFactory = require 'dmc_wamp.messages'
-local Role = require 'dmc_wamp.roles') )
+local Role = require 'dmc_wamp.roles'
 local FutureMixin = require 'dmc_wamp.future_mix'
 
 local wamp_utils = require 'dmc_wamp.utils'
@@ -66,15 +64,14 @@ local ProtocolError = Errors.ProtocolErrorFactory
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
--- local control of development functionality
-local LOCAL_DEBUG = false
-
 local tpop = table.pop
+
 
 
 --====================================================================--
 -- Endpoint Class
 --====================================================================--
+
 
 local Endpoint = inheritsFrom( ObjectBase )
 

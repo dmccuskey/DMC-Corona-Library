@@ -38,9 +38,10 @@ SOFTWARE.
 -- DMC Corona Library : TCP
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
 
 
 --====================================================================--
@@ -48,6 +49,7 @@ local VERSION = "0.1.0"
 
 local Objects = require 'lua_objects'
 local socket = require 'socket'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -57,6 +59,8 @@ local socket = require 'socket'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
+local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
@@ -65,8 +69,7 @@ local ObjectBase = Objects.ObjectBase
 
 
 local TCPSocket = inheritsFrom( ObjectBase )
-TCPSocket.NAME = "TCP Socket Class"
-
+TCPSocket.NAME = "TCP Socket"
 
 --== Class Constants
 
@@ -77,7 +80,7 @@ TCPSocket.NOT_CONNECTED = 'socket_not_connected'
 TCPSocket.CONNECTED = 'socket_connected'
 TCPSocket.CLOSED = 'socket_closed'
 
--- Socket Error Msg Constants
+-- Lua Socket Error Msg Constants
 
 TCPSocket.ERR_CONNECTED = 'already connected'
 TCPSocket.ERR_CONNECTION = 'Operation already in progress'
@@ -102,21 +105,21 @@ function TCPSocket:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
+	if not self.is_intermediate then
+		assert( params.master, "TCP Socket requires Master")
+	end
+
 	--== Create Properties ==--
 
 	self._host = nil
 	self._port = nil
 
-	-- self._buffer = {} -- table with data
-	-- self._buffer_size = 0
-	self._buffer = "" -- string
-
 	self._status = nil
-
+	self._buffer = "" -- string
 
 	--== Object References ==--
 
-	self._socket = nil
+	self._socket = nil -- real Lua Socket
 	self._master = params.master
 
 end
@@ -212,6 +215,9 @@ end
 
 function TCPSocket:send( data )
 	-- print( 'TCPSocket:send', #data )
+	if LOCAL_DEBUG then
+		Utils.hexDump( data )
+	end
 	return self._socket:send( data )
 end
 
@@ -251,8 +257,6 @@ function TCPSocket:receive( ... )
 		end
 
 	end
-
-	-- print( data, self._buffer, self.buffer_size )
 
 	return data
 end
@@ -303,7 +307,6 @@ function TCPSocket:_createSocket( params )
 	self._status = TCPSocket.NOT_CONNECTED
 
 	self._socket:settimeout( params.timeout )
-	-- self._master:_connect( self )
 
 end
 
@@ -349,7 +352,9 @@ function TCPSocket:_readStatus( status )
 	local buff_tmp, buff_len
 
 	local bytes, emsg, partial = self._socket:receive( '*a' )
-	-- print( 'dataReady', bytes, emsg, partial )
+	if LOCAL_DEBUG then
+		print( 'TCP:dataReady', bytes, emsg, partial )
+	end
 
 	if bytes == nil and emsg == 'closed' then
 		self:close()
@@ -366,6 +371,10 @@ function TCPSocket:_readStatus( status )
 
 	if buff_tmp then
 		self._buffer = table.concat( buff_tmp )
+	end
+
+	if LOCAL_DEBUG then
+		Utils.hexDump( self._buffer )
 	end
 
 	self:_doAfterReadAction()

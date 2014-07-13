@@ -121,9 +121,10 @@ local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEF
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lua_objects'
+local Utils = require 'lua_utils'
+
 local socket = require 'socket'
-local Utils = require 'dmc_utils'
 
 local tcp_socket = require 'dmc_sockets.tcp'
 local atcp_socket = require 'dmc_sockets.async_tcp'
@@ -135,9 +136,6 @@ local atcp_socket = require 'dmc_sockets.async_tcp'
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
-
--- local control of development functionality
-local LOCAL_DEBUG = false
 
 local Singleton = nil
 
@@ -166,7 +164,6 @@ Sockets.MEDIUM = math.floor( 1000/15 )  -- ie, 15 FPS
 Sockets.HIGH = math.floor( 1000/1 )  -- ie, 1 FPS
 
 Sockets.DEFAULT = Sockets.MEDIUM
-
 
 
 --====================================================================--
@@ -235,12 +232,8 @@ end
 --====================================================================--
 
 
-
-
 --====================================================================--
 --== Public Methods
-
-
 
 function Sockets.__setters:throttle( value )
 	-- print( 'Sockets.__setters:throttle', value )
@@ -312,12 +305,8 @@ function Sockets:create( s_type, params )
 end
 
 
-
-
 --====================================================================--
 --== Private Methods
-
-
 
 -- getter/setter: activate enterFrame for socket check
 --
@@ -476,8 +465,11 @@ function Sockets:_createSocketCheckHandler( value )
 end
 
 
+
 --====================================================================--
 --== Create Socket Class Singleton
+--====================================================================--
+
 
 local Singleton = Sockets:new()
 

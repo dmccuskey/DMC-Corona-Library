@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Lua Library : Lua Patch
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.2.0"
@@ -106,7 +107,7 @@ local function stringFormatting( a, b )
 end
 
 doStringFormatPatch = function()
-	if not lua_patch_data.string_format_active then
+	if lua_patch_data.string_format_active == false then
 		print( "Lua Patch::activating patch '" .. PATCH_STRING_FORMAT .. "'" )
 		getmetatable("").__mod = stringFormatting
 		lua_patch_data.string_format_active = true

@@ -1,14 +1,14 @@
 --====================================================================--
--- dmc_states.lua
+-- dmc_wamp/exception.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_states.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
+Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -30,95 +30,46 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
-
 --====================================================================--
--- DMC Corona Library : DMC States
+-- DMC Lua Library : Byte Array Errors
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
-
-
-
---====================================================================--
--- DMC Corona Library Config
---====================================================================--
-
-
---====================================================================--
--- Support Functions
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
---====================================================================--
--- Configuration
-
-local dmc_lib_data, dmc_lib_info
-
--- boot dmc_library with boot script or
--- setup basic defaults if it doesn't exist
---
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
-	_G.__dmc_corona = {
-		dmc_corona={},
-	}
-end
-
-dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
-
-
-
---====================================================================--
--- DMC States
---====================================================================--
-
-
---====================================================================--
--- Configuration
-
-dmc_lib_data.dmc_states = dmc_lib_data.dmc_states or {}
-
-local DMC_STATES_DEFAULTS = {
-	debug_active=false,
-}
-
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_states, DMC_STATES_DEFAULTS )
+local VERSION = "0.1.0"
 
 
 --====================================================================--
 -- Imports
 
-local States = require 'lua_states'
+local Objects = require 'lua_objects'
+local Error = require 'lua_error'
 
 
-return States
+--====================================================================--
+-- Setup, Constants
 
+-- setup some aliases to make code cleaner
+local inheritsFrom = Objects.inheritsFrom
+
+
+
+--====================================================================--
+-- Buffer Error Class
+--====================================================================--
+
+
+local BufferError = inheritsFrom( Error )
+BufferError.NAME = "Buffer Error"
+
+
+
+
+--====================================================================--
+-- Error Facade
+--====================================================================--
+
+return {
+	BufferError=BufferError
+}

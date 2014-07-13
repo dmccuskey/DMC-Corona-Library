@@ -38,6 +38,7 @@ SOFTWARE.
 --====================================================================--
 
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "0.1.0"
@@ -212,8 +213,11 @@ local function bless( base, obj )
 	local o = obj or {}
 	local mt = {
 		__index = indexFunc,
-		__newindex = newindexFunc
+		__newindex = newindexFunc,
 	}
+	if base and base[ CONSTRUCTOR_FUNC_NAME ] and type(base[ CONSTRUCTOR_FUNC_NAME])=='function' then
+		mt.__call = base[ CONSTRUCTOR_FUNC_NAME ]
+	end
 	setmetatable( o, mt )
 
 	-- create lookup tables - parent, setter, getter
@@ -613,7 +617,7 @@ end
 function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
 	-- print( "ObjectBase:_dmc_dispatchEvent", e_type );
 	params = params or {}
-	if params.merge == nil then params.merge = false end
+	if params.merge == nil then params.merge = true end
 	--==--
 	local e
 

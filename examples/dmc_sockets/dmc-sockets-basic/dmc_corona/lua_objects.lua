@@ -617,7 +617,7 @@ end
 function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
 	-- print( "ObjectBase:_dmc_dispatchEvent", e_type );
 	params = params or {}
-	if params.merge == nil then params.merge = false end
+	if params.merge == nil then params.merge = true end
 	--==--
 	local e
 
