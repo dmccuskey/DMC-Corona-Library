@@ -35,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : WebSocket Frame
 --====================================================================--
 
+
 --[[
 
 WebSocket support adapted from:
@@ -47,7 +48,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
 
 
 --====================================================================--

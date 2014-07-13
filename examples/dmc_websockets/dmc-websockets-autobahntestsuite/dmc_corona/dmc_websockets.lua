@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "1.0.0"
 
 
 
@@ -130,7 +130,7 @@ local mime = require 'mime'
 local urllib = require 'socket.url'
 
 local ByteArray = require 'dmc_websockets.bytearray'
-local ByteArrayError = require 'lua_bytearray.errors'
+local ByteArrayErrorFactory = require 'lua_bytearray.exceptions'
 local Objects = require 'lua_objects'
 local Patch = require( 'lua_patch' )()
 local Sockets = require 'dmc_sockets'
@@ -156,7 +156,7 @@ local tconcat = table.concat
 local LOCAL_DEBUG = false
 
 local ProtocolError = ws_error.ProtocolError
-local BufferError = ByteArrayError.BufferError
+local BufferError = ByteArrayErrorFactory.BufferError
 
 
 
@@ -170,7 +170,9 @@ WebSocket.NAME = "WebSocket"
 
 StatesMix.mixin( WebSocket )
 
-WebSocket.USER_AGENT = 'dmc_websockets/'..VERSION
+-- version for the the group of WebSocket files
+WebSocket.VERSION = '1.0.0'
+WebSocket.USER_AGENT = 'dmc_websockets/'..WebSocket.VERSION
 
 --== Message Type Constants
 
@@ -358,31 +360,16 @@ end
 function WebSocket:_doHttpConnect()
 	-- print( "WebSocket:_doHttpConnect" )
 
-	local params, request, callback
-
-	--== create request
-
-	params = {
+	local request = ws_handshake.createRequest{
 		host=self._host,
 		port=self._port,
 		path=self._path,
 		protocols=self._protocols
 	}
-	request = ws_handshake.createRequest( params )
 
-	--== request callback
-
-	callback = function( event )
-		if event.error then
-			self:_onError( -1, "failed to send the handshake request: " .. err )
-
-			self:_close( { reconnect=false } )
-		end
-	end
-
-	-- TODO: handle error condition
 	if request then
-		self._socket:send( request, callback )
+		-- TODO: error handling
+		local bytes, err, idx = self._socket:send( request )
 	else
 		self:_close( { reconnect=false } )
 	end
@@ -390,7 +377,8 @@ function WebSocket:_doHttpConnect()
 end
 
 
--- split up raw result into lines
+-- @param str raw returned header from HTTP request
+--
 function WebSocket:_processHeaderString( str )
 	-- print( "WebSocket:_processHeaderString" )
 	local results = {}
