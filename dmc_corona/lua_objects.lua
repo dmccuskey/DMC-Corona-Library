@@ -1,7 +1,6 @@
 --====================================================================--
 -- lua_objects.lua
 --
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/lua_objects.lua
 --====================================================================--
 
@@ -38,10 +37,9 @@ SOFTWARE.
 --====================================================================--
 
 
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 --====================================================================--
@@ -62,7 +60,7 @@ local Utils = require 'lua_utils'
 local CONSTRUCTOR_FUNC_NAME = 'new'
 
 local function setConstructorName( name )
-	assert( type(name)=='string' )
+	assert( type(name)=='string', "expected string for constructor name" )
 	CONSTRUCTOR_FUNC_NAME = name
 end
 
