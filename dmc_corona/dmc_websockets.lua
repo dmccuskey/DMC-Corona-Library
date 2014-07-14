@@ -533,7 +533,9 @@ function WebSocket:_receiveFrame()
 	--== handle error
 
 	if not err.isa then
-		print( "Unknown Error", err )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Unknown Error", err )
+		end
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
@@ -543,14 +545,18 @@ function WebSocket:_receiveFrame()
 		-- pass, not enough data to read another frame
 
 	elseif err:isa( ws_error.ProtocolError ) then
-		print( "Protocol Error:", err.message )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Protocol Error:", err.message )
+		end
 		self:_bailout{
 			code=err.code,
 			reason=err.reason,
 		}
 
 	else
-		print( "Unknown Error", err.code, err.reason, err.message )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Unknown Error", err.code, err.reason, err.message )
+		end
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
