@@ -48,9 +48,80 @@ local ok, json = pcall( require, 'json' )
 if not ok then json = nil end
 
 
+
 --====================================================================--
 -- Setup Support
 --====================================================================--
+
+
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+-- split string up in parts, using separator
+-- returns array of pieces
+function Utils.split( str, sep )
+	if sep == nil then
+		sep = "%s"
+	end
+	t={} ; i=1
+	for str in string.gmatch( str, "([^"..sep.."]+)") do
+		t[i] = str
+		i = i + 1
+	end
+	return t
+end
+
+
+local platform_name = system.getInfo( 'platformName' )
+function Utils.getSystemSeparator()
+	if platform_name == 'Win' then
+		return '\\'
+	else
+		return '/'
+	end
+end
+
+
+function Utils.sysPathToRequirePath( sys_path )
+	-- print( "sysPathToRequirePath", sys_path)
+	local sys_tbl = Utils.split( sys_path, Utils.getSystemSeparator() )
+	-- clean off any dots
+	for i=#sys_tbl, 1, -1 do
+		if sys_tbl[i]=='.' then
+			table.remove( sys_tbl, i )
+		end
+	end
+	return table.concat( sys_tbl, '.' )
+end
+
+
+
+
 
 --== Start lua_files copies ==--
 
@@ -277,10 +348,11 @@ end
 -- This is standard code to bootstrap the dmc-corona-library
 -- it looks for a configuration file to read
 
+
 local DMC_CORONA_CONFIG_FILE = 'dmc_corona.cfg'
 local DMC_CORONA_DEFAULT_SECTION = 'dmc_corona'
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
+local dmc_lib_data, dmc_lib_info
 
 -- no module has yet tried to read in a config file
 if _G.__dmc_corona == nil then
@@ -297,19 +369,58 @@ if _G.__dmc_corona == nil then
 	dmc_lib_data.dmc_corona = dmc_lib_data.dmc_corona or {}
 	dmc_lib_info = dmc_lib_data.dmc_corona
 
-	-- enhance lua search path
-	if dmc_lib_info.lua_path then
-		local path_info = dmc_lib_info.lua_path
-		local sys_path = system.pathForFile( system.ResourceDirectory )
-		local lua_paths = { package.path }
-		for i=#path_info, 1, -1 do
-			local dir = path_info[i]
-			local path = table.concat( { sys_path, dir, '?.lua;' }, '/' )
-			table.insert( lua_paths, 1, path )
-		end
-		package.path = table.concat( lua_paths, '' )
-		-- print( package.path )
-	end
-
 end
 
+-- fix the way that Corona loads files
+-- the package.path/Lua Loaders don't obey
+if _G.__dmc_require == nil then
+	-- setup structure
+	_G.__dmc_require = {
+		paths={},
+		require=_G.require -- original require method
+	}
+
+	_G.require = function( module_name )
+		-- print( "dmc_require: ", module_name )
+		assert( type(module_name)=='string', "dmc_require needs string module name" )
+		--==--
+		local _paths = _G.__dmc_require.paths
+		local _require = _G.__dmc_require.require
+		local lua_paths = Utils.extend( _paths, {} )
+		table.insert( lua_paths, 1, '' ) -- add search at root-level
+
+		local err = {}
+		local library = nil
+
+		for i = 1, #lua_paths do
+			local mod_path = lua_paths[i]
+			local path = ( mod_path=='' and mod_path or mod_path..'.' ) .. module_name
+
+			local has_module, loaded_module = pcall( _require, path )
+			print( 'has', has_module, path )
+			if has_module then
+				print( "found ", module_name, loaded_module )
+				library = loaded_module
+				break
+			else
+				table.insert( err, loaded_module )
+			end
+
+		end
+		if not library then
+			print( table.concat( err ), '\n\n')
+			error( "couldn't find", module_name )
+		end
+
+		return library
+	end
+end
+
+-- enhance lua search path
+if dmc_lib_info.lua_path then
+	local dmc_paths = _G.__dmc_require.paths
+	local path_info = dmc_lib_info.lua_path
+	for i=#path_info, 1, -1 do
+		dmc_paths[i] = Utils.sysPathToRequirePath( path_info[i] )
+	end
+end
