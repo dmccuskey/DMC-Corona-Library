@@ -55,7 +55,7 @@ local VERSION = "1.0.0"
 -- Imports
 
 local mime = require 'mime'
-local patch = require 'dmc_patch'
+local Patch = require( 'lua_patch' )( 'string-format' )
 
 
 --====================================================================--
