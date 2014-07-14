@@ -397,9 +397,9 @@ if _G.__dmc_require == nil then
 			local path = ( mod_path=='' and mod_path or mod_path..'.' ) .. module_name
 
 			local has_module, loaded_module = pcall( _require, path )
-			print( 'has', has_module, path )
+			-- print( 'has', has_module, path )
 			if has_module then
-				print( "found ", module_name, loaded_module )
+				-- print( "found ", module_name, loaded_module )
 				library = loaded_module
 				break
 			else
