@@ -3,8 +3,6 @@
 --
 -- Communicate with Websockets echo server
 --
--- by David McCuskey
---
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
 -- Copyright (C) 2014 David McCuskey. All Rights Reserved.
@@ -76,6 +74,7 @@ local function webSocketsEvent_handler( event )
 
 	elseif evt_type == ws.ONCLOSE then
 		print( "Received event: ONCLOSE" )
+		print( 'code:reason', event.code, event.reason )
 
 	elseif evt_type == ws.ONERROR then
 		print( "Received event: ONERROR" )
@@ -85,6 +84,6 @@ local function webSocketsEvent_handler( event )
 end
 
 ws = WebSockets{
-	uri='ws://echo.websocket.org'
+	uri='ws://echo.websockets.org'
 }
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )

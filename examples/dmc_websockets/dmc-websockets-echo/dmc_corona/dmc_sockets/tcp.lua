@@ -188,6 +188,9 @@ function TCPSocket:connect( host, port, params )
 	self:_createSocket()
 
 	local success, emsg = self._socket:connect( host, port )
+	if LOCAL_DEBUG then
+		print( "connect ", success, emsg )
+	end
 
 	if success then
 		self._status = TCPSocket.CONNECTED
