@@ -36,6 +36,7 @@ DEALINGS IN THE SOFTWARE.
 -- DMC Corona Library : DMC Corona Boot
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
 local VERSION = "1.3.0"
@@ -382,38 +383,44 @@ if _G.__dmc_require == nil then
 
 	_G.require = function( module_name )
 		-- print( "dmc_require: ", module_name )
-		assert( type(module_name)=='string', "dmc_require needs string module name" )
+		assert( type(module_name)=='string', "dmc_require: expected string module name" )
 		--==--
+		local resource_path = system.pathForFile( system.ResourceDirectory ) or ""
+
 		local _paths = _G.__dmc_require.paths
 		local _require = _G.__dmc_require.require
 		local lua_paths = Utils.extend( _paths, {} )
 		table.insert( lua_paths, 1, '' ) -- add search at root-level
 
-		local err = {}
+		local err_tbl = {}
 		local library = nil
-
-		for i = 1, #lua_paths do
-			local mod_path = lua_paths[i]
+		local idx = 1
+		repeat
+			local mod_path = lua_paths[idx]
 			local path = ( mod_path=='' and mod_path or mod_path..'.' ) .. module_name
 
-			local has_module, loaded_module = pcall( _require, path )
-			-- print( 'has', has_module, path )
+			local has_module, result = pcall( _require, path )
 			if has_module then
-				-- print( "found ", module_name, loaded_module )
-				library = loaded_module
-				break
+				library = result
 			else
-				table.insert( err, loaded_module )
+				if string.find( result, '^error loading module' ) then
+					error( result, 2 )
+				else
+					table.insert( err_tbl, resource_path..'/'..mod_path )
+				end
 			end
 
-		end
+			idx=idx+1
+		until library or idx > #lua_paths
+
 		if not library then
-			print( table.concat( err ), '\n\n')
-			error( "couldn't find", module_name )
+			table.insert( err_tbl, 1, "module '".. module_name.."' not found in archive:" )
+			error( table.concat( err_tbl, '\n' ), 2 )
 		end
 
 		return library
 	end
+
 end
 
 -- enhance lua search path
