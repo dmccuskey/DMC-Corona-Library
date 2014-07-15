@@ -310,11 +310,10 @@ end
 function WebSocket:send( data, params )
 	-- print( "WebSocket:send", #data )
 	params = params or {}
+	params.type = params.type or WebSocket.TEXT
 	--==--
 
-	local mtype = params.type or WebSocket.TEXT
-
-	if mtype == WebSocket.BINARY then
+	if params.type == WebSocket.BINARY then
 		self:_sendBinary( data )
 	else
 		self:_sendText( data )
