@@ -131,8 +131,9 @@ function ATCPSocket:connect( host, port, params )
 		repeat
 
 			local success, emsg = self._socket:connect( host, port )
-
-			-- print( success, emsg )
+			if LOCAL_DEBUG then
+				print( "atcp: connect", success, emsg )
+			end
 			-- messages:
 			-- nil	timeout
 			-- nil	Operation already in progress
