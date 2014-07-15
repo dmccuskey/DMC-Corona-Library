@@ -196,6 +196,7 @@ WebSocket.CLOSED = 3
 --== Protocol Close Constants
 
 local CLOSE_CODES = {
+	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
 
@@ -256,6 +257,8 @@ function WebSocket:_init( params )
 	self._socket_throttle = params.throttle
 
 	self._close_timer = nil
+
+	self._ws_req_key = '' -- key sent to server on handshek
 
 	--== Object References ==--
 
@@ -360,12 +363,14 @@ end
 function WebSocket:_doHttpConnect()
 	-- print( "WebSocket:_doHttpConnect" )
 
-	local request = ws_handshake.createRequest{
+	local request, key = ws_handshake.createRequest{
 		host=self._host,
 		port=self._port,
 		path=self._path,
 		protocols=self._protocols
 	}
+
+	self._ws_req_key = key
 
 	if request then
 		-- TODO: error handling
@@ -401,10 +406,14 @@ function WebSocket:_handleHttpRespose()
 	ba.pos = 1
 	h_str = ba:readBuf( e_pos )
 
-	if ws_handshake.checkResponse( self:_processHeaderString( h_str ) ) then
+	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
 	else
-		self:_close( { reconnect=false } )
+		self:_bailout{
+			code=CLOSE_CODES.INVALID_HANDSHAKE.code,
+			reason=CLOSE_CODES.INVALID_HANDSHAKE.reason,
+			reconnect=false
+		}
 	end
 
 end
