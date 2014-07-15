@@ -218,11 +218,11 @@ local test_cases = {
 	--[[
 	--]]
 	{ index='210', id='7.1.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='211', id='4.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='212', id='4.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='213', id='4.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='214', id='4.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='215', id='4.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='211', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='212', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='213', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='214', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='215', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
 
 	--== 7.3 Close behavior, close frame structure, payload length
 
