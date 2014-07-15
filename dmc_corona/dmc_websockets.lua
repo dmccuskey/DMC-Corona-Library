@@ -349,9 +349,15 @@ function WebSocket:_onMessage( msg )
 	self:dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
 end
 
-function WebSocket:_onClose()
-	-- print( "WebSocket:_onClose" )
-	self:dispatchEvent( self.ONCLOSE )
+function WebSocket:_onClose( params )
+	-- print( "WebSocket:_onClose", params )
+	params = params or {}
+	--==--
+	local evt = {
+		code=params.code,
+		reason=params.reason
+	}
+	self:dispatchEvent( self.ONCLOSE, evt )
 end
 
 function WebSocket:_onError( ecode, emsg )
@@ -637,7 +643,7 @@ function WebSocket:_close( params )
 		self:gotoState( WebSocket.STATE_CLOSED )
 
 	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
 		self:gotoState( WebSocket.STATE_CLOSING, params )
@@ -977,7 +983,7 @@ function WebSocket:do_state_closed( params )
 		print( "dmc_websockets:: Server connection closed" )
 	end
 
-	self:_onClose()
+	self:_onClose( params )
 
 end
 function WebSocket:state_closed( next_state, params )
