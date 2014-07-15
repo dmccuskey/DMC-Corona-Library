@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.0.1"
 
 
 
@@ -196,6 +196,7 @@ WebSocket.CLOSED = 3
 --== Protocol Close Constants
 
 local CLOSE_CODES = {
+	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
 
@@ -257,6 +258,8 @@ function WebSocket:_init( params )
 
 	self._close_timer = nil
 
+	self._ws_req_key = '' -- key sent to server on handshek
+
 	--== Object References ==--
 
 	self._ba = nil -- our Byte Array, buffer
@@ -307,11 +310,10 @@ end
 function WebSocket:send( data, params )
 	-- print( "WebSocket:send", #data )
 	params = params or {}
+	params.type = params.type or WebSocket.TEXT
 	--==--
 
-	local mtype = params.type or WebSocket.TEXT
-
-	if mtype == WebSocket.BINARY then
+	if params.type == WebSocket.BINARY then
 		self:_sendBinary( data )
 	else
 		self:_sendText( data )
@@ -346,9 +348,15 @@ function WebSocket:_onMessage( msg )
 	self:dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
 end
 
-function WebSocket:_onClose()
-	-- print( "WebSocket:_onClose" )
-	self:dispatchEvent( self.ONCLOSE )
+function WebSocket:_onClose( params )
+	-- print( "WebSocket:_onClose", params )
+	params = params or {}
+	--==--
+	local evt = {
+		code=params.code,
+		reason=params.reason
+	}
+	self:dispatchEvent( self.ONCLOSE, evt )
 end
 
 function WebSocket:_onError( ecode, emsg )
@@ -360,12 +368,14 @@ end
 function WebSocket:_doHttpConnect()
 	-- print( "WebSocket:_doHttpConnect" )
 
-	local request = ws_handshake.createRequest{
+	local request, key = ws_handshake.createRequest{
 		host=self._host,
 		port=self._port,
 		path=self._path,
 		protocols=self._protocols
 	}
+
+	self._ws_req_key = key
 
 	if request then
 		-- TODO: error handling
@@ -401,10 +411,14 @@ function WebSocket:_handleHttpRespose()
 	ba.pos = 1
 	h_str = ba:readBuf( e_pos )
 
-	if ws_handshake.checkResponse( self:_processHeaderString( h_str ) ) then
+	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
 	else
-		self:_close( { reconnect=false } )
+		self:_bailout{
+			code=CLOSE_CODES.INVALID_HANDSHAKE.code,
+			reason=CLOSE_CODES.INVALID_HANDSHAKE.reason,
+			reconnect=false
+		}
 	end
 
 end
@@ -533,7 +547,9 @@ function WebSocket:_receiveFrame()
 	--== handle error
 
 	if not err.isa then
-		print( "Unknown Error", err )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Unknown Error", err )
+		end
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
@@ -543,14 +559,18 @@ function WebSocket:_receiveFrame()
 		-- pass, not enough data to read another frame
 
 	elseif err:isa( ws_error.ProtocolError ) then
-		print( "Protocol Error:", err.message )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Protocol Error:", err.message )
+		end
 		self:_bailout{
 			code=err.code,
 			reason=err.reason,
 		}
 
 	else
-		print( "Unknown Error", err.code, err.reason, err.message )
+		if LOCAL_DEBUG then
+			print( "dmc_websockets :: Unknown Error", err.code, err.reason, err.message )
+		end
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
@@ -622,7 +642,7 @@ function WebSocket:_close( params )
 		self:gotoState( WebSocket.STATE_CLOSED )
 
 	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
 		self:gotoState( WebSocket.STATE_CLOSING, params )
@@ -962,7 +982,7 @@ function WebSocket:do_state_closed( params )
 		print( "dmc_websockets:: Server connection closed" )
 	end
 
-	self:_onClose()
+	self:_onClose( params )
 
 end
 function WebSocket:state_closed( next_state, params )

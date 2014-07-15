@@ -48,14 +48,15 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.0.1"
 
 
 --====================================================================--
 -- Imports
 
 local mime = require 'mime'
-local patch = require 'dmc_patch'
+local Patch = require( 'lua_patch' )( 'string-format' )
+local SHA1 = require 'libs.sha1'
 
 
 --====================================================================--
@@ -67,6 +68,8 @@ local schar = string.char
 local tconcat = table.concat
 
 local LOCAL_DEBUG = false
+
+local HANDSHAKE_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 
 --====================================================================--
@@ -122,23 +125,79 @@ local function createHttpRequest( params )
 		print( "Request Header" )
 		print( tconcat( req_t, "" ) )
 	end
-	return tconcat( req_t, "" )
+	return tconcat( req_t, "" ), key
 end
 
 
+
+local function buildServerKey( key )
+	-- print( "handshake:buildServerKey" )
+	assert( type(key)=='string', "expected string for key" )
+	--==--
+	local srvr_key = key..HANDSHAKE_GUID
+	local key_sha = SHA1.sha1_binary( srvr_key )
+	return mbase64_encode( key_sha )
+end
+
+local function createHttpResponseHash( response )
+	-- print( "handshake:createHttpResponseHash" )
+	assert( type(response)=='table', "expected table of response lines" )
+	--==--
+	local resp_hash = {}
+	for i,v in ipairs( response ) do
+		local key, value = string.match( v, '^([%w-%p]+): (.+)$' )
+		if key and value then
+			key = string.lower( key )
+			if key == 'sec-websocket-accept' then
+				resp_hash[ key ] = value
+			else
+				resp_hash[ key ] = string.lower( value )
+			end
+		end
+	end
+	return resp_hash
+end
+
 -- @param response array of lines from http response string
 --
-local function checkHttpResponse( response )
+--[[
+-- requires:
+-- response code 101
+-- upgrade: websocket
+-- connection: upgrade
+-- sec=websocket-accept:
+--]]
+local function checkHttpResponse( response, key )
 	-- print( "handshake:checkHttpResponse" )
-	-- TODO: check response
-	-- for i,v in ipairs( response ) do
-	-- 	print(i,v)
-	-- end
+	assert( type(response)=='table', "expected table of response lines" )
+	assert( type(key)=='string', "expected handshake key" )
+	--==--
+
+	-- check for http result code - 101
+	if string.match( response[1], '^HTTP/1.1%s+101' ) == nil then
+		return false
+	end
+
+	local resp_hash = createHttpResponseHash( response )
+	local srvr_key = buildServerKey( key )
+
+	if resp_hash.upgrade ~= 'websocket' then
+		return false
+	elseif resp_hash.connection ~= 'upgrade' then
+		return false
+	elseif resp_hash['sec-websocket-accept'] ~= srvr_key then
+		return false
+	end
+
 	return true
 end
 
 
 return {
 	createRequest = createHttpRequest,
-	checkResponse = checkHttpResponse
+	checkResponse = checkHttpResponse,
+
+	-- for unit testing
+	_buildServerKey = buildServerKey,
+	_createHttpResponseHash = createHttpResponseHash
 }

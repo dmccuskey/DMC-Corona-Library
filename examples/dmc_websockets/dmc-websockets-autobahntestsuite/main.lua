@@ -3,8 +3,6 @@
 --
 -- Run through the Autobahn Websocket Test Suite
 --
--- by David McCuskey
---
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
 -- Copyright (C) 2014 David McCuskey. All Rights Reserved.
@@ -18,10 +16,12 @@ print( '\n\n##############################################\n\n' )
 -- Imports
 
 local WebSockets = require 'dmc_corona.dmc_websockets'
--- local Utils = require( "dmc_corona.dmc_utils" )
 
 local test_cases = require 'test_cases'
-local patch = require 'dmc_patch'
+local Patch = require( 'lua_patch' )( 'string-format' )
+
+-- read in app deployment configuration
+gAPP_CONF = require 'app_config'
 
 
 --====================================================================--
@@ -33,11 +33,34 @@ local current_test = nil -- test case record
 
 local LOCAL_DEBUG = false
 
+local deploy_conf = gAPP_CONF.deployment
+if deploy_conf.io_buffering_active then
+	-- **debug: disable output buffering for Xcode Console
+	io.output():setvbuf('no')
+end
+
+
+
+
 --====================================================================--
 -- Support Functions
 
 local doTest, gotoNextTest
 local ws_handler
+
+
+local function createURI( params )
+	assert( params.server_url )
+	assert( params.server_port )
+	assert( params.test_index )
+	assert( params.user_agent )
+	return 'ws://%s:%s/runCase?case=%s&agent=%s' % {
+		params.server_url,
+		params.server_port,
+		params.test_index,
+		params.user_agent
+	}
+end
 
 
 ws_handler = function( event )
@@ -85,8 +108,12 @@ doTest = function( test_case )
 
 	-- create new socket
 	ws = WebSockets{
-		uri='ws://192.168.0.102:9001/runCase?case=%s&agent=%s' % { test_case.index, WebSockets.USER_AGENT },
-		-- uri='ws://192.168.3.120:9001/runCase?case=%s&agent=%s' % { test_case.index, WebSockets.USER_AGENT },
+		uri=createURI{
+			server_url=deploy_conf.server_url,
+			server_port=deploy_conf.server_port,
+			test_index=test_case.index,
+			user_agent=WebSockets.USER_AGENT
+		},
 		-- throttle=WebSockets.OFF,
 	}
 	ws:addEventListener( ws.EVENT, ws_handler )
