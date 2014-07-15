@@ -1,31 +1,32 @@
 --====================================================================--
 -- lua_e4x.lua
 --
---
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/lua_e4x.lua
 --====================================================================--
 
 --[[
 
+The MIT License (MIT)
+
 Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
@@ -37,7 +38,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 
@@ -57,12 +58,9 @@ local tconcat = table.concat
 local tinsert = table.insert
 local tremove = table.remove
 
--- local Utils = require 'lua_utils'
-
 
 --====================================================================--
 -- Support Functions
-
 
 local function createXmlList()
 	return XmlList()
@@ -246,6 +244,7 @@ local function inheritsFrom( base_class, params, constructor )
 
 	local o
 
+	-- TODO: work out toString method
 	-- if base_class and base_class.toString and type(base_class.toString)=='function' then
 	-- 	params.toStringFunc = base_class.toString
 	-- end
@@ -319,6 +318,7 @@ end
 function XmlList:addNode( node )
 	-- print( "XmlList:addNode", node.NAME  )
 	assert( node ~= nil, "XmlList:addNode, node can't be nil" )
+	--==--
 
 	local nodes = rawget( self, '__nodes' )
 	if not node:isa( XmlList ) then
@@ -718,7 +718,7 @@ function XmlParser:parseString( xml_str )
 		root:setName( label )
 
 	else
-		error("malformed xml")
+		error( "malformed XML in XmlParser:parseString" )
 
 	end
 
@@ -760,7 +760,7 @@ function XmlParser:_parseString( xml_str, xml_node, pos )
 			xml_node:addChild( node )
 
 		else  -- end tag
-			assert( xml_node:name() == label, "incorrect closing label" )
+			assert( xml_node:name() == label, "incorrect closing label found:" )
 			break
 
 		end
@@ -779,7 +779,8 @@ end
 
 local function parse( xml_str )
 	-- print( "LuaE4X.parse" )
-	assert( xml_str and type(xml_str)=='string' and #xml_str > 0, 'Lua E4X: missing XML data to parse' )
+	assert( type(xml_str)=='string', 'Lua E4X: missing XML data to parse' )
+	assert( #xml_str > 0, 'Lua E4X: XML data must have length' )
 	return XmlParser:parseString( xml_str )
 end
 
