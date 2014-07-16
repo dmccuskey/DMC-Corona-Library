@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.1.1"
 
 
 
@@ -392,7 +392,7 @@ end
 function WebSocket:_processHeaderString( str )
 	-- print( "WebSocket:_processHeaderString" )
 	local results = {}
-	for line in string.gmatch( str, '[^\r\n]*\r\n') do
+	for line in string.gmatch( str, '([^\r\n]*)\r\n') do
 		tinsert( results, line )
 	end
 	return results
