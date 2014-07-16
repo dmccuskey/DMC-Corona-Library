@@ -10,6 +10,7 @@ There are examples and documentation available. Look in the `examples` folder fo
 
 If you have questions or comments you can either:
 * post to the Corona forums: http://forums.coronalabs.com
+* send a PM @ coronalabs.com: @dmccuskey
 * send me an email: corona-lib at davidmccuskey com
 
 **Issues**
@@ -20,9 +21,9 @@ If you have any issues, please post them here on github: [dmc-corona-library iss
 
 ## Note ##
 
-The huge re-org is complete. I have touched every module in the library and then some. Be careful.
+The huge re-org is complete. I have touched every module in the library and then some. Be careful. =)
 
-The library folder has been renamed to `dmc_corona`, since one of my new libraries is called `dmc_lua`.
+The library folder has been renamed from `dmc_library` to `dmc_corona`, since I now have another library &ndash; `dmc_lua`.
 
 
 
@@ -534,7 +535,7 @@ There are examples in the folder `examples/dmc_wamp/` which show how to use the 
 <a name="dmc_websockets"></a>
 ### Module: dmc_websockets ###
 
-This module implements WebSockets (RFC6455) for the Corona SDK. With minor modifications it can be used in plain Lua.
+This module implements WebSockets (RFC6455) for the Corona SDK. The core modules are written in pure-Lua, so could be used with any other enviroment with some work.
 
 * **Follows the web browser API implemenation**
 
@@ -556,7 +557,7 @@ There are examples in the folder `examples/dmc_websockets/` which show how to us
 
 (The MIT License)
 
-Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
+Copyright (C) 2011-2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
