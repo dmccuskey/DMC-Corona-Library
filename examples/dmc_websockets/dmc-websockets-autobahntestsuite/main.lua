@@ -31,15 +31,13 @@ local ws
 local test_idx = 0
 local current_test = nil -- test case record
 
-local LOCAL_DEBUG = false
-
 local deploy_conf = gAPP_CONF.deployment
 if deploy_conf.io_buffering_active then
 	-- **debug: disable output buffering for Xcode Console
 	io.output():setvbuf('no')
 end
 
-
+local LOCAL_DEBUG = false
 
 
 --====================================================================--
@@ -54,6 +52,7 @@ local function createURI( params )
 	assert( params.server_port )
 	assert( params.test_index )
 	assert( params.user_agent )
+	--==--
 	return 'ws://%s:%s/runCase?case=%s&agent=%s' % {
 		params.server_url,
 		params.server_port,
@@ -82,13 +81,14 @@ ws_handler = function( event )
 	elseif evt_type == ws.ONCLOSE then
 		if LOCAL_DEBUG then
 			print( 'Received event: ONCLOSE' )
+			print( 'code:reason', event.code, event.reason )
 		end
 		gotoNextTest()
 
 	elseif evt_type == ws.ONERROR then
 		if LOCAL_DEBUG then
 			print( 'Received event: ONERROR' )
-			Utils.print( event )
+			print( 'code:reason', event.code, event.reason )
 		end
 
 	end
