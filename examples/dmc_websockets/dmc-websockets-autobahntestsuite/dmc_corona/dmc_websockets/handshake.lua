@@ -68,9 +68,9 @@ local schar = string.char
 local tconcat = table.concat
 local tinsert = table.insert
 
-local LOCAL_DEBUG = false
-
 local HANDSHAKE_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+
+local LOCAL_DEBUG = false
 
 
 --====================================================================--
@@ -168,6 +168,7 @@ end
 local function checkHttpResponse( response, key )
 	-- print( "handshake:checkHttpResponse" )
 	assert( type(response)=='table', "expected table of response lines" )
+	assert( #response>0, "expected table of response lines" )
 	assert( type(key)=='string', "expected handshake key" )
 	--==--
 
