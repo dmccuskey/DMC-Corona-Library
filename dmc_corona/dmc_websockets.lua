@@ -392,15 +392,24 @@ function WebSocket:_doHttpConnect()
 
 	self._ws_req_key = key
 
-	if request then
-		-- TODO: error handling
-		local bytes, err, idx = self._socket:send( request )
-	else
+	if not request then
 		self:_bailout{
-			code=ERROR_CODES.NETWORK_ERROR.code,
-			reason=ERROR_CODES.NETWORK_ERROR.reason,
+			code=ERROR_CODES.REQUEST_ERROR.code,
+			reason=ERROR_CODES.REQUEST_ERROR.reason,
 		}
+		return
 	end
+
+	local callback = function( event )
+		-- print("socket connect callback")
+		if event.isError then
+			self:_bailout{
+				code=ERROR_CODES.REQUEST_ERROR.code,
+				reason=ERROR_CODES.REQUEST_ERROR.reason,
+			}
+		end
+	end
+	self._socket:send( request, callback )
 
 end
 
@@ -602,45 +611,37 @@ function WebSocket:_receiveFrame()
 
 end
 
--- @param msg table with message info
--- opcode: one of websocket types
--- data: data to send
+-- @param msg WebSocket Message object
 --
 function WebSocket:_sendFrame( msg )
-	-- print( "WebSocket:_sendFrame", msg.opcode, msg.data )
+	-- print( "WebSocket:_sendFrame", msg )
 
-	local opcode = msg.opcode or ws_frame.type.text
-	local data = msg.data
-	local masked = true -- always when client to server
 	local sock = self._socket
+	local record, callback
 
-	local onFrameCallback = function( event )
-		if LOCAL_DEBUG then
-			print("Received frame to send: size", #event.frame )
-		end
-		if not event.frame then
-			-- TODO: better error handling
-			self:_onError( -1, event.emsg )
-		else
-			-- send frame
-			-- TODO: error handling
-			local bytes, err, idx = self._socket:send( event.frame )
+	msg.masked = true -- always when client to server
+
+	callback = function( event )
+		-- print("socket connect callback")
+		if event.isError then
+			self:_bailout{
+				code=ERROR_CODES.NETWORK_ERROR.code,
+				reason=ERROR_CODES.NETWORK_ERROR.reason,
+			}
 		end
 	end
 
-	local p =
-	{
-			data=data,
-			opcode=opcode,
-			masked=masked,
-			onFrame=onFrameCallback,
-			-- max_frame_size (optional)
-		}
-	ws_frame.buildFrames( p )
+	record = ws_frame.buildFrames{
+		message=msg,
+		-- max_frame_size = 16  -- TODO: add functionality to fragment a message
+	}
+	sock:send( record.frame, callback )
 
 end
 
 
+-- fail our connection with an error
+--
 function WebSocket:_bailout( params )
 	-- print( "Failing connection", params.code, params.reason )
 	params = params or {}
@@ -799,17 +800,17 @@ function WebSocket:do_state_init( params )
 
 	if socket then socket:close() end
 
-	socket = Sockets:create( Sockets.TCP )
 	Sockets.throttle = self._socket_throttle
+
+	socket = Sockets:create( Sockets.ATCP )
+	self._socket = socket
 	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
 	end
-	socket:addEventListener( socket.EVENT, self._socket_handler )
-	self._socket = socket
 
-	socket:connect( host, port )
+	socket:connect( host, port, { onConnect=self._socket_handler, onData=self._socket_handler } )
 
 end
 
@@ -1059,29 +1060,34 @@ function WebSocket:_socketEvent_handler( event )
 
 	elseif event.type == sock.READ then
 
-		local ba = self._ba
-		local data = self._socket:receive('*a')
+		local callback = function( s_event )
+			local data = s_event.data
+			local ba = self._ba
 
-		if ba == nil then
-			ba = ByteArray()
-		else
-			ba = ByteArray()
-			ba:readFromArray( self._ba, self._ba.pos )
+			if ba == nil then
+				ba = ByteArray()
+			else
+				ba = ByteArray()
+				ba:readFromArray( self._ba, self._ba.pos )
+			end
+			self._ba = ba
+
+			ba:writeBuf( data ) -- copy in new data
+
+			-- if LOCAL_DEBUG then
+			-- 	print( 'Data', #data, ba:getAvailable(), ba.pos )
+			-- 	Utils.hexDump( data )
+			-- end
+
+			if state == WebSocket.STATE_NOT_CONNECTED then
+				self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
+			else
+				self:_receiveFrame()
+			end
+
 		end
-		self._ba = ba
 
-		ba:writeBuf( data ) -- copy in new data
-
-		-- if LOCAL_DEBUG then
-		-- 	print( 'Data', #data, ba:getAvailable(), ba.pos )
-		-- 	Utils.hexDump( data )
-		-- end
-
-		if state == WebSocket.STATE_NOT_CONNECTED then
-			self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
-		else
-			self:_receiveFrame()
-		end
+		sock:receive('*a', callback )
 
 	end
 
