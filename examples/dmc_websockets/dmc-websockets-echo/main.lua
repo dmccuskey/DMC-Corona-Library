@@ -84,6 +84,6 @@ local function webSocketsEvent_handler( event )
 end
 
 ws = WebSockets{
-	uri='ws://echo.websockets.org'
+	uri='ws://echo.websocket.org'
 }
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )
