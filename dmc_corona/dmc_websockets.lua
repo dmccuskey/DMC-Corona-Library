@@ -137,10 +137,11 @@ local Sockets = require 'dmc_sockets'
 local StatesMix = require 'lua_states'
 local Utils = require 'lua_utils'
 
--- websockets helpers
+-- websocket modules
 local ws_error = require 'dmc_websockets.exception'
 local ws_frame = require 'dmc_websockets.frame'
 local ws_handshake = require 'dmc_websockets.handshake'
+local ws_message = require 'dmc_websockets.message'
 
 
 --====================================================================--
@@ -152,8 +153,7 @@ local ObjectBase = Objects.ObjectBase
 
 local tinsert = table.insert
 local tconcat = table.concat
-
-local LOCAL_DEBUG = false
+local tremove = table.remove
 
 local ProtocolError = ws_error.ProtocolError
 local BufferError = ByteArrayErrorFactory.BufferError
@@ -165,8 +165,11 @@ local CLOSE_CODES = {
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
 
+--== dmc_websocket Error Constants
+
 local ERROR_CODES = {
 	NETWORK_ERROR = { code=3000, reason="Network Error" },
+	REQUEST_ERROR = { code=3001, reason="Request Error" },
 	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
@@ -252,6 +255,9 @@ function WebSocket:_init( params )
 	self._auto_reconnect = params.auto_reconnect or false
 
 	self._msg_queue = {}
+	self._msg_queue_handler = nil
+	self._msg_queue_active = false
+
 	-- used to build data from frames, table
 	self._current_frame = nil
 
@@ -261,6 +267,7 @@ function WebSocket:_init( params )
 
 	self._socket_handler = nil -- ref to
 	self._socket_throttle = params.throttle
+
 
 	self._close_timer = nil
 
@@ -282,6 +289,8 @@ function WebSocket:_initComplete()
 	-- print( "WebSocket:_initComplete" )
 	self:superCall( "_initComplete" )
 	--==--
+
+	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
 	self:_createNewFrame()
 
 	if self._auto_connect == true then
@@ -682,66 +691,79 @@ end
 
 
 function WebSocket:_sendBinary( data )
-	local msg = { opcode=ws_frame.type.binary, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.binary, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendClose( code, reason )
 	-- print( "WebSocket:_sendClose", code, reason )
 	local data = ws_frame.encodeCloseFrameData( code, reason )
-	local msg = { opcode=ws_frame.type.close, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.close, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendPing( data )
-	local msg = { opcode=ws_frame.type.ping, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.ping, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendPong( data )
-	local msg = { opcode=ws_frame.type.pong, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.pong, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendText( data )
-	local msg = { opcode=ws_frame.type.text, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.text, data=data }
 	self:_sendMessage( msg )
 end
 
 
-function WebSocket:_sendMessage( msg )
+function WebSocket:_sendMessage( data )
 	-- print( "WebSocket:_sendMessage" )
-	params = params or {}
 	--==--
-
-	local state = self:getState()
-
-	-- build frames
-	-- queue frames
-	-- send frames
-
-	if false then
-		self:_addMessageToQueue( msg )
-
-	elseif state == WebSocket.STATE_CLOSED then
+	if self:getState() == WebSocket.STATE_CLOSED then
 		-- pass
-
 	else
-		self:_sendFrame( msg )
-
+		self:_addMessageToQueue( data )
 	end
-
 end
 
 
-function WebSocket:_addMessageToQueue( msg )
+function WebSocket:_addMessageToQueue( message )
 	-- print( "WebSocket:_addMessageToQueue" )
-	table.insert( self._msg_queue, msg )
+	assert( message:isa( ws_message ), "expected message object" )
+	--==--
+	table.insert( self._msg_queue, message )
+	self:_processMessageQueue()
+
+	-- if we still have info left, then set listener
+	if not self._msg_queue_active and #self._msg_queue > 0 then
+		Runtime:addEventListener( 'enterFrame', self._msg_queue_handler )
+		self._msg_queue_active = true
+	end
+end
+function WebSocket:_removeMessageFromQueue( message )
+	-- print( "WebSocket:_removeMessageFromQueue" )
+	assert( message:isa( ws_message ), "expected message object" ) -- ADD
+	--==--
+	tremove( self._msg_queue, 1 )
+
+	if #self._msg_queue == 0 and self._msg_queue_active then
+		Runtime:removeEventListener( 'enterFrame', self._msg_queue_handler )
+		self._msg_queue_active = false
+	end
 end
 
 function WebSocket:_processMessageQueue()
-	-- print( "WebSocket:_processMessageQueue" )
-	for _, msg in ipairs( self._msg_queue ) do
-		print( "Processing Messages", _ )
-		self:_sendMessage( msg )
-	end
-	self._msg_queue = {}
+	-- print( "WebSocket:_processMessageQueue", #self._msg_queue )
+
+	if #self._msg_queue == 0 then return end
+	local start = system.getTimer()
+
+	repeat
+		local msg = self._msg_queue[1]
+		self:_sendFrame( msg )
+		if msg:getAvailable() == 0 then
+			self:_removeMessageFromQueue( msg )
+		end
+		local diff = system.getTimer() - start
+	until #self._msg_queue == 0 or diff > 0
 end
 
 
