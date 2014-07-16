@@ -51,7 +51,7 @@ function test_checkResponse_badHeaders()
 	assert_false( ws_handshake.checkResponse( response, key ), "should be false" )
 
 	response = {
-		'HTTP/1.1 101 OK',
+		'HTTP/1.1 101 Switching Protocols',
 		'Cache-Control: max-age=900',
 		'Content-Type: text/html; charset=utf-8',
 		''
@@ -59,7 +59,7 @@ function test_checkResponse_badHeaders()
 	assert_false( ws_handshake.checkResponse( response, key ), "should be false" )
 
 	response = {
-		'HTTP/1.1 101 OK',
+		'HTTP/1.1 101 Switching Protocols',
 		'Upgrade: websocket',
 		'Content-Type: text/html; charset=utf-8',
 		'Server: Microsoft-IIS/7.5',
@@ -68,7 +68,7 @@ function test_checkResponse_badHeaders()
 	assert_false( ws_handshake.checkResponse( response, key ), "should be false" )
 
 	response = {
-		'HTTP/1.1 101 OK',
+		'HTTP/1.1 101 Switching Protocols',
 		'Upgrade: websocket',
 		'Content-Type: text/html; charset=utf-8',
 		'Server: Microsoft-IIS/7.5',
@@ -83,13 +83,26 @@ end
 function test_checkResponse_goodHeaders()
 	local key = 'dGhlIHNhbXBsZSBub25jZQ=='
 	local response = {
-		'HTTP/1.1 101 OK',
+		'HTTP/1.1 101 Switching Protocols',
 		'Upgrade: websocket',
 		'Content-Type: text/html; charset=utf-8',
 		'Server: Microsoft-IIS/7.5',
 		'Connection: Upgrade',
 		'Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=',
+		'Sec-WebSocket-Protocol: 7',
 		''
 	}
 	assert_true( ws_handshake.checkResponse( response, key ), "should be true" )
+
+	key = 'MSg0ucuFeYQT7Bb1/FjgDg=='
+	response = {
+		'HTTP/1.1 101 Switching Protocols',
+		'Upgrade: websocket',
+		'Connection: Upgrade',
+		'Sec-WebSocket-Accept: mqJX00qwTkOd8zz677Gg+vlqaw8=',
+		'Sec-WebSocket-Protocol: 7',
+		''
+	}
+	assert_true( ws_handshake.checkResponse( response, key ), "should be true" )
+
 end

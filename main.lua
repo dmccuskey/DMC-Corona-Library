@@ -21,6 +21,5 @@ require 'tests.lunatest'
 --== setup test suites and run
 
 lunatest.suite( 'tests.dmc_websockets_spec' )
+
 lunatest.run()
-
-
