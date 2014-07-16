@@ -189,7 +189,7 @@ WebSocket.NAME = "WebSocket"
 StatesMix.mixin( WebSocket )
 
 -- version for the the group of WebSocket files
-WebSocket.VERSION = '1.0.0'
+WebSocket.VERSION = '1.2.0'
 WebSocket.USER_AGENT = 'dmc_websockets/'..WebSocket.VERSION
 
 --== Message Type Constants
