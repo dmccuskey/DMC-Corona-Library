@@ -159,7 +159,7 @@ local ProtocolError = ws_error.ProtocolError
 local BufferError = ByteArrayErrorFactory.BufferError
 
 
---== Protocol Close Constants
+--== dmc_websocket Close Constants
 
 local CLOSE_CODES = {
 	INTERNAL = { code=9999, reason="Internal Error" },
@@ -174,6 +174,8 @@ local ERROR_CODES = {
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
 
+
+local LOCAL_DEBUG = false
 
 
 --====================================================================--
@@ -347,6 +349,9 @@ end
 --====================================================================--
 --== Private Methods
 
+
+--== the following "_on"-methods dispatch event to app client level
+
 function WebSocket:_onOpen()
 	-- print( "WebSocket:_onOpen" )
 	self:dispatchEvent( self.ONOPEN )
@@ -425,9 +430,10 @@ end
 
 -- @param str raw returned header from HTTP request
 --
+-- split up string into individual lines
+--
 function WebSocket:_processHeaderString( str )
 	-- print( "WebSocket:_processHeaderString" )
-
 	local results = {}
 	for line in string.gmatch( str, '([^\r\n]*)\r\n') do
 		tinsert( results, line )
@@ -435,22 +441,23 @@ function WebSocket:_processHeaderString( str )
 	return results
 end
 
+-- read header response string and see if it's valid
+--
 function WebSocket:_handleHttpRespose()
 	-- print( "WebSocket:_handleHttpRespose" )
-
 	local ba = self._ba
 
-	-- see if we have entire header
+	-- first check if we have entire header to read
 	local _, e_pos = ba:search( '\r\n\r\n' )
 	if e_pos == nil then return end
-
-	local raw, data
 
 	ba.pos = 1
 	local h_str = ba:readBuf( e_pos )
 
+	-- process header
 	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
+
 	else
 		self:_bailout{
 			code=ERROR_CODES.INVALID_HANDSHAKE.code,
@@ -510,6 +517,8 @@ function WebSocket:_receiveFrame()
 		return
 	end
 
+	--== processing callback function
+
 	local function handleWSFrame( frame_info )
 		-- print("got frame", frame_info.type, frame_info.fin )
 		-- print("got data", frame_info.data ) -- when testing, this could be A LOT of data
@@ -565,6 +574,9 @@ function WebSocket:_receiveFrame()
 
 	--== processing loop
 
+	-- TODO: hook this up to enterFrame so large
+	-- amount of frames will pause processing
+
 	local err = nil
 	repeat
 
@@ -585,7 +597,7 @@ function WebSocket:_receiveFrame()
 	--== handle error
 
 	if not err then
-		-- pass
+		-- pass, WebSocket.STATE_CLOSED
 
 	elseif not err.isa then
 		if LOCAL_DEBUG then
@@ -661,7 +673,8 @@ function WebSocket:_bailout( params )
 end
 
 
-
+-- request to close the connection
+--
 function WebSocket:_close( params )
 	-- print( "WebSocket:_close" )
 	params = params or {}
