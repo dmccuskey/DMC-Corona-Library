@@ -48,7 +48,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.1.1"
 
 
 --====================================================================--
@@ -66,6 +66,7 @@ local mbase64_encode = mime.b64
 local mrandom = math.random
 local schar = string.char
 local tconcat = table.concat
+local tinsert = table.insert
 
 local LOCAL_DEBUG = false
 
@@ -93,41 +94,38 @@ local function createHttpRequest( params )
 	local host, port, path = params.host, params.port, params.path
 	local protos = params.protocols
 
-	local proto_header --, sock_opts
-	local bytes, key
-	local req_t, req
+	local proto_header, key
+	local req_t
 
-	if not protos then
-		proto_header = ""
-
+	if type( protos ) == "string" then
+		proto_header = protos
 	elseif type( protos ) == "table" then
 		proto_header = tconcat( protos, "," )
-
-	else
-		proto_header = protos
 	end
 
 	key = generateKey()
 
 	-- create http header
 	req_t = {
-		"GET %s HTTP/1.1\r\n" % path,
-		"Upgrade: websocket\r\n",
-		"Host: %s:%s\r\n" % { host, port },
-		"Sec-WebSocket-Key: %s\r\n" % key ,
-		"Sec-WebSocket-Protocol: %s\r\n" % proto_header,
-		"Sec-WebSocket-Version: 13\r\n",
-		"Connection: Upgrade\r\n",
-		"\r\n"
+		"GET %s HTTP/1.1" % path,
+		"Host: %s:%s" % { host, port },
+		"Upgrade: websocket",
+		"Connection: Upgrade",
+		"Sec-WebSocket-Version: 13",
+		"Sec-WebSocket-Key: %s" % key,
 	}
+	if proto_header then
+		tinsert( req_t, "Sec-WebSocket-Protocol: %s" % proto_header )
+	end
+	tinsert( req_t, "" )
+	tinsert( req_t, "" )
 
 	if LOCAL_DEBUG then
 		print( "Request Header" )
-		print( tconcat( req_t, "" ) )
+		print( tconcat( req_t, "\r\n" ) )
 	end
-	return tconcat( req_t, "" ), key
+	return tconcat( req_t, "\r\n" ), key
 end
-
 
 
 local function buildServerKey( key )
