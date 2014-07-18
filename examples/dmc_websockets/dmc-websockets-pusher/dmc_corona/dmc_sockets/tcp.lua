@@ -59,6 +59,8 @@ local Utils = require 'lua_utils'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
+local tconcat = table.concat
+
 local LOCAL_DEBUG = false
 
 
@@ -85,6 +87,7 @@ TCPSocket.CLOSED = 'socket_closed'
 TCPSocket.ERR_CONNECTED = 'already connected'
 TCPSocket.ERR_CONNECTION = 'Operation already in progress'
 TCPSocket.ERR_TIMEOUT = 'timeout'
+TCPSocket.SSL_READTIMEOUT = 'wantread'
 TCPSocket.ERR_CLOSED = 'already closed'
 
 --== Event Constants
@@ -231,7 +234,7 @@ end
 
 function TCPSocket:unreceive( data )
 	-- print( 'TCPSocket:unreceive', #data )
-	self._buffer = table.concat( { data, self._buffer } )
+	self._buffer = tconcat( { data, self._buffer } )
 end
 
 function TCPSocket:receive( ... )
@@ -371,13 +374,16 @@ function TCPSocket:_readStatus( status )
 	if bytes ~= nil then
 		buff_tmp = { self._buffer, bytes }
 
-	elseif status == self.ERR_TIMEOUT and partial then
+	elseif not self.secure and status == self.ERR_TIMEOUT and partial then
+		buff_tmp = { self._buffer, partial }
+
+	elseif self.secure and status==self.SSL_READTIMEOUT and partial then
 		buff_tmp = { self._buffer, partial }
 
 	end
 
 	if buff_tmp then
-		self._buffer = table.concat( buff_tmp )
+		self._buffer = tconcat( buff_tmp )
 	end
 
 	if LOCAL_DEBUG then
