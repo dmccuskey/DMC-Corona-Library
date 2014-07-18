@@ -267,7 +267,8 @@ function WebSocket:_init( params )
 	-- self._send_unmasked = params.send_unmasked or false
 	-- self._rd_frame_co = nil -- ref to read-frame coroutine
 
-	self._socket_handler = nil -- ref to
+	self._socket_data_handler = nil -- ref to
+	self._socket_connect_handler = nil -- ref to
 	self._socket_throttle = params.throttle
 
 
@@ -291,6 +292,9 @@ function WebSocket:_initComplete()
 	-- print( "WebSocket:_initComplete" )
 	self:superCall( "_initComplete" )
 	--==--
+
+	self._socket_connect_handler = self:createCallback( self._socketConnectEvent_handler )
+	self._socket_data_handler = self:createCallback( self._socketDataEvent_handler )
 
 	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
 	self:_createNewFrame()
@@ -840,13 +844,12 @@ function WebSocket:do_state_init( params )
 	socket = Sockets:create( Sockets.ATCP )
 	socket.secure = url_parts.scheme == 'wss' and true or false
 	self._socket = socket
-	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
 	end
 
-	socket:connect( host, port, { onConnect=self._socket_handler, onData=self._socket_handler } )
+	socket:connect( host, port, { onConnect=self._socket_connect_handler, onData=self._socket_data_handler } )
 
 end
 
@@ -1078,8 +1081,11 @@ end
 --====================================================================--
 --== Event Handlers
 
-function WebSocket:_socketEvent_handler( event )
-	-- print( "WebSocket:_socketEvent_handler", event.type, event.status )
+
+-- handle connection events from socket
+--
+function WebSocket:_socketConnectEvent_handler( event )
+	-- print( "WebSocket:_socketConnectEvent_handler", event.type, event.status )
 
 	local state = self:getState()
 	local sock = self._socket
@@ -1095,8 +1101,19 @@ function WebSocket:_socketEvent_handler( event )
 				self:gotoState( WebSocket.STATE_CLOSED )
 			end
 		end
+	end
 
-	elseif event.type == sock.READ then
+end
+
+-- handle read/write events from socket
+--
+function WebSocket:_socketDataEvent_handler( event )
+	-- print( "WebSocket:_socketDataEvent_handler", event.type, event.status )
+
+	local state = self:getState()
+	local sock = self._socket
+
+	if event.type == sock.READ then
 
 		local callback = function( s_event )
 			local data = s_event.data
