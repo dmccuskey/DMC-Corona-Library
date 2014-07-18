@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.1"
+local VERSION = "1.2.0"
 
 
 
@@ -137,10 +137,11 @@ local Sockets = require 'dmc_sockets'
 local StatesMix = require 'lua_states'
 local Utils = require 'lua_utils'
 
--- websockets helpers
+-- websocket modules
 local ws_error = require 'dmc_websockets.exception'
 local ws_frame = require 'dmc_websockets.frame'
 local ws_handshake = require 'dmc_websockets.handshake'
+local ws_message = require 'dmc_websockets.message'
 
 
 --====================================================================--
@@ -152,12 +153,29 @@ local ObjectBase = Objects.ObjectBase
 
 local tinsert = table.insert
 local tconcat = table.concat
-
-local LOCAL_DEBUG = false
+local tremove = table.remove
 
 local ProtocolError = ws_error.ProtocolError
 local BufferError = ByteArrayErrorFactory.BufferError
 
+
+--== dmc_websocket Close Constants
+
+local CLOSE_CODES = {
+	INTERNAL = { code=9999, reason="Internal Error" },
+}
+
+--== dmc_websocket Error Constants
+
+local ERROR_CODES = {
+	NETWORK_ERROR = { code=3000, reason="Network Error" },
+	REQUEST_ERROR = { code=3001, reason="Request Error" },
+	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
+	INTERNAL = { code=9999, reason="Internal Error" },
+}
+
+
+local LOCAL_DEBUG = false
 
 
 --====================================================================--
@@ -171,7 +189,7 @@ WebSocket.NAME = "WebSocket"
 StatesMix.mixin( WebSocket )
 
 -- version for the the group of WebSocket files
-WebSocket.VERSION = '1.0.0'
+WebSocket.VERSION = '1.2.0'
 WebSocket.USER_AGENT = 'dmc_websockets/'..WebSocket.VERSION
 
 --== Message Type Constants
@@ -192,13 +210,6 @@ WebSocket.NOT_ESTABLISHED = 0
 WebSocket.ESTABLISHED = 1
 WebSocket.CLOSING_HANDSHAKE = 2
 WebSocket.CLOSED = 3
-
---== Protocol Close Constants
-
-local CLOSE_CODES = {
-	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
-	INTERNAL = { code=9999, reason="Internal Error" },
-}
 
 --== State Constants
 
@@ -246,6 +257,9 @@ function WebSocket:_init( params )
 	self._auto_reconnect = params.auto_reconnect or false
 
 	self._msg_queue = {}
+	self._msg_queue_handler = nil
+	self._msg_queue_active = false
+
 	-- used to build data from frames, table
 	self._current_frame = nil
 
@@ -255,6 +269,7 @@ function WebSocket:_init( params )
 
 	self._socket_handler = nil -- ref to
 	self._socket_throttle = params.throttle
+
 
 	self._close_timer = nil
 
@@ -276,6 +291,8 @@ function WebSocket:_initComplete()
 	-- print( "WebSocket:_initComplete" )
 	self:superCall( "_initComplete" )
 	--==--
+
+	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
 	self:_createNewFrame()
 
 	if self._auto_connect == true then
@@ -332,6 +349,9 @@ end
 --====================================================================--
 --== Private Methods
 
+
+--== the following "_on"-methods dispatch event to app client level
+
 function WebSocket:_onOpen()
 	-- print( "WebSocket:_onOpen" )
 	self:dispatchEvent( self.ONOPEN )
@@ -345,7 +365,10 @@ end
 --]]
 function WebSocket:_onMessage( msg )
 	-- print( "WebSocket:_onMessage", msg )
-	self:dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+	local evt = {
+		message=msg
+	}
+	self:dispatchEvent( WebSocket.ONMESSAGE, evt )
 end
 
 function WebSocket:_onClose( params )
@@ -359,9 +382,15 @@ function WebSocket:_onClose( params )
 	self:dispatchEvent( self.ONCLOSE, evt )
 end
 
-function WebSocket:_onError( ecode, emsg )
-	-- print( "WebSocket:_onError", ecode, emsg )
-	self:dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
+function WebSocket:_onError( params )
+	-- print( "WebSocket:_onError", params )
+
+	local evt = {
+		isError=true,
+		code=params.code,
+		reason=params.reason
+	}
+	self:dispatchEvent( self.ONERROR, evt )
 end
 
 
@@ -377,17 +406,31 @@ function WebSocket:_doHttpConnect()
 
 	self._ws_req_key = key
 
-	if request then
-		-- TODO: error handling
-		local bytes, err, idx = self._socket:send( request )
-	else
-		self:_close( { reconnect=false } )
+	if not request then
+		self:_bailout{
+			code=ERROR_CODES.REQUEST_ERROR.code,
+			reason=ERROR_CODES.REQUEST_ERROR.reason,
+		}
+		return
 	end
+
+	local callback = function( event )
+		-- print("socket connect callback")
+		if event.isError then
+			self:_bailout{
+				code=ERROR_CODES.REQUEST_ERROR.code,
+				reason=ERROR_CODES.REQUEST_ERROR.reason,
+			}
+		end
+	end
+	self._socket:send( request, callback )
 
 end
 
 
 -- @param str raw returned header from HTTP request
+--
+-- split up string into individual lines
 --
 function WebSocket:_processHeaderString( str )
 	-- print( "WebSocket:_processHeaderString" )
@@ -398,26 +441,27 @@ function WebSocket:_processHeaderString( str )
 	return results
 end
 
+-- read header response string and see if it's valid
+--
 function WebSocket:_handleHttpRespose()
 	-- print( "WebSocket:_handleHttpRespose" )
+	local ba = self._ba
 
-	-- see if we have entire header
-	local _, e_pos = self._ba:search( '\r\n\r\n' )
+	-- first check if we have entire header to read
+	local _, e_pos = ba:search( '\r\n\r\n' )
 	if e_pos == nil then return end
 
-	local ba = self._ba
-	local raw, data
-
 	ba.pos = 1
-	h_str = ba:readBuf( e_pos )
+	local h_str = ba:readBuf( e_pos )
 
+	-- process header
 	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
+
 	else
 		self:_bailout{
-			code=CLOSE_CODES.INVALID_HANDSHAKE.code,
-			reason=CLOSE_CODES.INVALID_HANDSHAKE.reason,
-			reconnect=false
+			code=ERROR_CODES.INVALID_HANDSHAKE.code,
+			reason=ERROR_CODES.INVALID_HANDSHAKE.reason,
 		}
 	end
 
@@ -469,8 +513,11 @@ function WebSocket:_receiveFrame()
 	-- check current state
 	local state = self:getState()
 	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-		self:_onError( -1, "WebSocket is not connected" )
+		-- in process of closing, cancel frame check
+		return
 	end
+
+	--== processing callback function
 
 	local function handleWSFrame( frame_info )
 		-- print("got frame", frame_info.type, frame_info.fin )
@@ -482,7 +529,7 @@ function WebSocket:_receiveFrame()
 
 		if fcode == ws_types.continuation then
 			if not self:_insertFrameData( data ) then
-				self:_bailout{
+				self:_close{
 					code=ws_close.PROTO_ERR.code,
 					reason=ws_close.PROTO_ERR.reason,
 				}
@@ -495,7 +542,7 @@ function WebSocket:_receiveFrame()
 
 		elseif fcode == ws_types.text or fcode == ws_types.binary then
 			if not self:_insertFrameData( data, ftype ) then
-				self:_bailout{
+				self:_close{
 					code=ws_close.PROTO_ERR.code,
 					reason=ws_close.PROTO_ERR.reason,
 				}
@@ -508,12 +555,11 @@ function WebSocket:_receiveFrame()
 
 		elseif fcode == ws_types.close then
 			local code, reason = ws_frame.decodeCloseFrameData( data )
-			local evt = {
+			self:_close{
 				code=code or ws_close.OK.code,
 				reason=reason or ws_close.OK.reason,
 				from_server=true
 			}
-			self:_close( evt )
 
 		elseif fcode == ws_types.ping then
 			if self:getState() == WebSocket.STATE_CONNECTED then
@@ -528,8 +574,12 @@ function WebSocket:_receiveFrame()
 
 	--== processing loop
 
+	-- TODO: hook this up to enterFrame so large
+	-- amount of frames will pause processing
+
 	local err = nil
-	while not err do
+	repeat
+
 		local position = self._ba.pos -- save in case of errors
 		try{
 			function()
@@ -542,11 +592,14 @@ function WebSocket:_receiveFrame()
 				end
 			}
 		}
-	end
+	until err or self:getState() == WebSocket.STATE_CLOSED
 
 	--== handle error
 
-	if not err.isa then
+	if not err then
+		-- pass, WebSocket.STATE_CLOSED
+
+	elseif not err.isa then
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Unknown Error", err )
 		end
@@ -562,7 +615,7 @@ function WebSocket:_receiveFrame()
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Protocol Error:", err.message )
 		end
-		self:_bailout{
+		self:_close{
 			code=err.code,
 			reason=err.reason,
 		}
@@ -579,51 +632,49 @@ function WebSocket:_receiveFrame()
 
 end
 
--- @param msg table with message info
--- opcode: one of websocket types
--- data: data to send
+-- @param msg WebSocket Message object
 --
 function WebSocket:_sendFrame( msg )
-	-- print( "WebSocket:_sendFrame", msg.opcode, msg.data )
+	-- print( "WebSocket:_sendFrame", msg )
 
-	local opcode = msg.opcode or ws_frame.type.text
-	local data = msg.data
-	local masked = true -- always when client to server
 	local sock = self._socket
+	local record, callback
 
-	local onFrameCallback = function( event )
-		if LOCAL_DEBUG then
-			print("Received frame to send: size", #event.frame )
-		end
-		if not event.frame then
-			self:_onError( -1, event.emsg )
-		else
-			-- send frame
-			-- TODO: error handling
-			local bytes, err, idx = self._socket:send( event.frame )
+	msg.masked = true -- always when client to server
+
+	callback = function( event )
+		-- print("socket connect callback")
+		if event.isError then
+			self:_bailout{
+				code=ERROR_CODES.NETWORK_ERROR.code,
+				reason=ERROR_CODES.NETWORK_ERROR.reason,
+			}
 		end
 	end
 
-	local p =
-	{
-			data=data,
-			opcode=opcode,
-			masked=masked,
-			onFrame=onFrameCallback,
-			-- max_frame_size (optional)
-		}
-	ws_frame.buildFrames( p )
+	record = ws_frame.buildFrames{
+		message=msg,
+		-- max_frame_size = 16  -- TODO: add functionality to fragment a message
+	}
+	sock:send( record.frame, callback )
 
 end
 
 
+-- fail our connection with an error
+--
 function WebSocket:_bailout( params )
-	-- print("Failing connection", params.code, params.reason )
-	self:_close( params )
+	-- print( "Failing connection", params.code, params.reason )
+	params = params or {}
+	--==--
+	params.isError = true
+	params.reconnect = false
+	self:gotoState( WebSocket.STATE_CLOSED, params )
 end
 
 
-
+-- request to close the connection
+--
 function WebSocket:_close( params )
 	-- print( "WebSocket:_close" )
 	params = params or {}
@@ -631,7 +682,7 @@ function WebSocket:_close( params )
 	params.code = params.code or default_close.code
 	params.reason = params.reason or default_close.reason
 	--==--
-	params.reconnect = params.reconnect == nil and true or false
+	params.reconnect = params.reconnect == nil and true or params.reconnect
 
 	local state = self:getState()
 
@@ -639,7 +690,7 @@ function WebSocket:_close( params )
 		-- pass
 
 	elseif state == WebSocket.STATE_CLOSING then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
 		self:gotoState( WebSocket.STATE_CLOSED, params )
@@ -653,66 +704,79 @@ end
 
 
 function WebSocket:_sendBinary( data )
-	local msg = { opcode=ws_frame.type.binary, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.binary, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendClose( code, reason )
 	-- print( "WebSocket:_sendClose", code, reason )
 	local data = ws_frame.encodeCloseFrameData( code, reason )
-	local msg = { opcode=ws_frame.type.close, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.close, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendPing( data )
-	local msg = { opcode=ws_frame.type.ping, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.ping, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendPong( data )
-	local msg = { opcode=ws_frame.type.pong, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.pong, data=data }
 	self:_sendMessage( msg )
 end
 function WebSocket:_sendText( data )
-	local msg = { opcode=ws_frame.type.text, data=data }
+	local msg = ws_message{ opcode=ws_frame.type.text, data=data }
 	self:_sendMessage( msg )
 end
 
 
-function WebSocket:_sendMessage( msg )
+function WebSocket:_sendMessage( data )
 	-- print( "WebSocket:_sendMessage" )
-	params = params or {}
 	--==--
-
-	local state = self:getState()
-
-	-- build frames
-	-- queue frames
-	-- send frames
-
-	if false then
-		self:_addMessageToQueue( msg )
-
-	elseif state == WebSocket.STATE_CLOSED then
+	if self:getState() == WebSocket.STATE_CLOSED then
 		-- pass
-
 	else
-		self:_sendFrame( msg )
-
+		self:_addMessageToQueue( data )
 	end
-
 end
 
 
-function WebSocket:_addMessageToQueue( msg )
+function WebSocket:_addMessageToQueue( message )
 	-- print( "WebSocket:_addMessageToQueue" )
-	table.insert( self._msg_queue, msg )
+	assert( message:isa( ws_message ), "expected message object" )
+	--==--
+	table.insert( self._msg_queue, message )
+	self:_processMessageQueue()
+
+	-- if we still have info left, then set listener
+	if not self._msg_queue_active and #self._msg_queue > 0 then
+		Runtime:addEventListener( 'enterFrame', self._msg_queue_handler )
+		self._msg_queue_active = true
+	end
+end
+function WebSocket:_removeMessageFromQueue( message )
+	-- print( "WebSocket:_removeMessageFromQueue" )
+	assert( message:isa( ws_message ), "expected message object" ) -- ADD
+	--==--
+	tremove( self._msg_queue, 1 )
+
+	if #self._msg_queue == 0 and self._msg_queue_active then
+		Runtime:removeEventListener( 'enterFrame', self._msg_queue_handler )
+		self._msg_queue_active = false
+	end
 end
 
 function WebSocket:_processMessageQueue()
-	-- print( "WebSocket:_processMessageQueue" )
-	for _, msg in ipairs( self._msg_queue ) do
-		print( "Processing Messages", _ )
-		self:_sendMessage( msg )
-	end
-	self._msg_queue = {}
+	-- print( "WebSocket:_processMessageQueue", #self._msg_queue )
+
+	if #self._msg_queue == 0 then return end
+	local start = system.getTimer()
+
+	repeat
+		local msg = self._msg_queue[1]
+		self:_sendFrame( msg )
+		if msg:getAvailable() == 0 then
+			self:_removeMessageFromQueue( msg )
+		end
+		local diff = system.getTimer() - start
+	until #self._msg_queue == 0 or diff > 0
 end
 
 
@@ -771,17 +835,17 @@ function WebSocket:do_state_init( params )
 
 	if socket then socket:close() end
 
-	socket = Sockets:create( Sockets.TCP )
 	Sockets.throttle = self._socket_throttle
+
+	socket = Sockets:create( Sockets.ATCP )
+	self._socket = socket
 	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
 	end
-	socket:addEventListener( socket.EVENT, self._socket_handler )
-	self._socket = socket
 
-	socket:connect( host, port )
+	socket:connect( host, port, { onConnect=self._socket_handler, onData=self._socket_handler } )
 
 end
 
@@ -927,19 +991,21 @@ function WebSocket:do_state_closing_connection( params )
 	self._ready_state = self.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
 
+	-- send close code to server
 	if params.code then
 		self:_sendClose( params.code, params.reason )
 	end
 
+	-- if this close is from server, then close else wait
 	if params.from_server then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
 		-- set timer to politely wait for server close response
 		local f = function()
 			print( "ERROR: Close response not received" )
 			self._close_timer = nil
-			self:gotoState( WebSocket.STATE_CLOSED )
+			self:gotoState( WebSocket.STATE_CLOSED, { code=params.code, reason=params.reason } )
 		end
 		self._close_timer = timer.performWithDelay( 4000, f )
 	end
@@ -977,12 +1043,17 @@ function WebSocket:do_state_closed( params )
 	end
 
 	self._socket:close()
+	self._ba = nil
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Server connection closed" )
 	end
 
-	self:_onClose( params )
+	if params.isError then
+		self:_onError( params )
+	else
+		self:_onClose( params )
+	end
 
 end
 function WebSocket:state_closed( next_state, params )
@@ -994,9 +1065,7 @@ function WebSocket:state_closed( next_state, params )
 		self:do_state_closed( params )
 
 	else
-		if LOCAL_DEBUG then
-			print( "WARNING :: WebSocket:state_closed %s" % tostring( next_state ) )
-		end
+		print( "WARNING :: WebSocket:state_closed %s" % tostring( next_state ) )
 	end
 
 end
@@ -1019,40 +1088,41 @@ function WebSocket:_socketEvent_handler( event )
 		if event.status == sock.CONNECTED then
 			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
 		else
-			self:gotoState( WebSocket.STATE_CLOSED )
+			if state ~= WebSocket.STATE_CLOSED then
+				self:gotoState( WebSocket.STATE_CLOSED )
+			end
 		end
 
 	elseif event.type == sock.READ then
 
-		local ba = self._ba
-		local data = self._socket:receive('*a')
+		local callback = function( s_event )
+			local data = s_event.data
+			local ba = self._ba
 
-		if ba == nil then
-			ba = ByteArray()
-		else
-			ba = ByteArray()
-			ba:readFromArray( self._ba, self._ba.pos )
-		end
-		self._ba = ba
+			if ba == nil then
+				ba = ByteArray()
+			else
+				ba = ByteArray()
+				ba:readFromArray( self._ba, self._ba.pos )
+			end
+			self._ba = ba
 
-		ba:writeBuf( data ) -- copy in new data
+			ba:writeBuf( data ) -- copy in new data
 
-		-- if LOCAL_DEBUG then
-		-- 	print( 'Data', #data, ba:getAvailable(), ba.pos )
-		-- 	Utils.hexDump( data )
-		-- end
-
-		if state == WebSocket.STATE_NOT_CONNECTED then
-			self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
-
-		else
-			self:_receiveFrame()
-			-- if not self._processing_frame ~= true then
+			-- if LOCAL_DEBUG then
+			-- 	print( 'Data', #data, ba:getAvailable(), ba.pos )
+			-- 	Utils.hexDump( data )
 			-- end
-			-- timer.performWithDelay( 10, function() self:_receiveFrame() end)
-			-- self:_receiveFrame()
+
+			if state == WebSocket.STATE_NOT_CONNECTED then
+				self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
+			else
+				self:_receiveFrame()
+			end
 
 		end
+
+		sock:receive('*a', callback )
 
 	end
 

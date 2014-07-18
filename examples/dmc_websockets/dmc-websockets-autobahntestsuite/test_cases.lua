@@ -217,12 +217,12 @@ local test_cases = {
 
 	--[[
 	--]]
-	{ index='210', id='7.1.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='211', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='212', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='213', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='214', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
-	{ index='215', id='7.2.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='210', id='7.1.1', desc="Send a message followed by a close frame" },
+	{ index='211', id='7.1.2', desc="Send two close frames" },
+	{ index='212', id='7.1.3', desc="Send a ping after close message" },
+	{ index='213', id='7.1.4', desc="Send text message after sending a close frame" },
+	{ index='214', id='7.1.5', desc="Send message fragment1 followed by close then fragment" },
+	{ index='215', id='7.1.6', desc="Send 256K message followed by close then a ping" },
 
 	--== 7.3 Close behavior, close frame structure, payload length
 
@@ -378,7 +378,7 @@ local test_cases = {
 
 	--[[
 	--]]
-	{ index='305', id='10.1.1', desc="Send frame with reserved control Opcode = 11; error close, code 1002" },
+	{ index='305', id='10.1.1', desc="Send text message with payload of length 65536 auto-fragmented with autoFragmentSize = 1300" },
 
 
 }
