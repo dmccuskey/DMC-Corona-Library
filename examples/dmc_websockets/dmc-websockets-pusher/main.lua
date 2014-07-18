@@ -84,7 +84,10 @@ local function webSocketsEvent_handler( event )
 end
 
 ws = WebSockets{
-	uri='ws://ws.pusherapp.com:80/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
-	-- protocols='7'
+	-- non-secure
+	-- uri='ws://ws.pusherapp.com/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
+	-- secure (SSL/TLS)
+	uri='wss://ws.pusherapp.com/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
+	protocols='7'
 }
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )

@@ -117,6 +117,10 @@ function TCPSocket:_init( params )
 	self._status = nil
 	self._buffer = "" -- string
 
+	self._status = nil
+	self.secure = false
+
+
 	--== Object References ==--
 
 	self._socket = nil -- real Lua Socket
@@ -354,12 +358,12 @@ function TCPSocket:_readStatus( status )
 
 	local buff_tmp, buff_len
 
-	local bytes, emsg, partial = self._socket:receive( '*a' )
+	local bytes, status, partial = self._socket:receive( '*a' )
 	if LOCAL_DEBUG then
-		print( 'TCP:dataReady', bytes, emsg, partial )
+		print( 'TCP:dataReady', bytes, status, partial )
 	end
 
-	if bytes == nil and emsg == 'closed' then
+	if bytes == nil and status == 'closed' then
 		self:close()
 		return
 	end
@@ -367,7 +371,7 @@ function TCPSocket:_readStatus( status )
 	if bytes ~= nil then
 		buff_tmp = { self._buffer, bytes }
 
-	elseif emsg == self.ERR_TIMEOUT and partial then
+	elseif status == self.ERR_TIMEOUT and partial then
 		buff_tmp = { self._buffer, partial }
 
 	end

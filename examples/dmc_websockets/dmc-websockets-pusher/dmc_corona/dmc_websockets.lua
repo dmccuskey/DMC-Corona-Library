@@ -818,8 +818,8 @@ function WebSocket:do_state_init( params )
 
 	local port = self._port or port
 
-	if not port then
-		port = 80
+	if port == nil or port == 0 then
+		port = url_parts.scheme == 'wss' and 443 or 80
 	end
 
 	if not path or path == "" then
@@ -838,6 +838,7 @@ function WebSocket:do_state_init( params )
 	Sockets.throttle = self._socket_throttle
 
 	socket = Sockets:create( Sockets.ATCP )
+	socket.secure = url_parts.scheme == 'wss' and true or false
 	self._socket = socket
 	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
@@ -1085,7 +1086,9 @@ function WebSocket:_socketEvent_handler( event )
 
 	if event.type == sock.CONNECT then
 
-		if event.status == sock.CONNECTED then
+		if event.isError then
+			self:gotoState( WebSocket.STATE_CLOSED )
+		elseif event.status == sock.CONNECTED then
 			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
 		else
 			if state ~= WebSocket.STATE_CLOSED then

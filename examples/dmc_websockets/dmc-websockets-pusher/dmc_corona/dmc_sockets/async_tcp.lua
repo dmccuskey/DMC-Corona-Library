@@ -50,6 +50,10 @@ local Objects = require 'lua_objects'
 local socket = require 'socket'
 local tcp_socket = require 'dmc_sockets.tcp'
 
+local openssl = require 'plugin.openssl'
+local ssl = require 'plugin_luasec_ssl'
+-- require("ssl")
+
 
 --====================================================================--
 -- Setup, Constants
@@ -148,6 +152,39 @@ function ATCPSocket:connect( host, port, params )
 				evt.status = self._status
 				evt.emsg = emsg
 
+				--TODO: get SSL working
+				if self.secure == true then
+					print( "setting up secure" )
+
+					local sslparams = {
+					  mode = "client",
+					  -- protocol = "tlsv1",
+					  protocol = "sslv3",
+					  verify = "none",
+					  options = "all",
+					}
+
+					local sock, emsg = ssl.wrap( self._socket, sslparams )
+					if sock then
+						self._socket = sock
+
+					else
+						evt.isError = true
+						evt.emsg = emsg
+						if self._onConnect then self._onConnect( evt ) end
+						return
+					end
+
+					local result, emsg = self._socket:dohandshake()
+					if not result then
+						evt.isError = true
+						evt.emsg = emsg
+						if self._onConnect then self._onConnect( evt ) end
+						return
+					end
+				end
+
+				self._socket:settimeout( 0 ) -- need to re-set for wrapped socket
 				self._master:_connect( self )
 
 				self._timer_is_active = false -- do this before calling connect
