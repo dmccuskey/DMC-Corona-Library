@@ -152,10 +152,7 @@ function ATCPSocket:connect( host, port, params )
 				evt.status = self._status
 				evt.emsg = emsg
 
-				--TODO: get SSL working
 				if self.secure == true then
-					print( "setting up secure" )
-
 					local sslparams = {
 					  mode = "client",
 					  -- protocol = "tlsv1",
