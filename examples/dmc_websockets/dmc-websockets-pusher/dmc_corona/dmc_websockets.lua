@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.1"
+local VERSION = "1.2.0"
 
 
 
@@ -153,10 +153,23 @@ local ObjectBase = Objects.ObjectBase
 local tinsert = table.insert
 local tconcat = table.concat
 
-local LOCAL_DEBUG = true
+local LOCAL_DEBUG = false
 
 local ProtocolError = ws_error.ProtocolError
 local BufferError = ByteArrayErrorFactory.BufferError
+
+
+--== Protocol Close Constants
+
+local CLOSE_CODES = {
+	INTERNAL = { code=9999, reason="Internal Error" },
+}
+
+local ERROR_CODES = {
+	NETWORK_ERROR = { code=3000, reason="Network Error" },
+	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
+	INTERNAL = { code=9999, reason="Internal Error" },
+}
 
 
 
@@ -192,13 +205,6 @@ WebSocket.NOT_ESTABLISHED = 0
 WebSocket.ESTABLISHED = 1
 WebSocket.CLOSING_HANDSHAKE = 2
 WebSocket.CLOSED = 3
-
---== Protocol Close Constants
-
-local CLOSE_CODES = {
-	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
-	INTERNAL = { code=9999, reason="Internal Error" },
-}
 
 --== State Constants
 
@@ -345,7 +351,10 @@ end
 --]]
 function WebSocket:_onMessage( msg )
 	-- print( "WebSocket:_onMessage", msg )
-	self:dispatchEvent( WebSocket.ONMESSAGE, { message=msg }, {merge=true} )
+	local evt = {
+		message=msg
+	}
+	self:dispatchEvent( WebSocket.ONMESSAGE, evt )
 end
 
 function WebSocket:_onClose( params )
@@ -359,9 +368,15 @@ function WebSocket:_onClose( params )
 	self:dispatchEvent( self.ONCLOSE, evt )
 end
 
-function WebSocket:_onError( ecode, emsg )
-	-- print( "WebSocket:_onError", ecode, emsg )
-	self:dispatchEvent( self.ONERROR, {is_error=true, error=ecode, emsg=emsg }, {merge=true} )
+function WebSocket:_onError( params )
+	-- print( "WebSocket:_onError", params )
+
+	local evt = {
+		isError=true,
+		code=params.code,
+		reason=params.reason
+	}
+	self:dispatchEvent( self.ONERROR, evt )
 end
 
 
@@ -381,7 +396,10 @@ function WebSocket:_doHttpConnect()
 		-- TODO: error handling
 		local bytes, err, idx = self._socket:send( request )
 	else
-		self:_close( { reconnect=false } )
+		self:_bailout{
+			code=ERROR_CODES.NETWORK_ERROR.code,
+			reason=ERROR_CODES.NETWORK_ERROR.reason,
+		}
 	end
 
 end
@@ -391,6 +409,7 @@ end
 --
 function WebSocket:_processHeaderString( str )
 	-- print( "WebSocket:_processHeaderString" )
+
 	local results = {}
 	for line in string.gmatch( str, '([^\r\n]*)\r\n') do
 		tinsert( results, line )
@@ -401,23 +420,23 @@ end
 function WebSocket:_handleHttpRespose()
 	-- print( "WebSocket:_handleHttpRespose" )
 
+	local ba = self._ba
+
 	-- see if we have entire header
-	local _, e_pos = self._ba:search( '\r\n\r\n' )
+	local _, e_pos = ba:search( '\r\n\r\n' )
 	if e_pos == nil then return end
 
-	local ba = self._ba
 	local raw, data
 
 	ba.pos = 1
-	h_str = ba:readBuf( e_pos )
+	local h_str = ba:readBuf( e_pos )
 
 	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
 	else
 		self:_bailout{
-			code=CLOSE_CODES.INVALID_HANDSHAKE.code,
-			reason=CLOSE_CODES.INVALID_HANDSHAKE.reason,
-			reconnect=false
+			code=ERROR_CODES.INVALID_HANDSHAKE.code,
+			reason=ERROR_CODES.INVALID_HANDSHAKE.reason,
 		}
 	end
 
@@ -469,7 +488,8 @@ function WebSocket:_receiveFrame()
 	-- check current state
 	local state = self:getState()
 	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-		self:_onError( -1, "WebSocket is not connected" )
+		-- in process of closing, cancel frame check
+		return
 	end
 
 	local function handleWSFrame( frame_info )
@@ -482,7 +502,7 @@ function WebSocket:_receiveFrame()
 
 		if fcode == ws_types.continuation then
 			if not self:_insertFrameData( data ) then
-				self:_bailout{
+				self:_close{
 					code=ws_close.PROTO_ERR.code,
 					reason=ws_close.PROTO_ERR.reason,
 				}
@@ -495,7 +515,7 @@ function WebSocket:_receiveFrame()
 
 		elseif fcode == ws_types.text or fcode == ws_types.binary then
 			if not self:_insertFrameData( data, ftype ) then
-				self:_bailout{
+				self:_close{
 					code=ws_close.PROTO_ERR.code,
 					reason=ws_close.PROTO_ERR.reason,
 				}
@@ -508,12 +528,11 @@ function WebSocket:_receiveFrame()
 
 		elseif fcode == ws_types.close then
 			local code, reason = ws_frame.decodeCloseFrameData( data )
-			local evt = {
+			self:_close{
 				code=code or ws_close.OK.code,
 				reason=reason or ws_close.OK.reason,
 				from_server=true
 			}
-			self:_close( evt )
 
 		elseif fcode == ws_types.ping then
 			if self:getState() == WebSocket.STATE_CONNECTED then
@@ -529,7 +548,8 @@ function WebSocket:_receiveFrame()
 	--== processing loop
 
 	local err = nil
-	while not err do
+	repeat
+
 		local position = self._ba.pos -- save in case of errors
 		try{
 			function()
@@ -542,11 +562,14 @@ function WebSocket:_receiveFrame()
 				end
 			}
 		}
-	end
+	until err or self:getState() == WebSocket.STATE_CLOSED
 
 	--== handle error
 
-	if not err.isa then
+	if not err then
+		-- pass
+
+	elseif not err.isa then
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Unknown Error", err )
 		end
@@ -562,7 +585,7 @@ function WebSocket:_receiveFrame()
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Protocol Error:", err.message )
 		end
-		self:_bailout{
+		self:_close{
 			code=err.code,
 			reason=err.reason,
 		}
@@ -596,6 +619,7 @@ function WebSocket:_sendFrame( msg )
 			print("Received frame to send: size", #event.frame )
 		end
 		if not event.frame then
+			-- TODO: better error handling
 			self:_onError( -1, event.emsg )
 		else
 			-- send frame
@@ -618,8 +642,12 @@ end
 
 
 function WebSocket:_bailout( params )
-	-- print("Failing connection", params.code, params.reason )
-	self:_close( params )
+	-- print( "Failing connection", params.code, params.reason )
+	params = params or {}
+	--==--
+	params.isError = true
+	params.reconnect = false
+	self:gotoState( WebSocket.STATE_CLOSED, params )
 end
 
 
@@ -631,7 +659,7 @@ function WebSocket:_close( params )
 	params.code = params.code or default_close.code
 	params.reason = params.reason or default_close.reason
 	--==--
-	params.reconnect = params.reconnect == nil and true or false
+	params.reconnect = params.reconnect == nil and true or params.reconnect
 
 	local state = self:getState()
 
@@ -639,7 +667,7 @@ function WebSocket:_close( params )
 		-- pass
 
 	elseif state == WebSocket.STATE_CLOSING then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
 		self:gotoState( WebSocket.STATE_CLOSED, params )
@@ -927,19 +955,21 @@ function WebSocket:do_state_closing_connection( params )
 	self._ready_state = self.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
 
+	-- send close code to server
 	if params.code then
 		self:_sendClose( params.code, params.reason )
 	end
 
+	-- if this close is from server, then close else wait
 	if params.from_server then
-		self:gotoState( WebSocket.STATE_CLOSED )
+		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
 		-- set timer to politely wait for server close response
 		local f = function()
 			print( "ERROR: Close response not received" )
 			self._close_timer = nil
-			self:gotoState( WebSocket.STATE_CLOSED )
+			self:gotoState( WebSocket.STATE_CLOSED, { code=params.code, reason=params.reason } )
 		end
 		self._close_timer = timer.performWithDelay( 4000, f )
 	end
@@ -977,12 +1007,17 @@ function WebSocket:do_state_closed( params )
 	end
 
 	self._socket:close()
+	self._ba = nil
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Server connection closed" )
 	end
 
-	self:_onClose( params )
+	if params.isError then
+		self:_onError( params )
+	else
+		self:_onClose( params )
+	end
 
 end
 function WebSocket:state_closed( next_state, params )
@@ -994,9 +1029,7 @@ function WebSocket:state_closed( next_state, params )
 		self:do_state_closed( params )
 
 	else
-		if LOCAL_DEBUG then
-			print( "WARNING :: WebSocket:state_closed %s" % tostring( next_state ) )
-		end
+		print( "WARNING :: WebSocket:state_closed %s" % tostring( next_state ) )
 	end
 
 end
@@ -1019,7 +1052,9 @@ function WebSocket:_socketEvent_handler( event )
 		if event.status == sock.CONNECTED then
 			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
 		else
-			self:gotoState( WebSocket.STATE_CLOSED )
+			if state ~= WebSocket.STATE_CLOSED then
+				self:gotoState( WebSocket.STATE_CLOSED )
+			end
 		end
 
 	elseif event.type == sock.READ then
@@ -1044,14 +1079,8 @@ function WebSocket:_socketEvent_handler( event )
 
 		if state == WebSocket.STATE_NOT_CONNECTED then
 			self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
-
 		else
 			self:_receiveFrame()
-			-- if not self._processing_frame ~= true then
-			-- end
-			-- timer.performWithDelay( 10, function() self:_receiveFrame() end)
-			-- self:_receiveFrame()
-
 		end
 
 	end
