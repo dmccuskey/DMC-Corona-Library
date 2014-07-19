@@ -57,11 +57,14 @@ local function webSocketsEvent_handler( event )
 	end
 end
 
+
 ws = WebSockets{
 	-- non-secure
-	-- uri='ws://ws.pusherapp.com/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
+	-- uri='ws://ws.pusherapp.com:80/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
 	-- secure (SSL/TLS)
-	uri='wss://ws.pusherapp.com/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
+	uri='wss://ws.pusherapp.com:443/app/a6fc0e5ee5adc489d1ac?client=lua&version=1.0&protocol=7',
+	-- port can be here, or in URI
+	-- port=443, -- 80/443
 	protocols='7'
 }
 ws:addEventListener( ws.EVENT, webSocketsEvent_handler )
