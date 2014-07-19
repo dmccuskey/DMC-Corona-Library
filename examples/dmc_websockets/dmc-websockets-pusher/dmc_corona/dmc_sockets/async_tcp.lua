@@ -459,7 +459,12 @@ function ATCPSocket:_processCoroutineQueue()
 
 	local co = self:_getActiveCoroutine()
 	if co then
-		local status = coroutine.resume( co )
+		local status, msg = coroutine.resume( co )
+		if not status then 
+			self:_removeCoroutineFromQueue()
+			print( "ERROR in async_tcp coroutine" )
+			error( msg )
+		end 
 		if coroutine.status( co ) ~= 'dead' then return end
 	end
 
