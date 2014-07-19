@@ -330,6 +330,7 @@ end
 
 function WebSocket:send( data, params )
 	-- print( "WebSocket:send", #data )
+	assert( type(data)=='string', "expected string for send()")
 	params = params or {}
 	params.type = params.type or WebSocket.TEXT
 	--==--
