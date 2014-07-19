@@ -45,7 +45,7 @@ local VERSION = "0.2.1"
 --====================================================================--
 -- Imports
 
-local Utils = 'lua_utils'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -122,7 +122,7 @@ local function tablePop( t, v )
 end
 
 doTablePopPatch = function()
-	if not lua_patch_data.table_pop_active then
+	if not lua_patch_data.table_pop_active == false then
 		print( "Lua Patch::activating patch '" .. PATCH_TABLE_POP .. "'" )
 		table.pop = tablePop
 		lua_patch_data.table_pop_active = true
