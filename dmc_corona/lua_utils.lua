@@ -595,6 +595,17 @@ function Utils.tableLength( t )
 end
 
 
+-- take objects from hashed table, make array table
+--
+function Utils.tableList( t )
+	assert( type(t)=='table', "Utils.tableList expected table" )
+	local list = {}
+	for _, o in pairs( t ) do
+		tinsert( list, o )
+	end
+	return list
+end
+
 
 --====================================================================--
 -- Web Functions
