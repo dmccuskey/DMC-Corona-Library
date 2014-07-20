@@ -854,7 +854,7 @@ function WebSocket:state_init( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	elseif next_state == WebSocket.STATE_NOT_CONNECTED then
@@ -874,7 +874,7 @@ function WebSocket:do_state_not_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.NOT_ESTABLISHED
+	self._ready_state = WebSocket.NOT_ESTABLISHED
 
 	self:setState( WebSocket.STATE_NOT_CONNECTED )
 
@@ -946,7 +946,7 @@ function WebSocket:do_state_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.ESTABLISHED
+	self._ready_state = WebSocket.ESTABLISHED
 	self:setState( WebSocket.STATE_CONNECTED )
 
 	if LOCAL_DEBUG then
@@ -988,7 +988,7 @@ function WebSocket:do_state_closing_connection( params )
 	params.from_server = params.from_server ~= nil and params.from_server or false
 	--==--
 
-	self._ready_state = self.CLOSING_HANDSHAKE
+	self._ready_state = WebSocket.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
 
 	-- send close code to server
@@ -1033,7 +1033,7 @@ function WebSocket:do_state_closed( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.CLOSED
+	self._ready_state = WebSocket.CLOSED
 	self:setState( WebSocket.STATE_CLOSED )
 
 	if self._close_timer then
@@ -1061,7 +1061,7 @@ function WebSocket:state_closed( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	else

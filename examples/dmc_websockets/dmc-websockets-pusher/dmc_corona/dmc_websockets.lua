@@ -267,8 +267,7 @@ function WebSocket:_init( params )
 	-- self._send_unmasked = params.send_unmasked or false
 	-- self._rd_frame_co = nil -- ref to read-frame coroutine
 
-	self._socket_data_handler = nil -- ref to
-	self._socket_connect_handler = nil -- ref to
+	self._socket_handler = nil -- ref to
 	self._socket_throttle = params.throttle
 
 
@@ -292,9 +291,6 @@ function WebSocket:_initComplete()
 	-- print( "WebSocket:_initComplete" )
 	self:superCall( "_initComplete" )
 	--==--
-
-	self._socket_connect_handler = self:createCallback( self._socketConnectEvent_handler )
-	self._socket_data_handler = self:createCallback( self._socketDataEvent_handler )
 
 	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
 	self:_createNewFrame()
@@ -330,7 +326,6 @@ end
 
 function WebSocket:send( data, params )
 	-- print( "WebSocket:send", #data )
-	assert( type(data)=='string', "expected string for send()")
 	params = params or {}
 	params.type = params.type or WebSocket.TEXT
 	--==--
@@ -823,8 +818,8 @@ function WebSocket:do_state_init( params )
 
 	local port = self._port or port
 
-	if port == nil or port == 0 then
-		port = url_parts.scheme == 'wss' and 443 or 80
+	if not port then
+		port = 80
 	end
 
 	if not path or path == "" then
@@ -843,14 +838,14 @@ function WebSocket:do_state_init( params )
 	Sockets.throttle = self._socket_throttle
 
 	socket = Sockets:create( Sockets.ATCP )
-	socket.secure = url_parts.scheme == 'wss' and true or false
 	self._socket = socket
+	self._socket_handler = self:createCallback( self._socketEvent_handler )
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
 	end
 
-	socket:connect( host, port, { onConnect=self._socket_connect_handler, onData=self._socket_data_handler } )
+	socket:connect( host, port, { onConnect=self._socket_handler, onData=self._socket_handler } )
 
 end
 
@@ -859,7 +854,7 @@ function WebSocket:state_init( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	elseif next_state == WebSocket.STATE_NOT_CONNECTED then
@@ -879,7 +874,7 @@ function WebSocket:do_state_not_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.NOT_ESTABLISHED
+	self._ready_state = WebSocket.NOT_ESTABLISHED
 
 	self:setState( WebSocket.STATE_NOT_CONNECTED )
 
@@ -951,7 +946,7 @@ function WebSocket:do_state_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.ESTABLISHED
+	self._ready_state = WebSocket.ESTABLISHED
 	self:setState( WebSocket.STATE_CONNECTED )
 
 	if LOCAL_DEBUG then
@@ -993,7 +988,7 @@ function WebSocket:do_state_closing_connection( params )
 	params.from_server = params.from_server ~= nil and params.from_server or false
 	--==--
 
-	self._ready_state = self.CLOSING_HANDSHAKE
+	self._ready_state = WebSocket.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
 
 	-- send close code to server
@@ -1038,7 +1033,7 @@ function WebSocket:do_state_closed( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.CLOSED
+	self._ready_state = WebSocket.CLOSED
 	self:setState( WebSocket.STATE_CLOSED )
 
 	if self._close_timer then
@@ -1066,7 +1061,7 @@ function WebSocket:state_closed( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	else
@@ -1082,39 +1077,23 @@ end
 --====================================================================--
 --== Event Handlers
 
-
--- handle connection events from socket
---
-function WebSocket:_socketConnectEvent_handler( event )
-	-- print( "WebSocket:_socketConnectEvent_handler", event.type, event.status )
+function WebSocket:_socketEvent_handler( event )
+	-- print( "WebSocket:_socketEvent_handler", event.type, event.status )
 
 	local state = self:getState()
 	local sock = self._socket
 
 	if event.type == sock.CONNECT then
 
-		if event.isError then
-			self:gotoState( WebSocket.STATE_CLOSED )
-		elseif event.status == sock.CONNECTED then
+		if event.status == sock.CONNECTED then
 			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
 		else
 			if state ~= WebSocket.STATE_CLOSED then
 				self:gotoState( WebSocket.STATE_CLOSED )
 			end
 		end
-	end
 
-end
-
--- handle read/write events from socket
---
-function WebSocket:_socketDataEvent_handler( event )
-	-- print( "WebSocket:_socketDataEvent_handler", event.type, event.status )
-
-	local state = self:getState()
-	local sock = self._socket
-
-	if event.type == sock.READ then
+	elseif event.type == sock.READ then
 
 		local callback = function( s_event )
 			local data = s_event.data
