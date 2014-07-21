@@ -206,6 +206,14 @@ local function translateRGBToHDR( ... )
 
 		color = { args[2] }
 
+	elseif type( args[2] ) == 'string' and args[2]:sub(1,1) == '#' then
+		local hex = args[2]:gsub("#","")
+		color = {
+			tonumber("0x"..hex:sub(1,2))/255,
+			tonumber("0x"..hex:sub(3,4))/255,
+			tonumber("0x"..hex:sub(5,6))/255
+		}
+
 	elseif type( args[2] ) == 'string' then
 
 		-- named color
