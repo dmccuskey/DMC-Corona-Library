@@ -122,7 +122,7 @@ local function tablePop( t, v )
 end
 
 doTablePopPatch = function()
-	if not lua_patch_data.table_pop_active == false then
+	if lua_patch_data.table_pop_active == false then
 		print( "Lua Patch::activating patch '" .. PATCH_TABLE_POP .. "'" )
 		table.pop = tablePop
 		lua_patch_data.table_pop_active = true
