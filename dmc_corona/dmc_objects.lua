@@ -223,7 +223,7 @@ function CoronaBase:_createView()
 
 	-- Subclasses should call self:superCall( "_createView" )
 
-	local o = self.display
+	local o = self.view
 
 	-- Used to block touches at the level of parent display
 	-- It can be moved to another subclass if the feature is not
@@ -237,6 +237,8 @@ end
 -- remove any items added during _createView()
 --
 function CoronaBase:_undoCreateView()
+	local o = self.view
+
 	if dmc_objects_data.auto_touch_block and o.touch then
 		o:removeEventListener( 'touch', o.touch )
 		o.touch = nil
