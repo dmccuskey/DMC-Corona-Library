@@ -51,9 +51,8 @@ local UrlLib = require 'socket.url'
 
 local Objects = require 'lua_objects'
 local Patch = require('lua_patch')('string-format')
-local Utils = require 'lua_utils'
-
 local Sockets = require 'dmc_corona.dmc_sockets'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -88,6 +87,7 @@ local function createNetStream( params )
 	}
 
 	netstream_table[ ns ] = ns
+	return ns
 end
 
 local function removeNetStream( netstream, event )
@@ -139,6 +139,13 @@ NetStream.NAME = "HTTP Streamer"
 NetStream.VERSION = VERSION
 
 
+NetStream.EVENT = 'dmc_netstream_event'
+NetStream.DATA = 'netstream_data_event'
+NetStream.CONNECTED = 'netstream_connected_event'
+NetStream.DISCONNECTED = 'netstream_disconnected_event'
+NetStream.ERROR = 'netstream_error_event'
+
+
 --====================================================================--
 --== Start: Setup DMC Objects
 
@@ -188,6 +195,9 @@ function NetStream:_initComplete()
 		onData=self:createCallback( self._onData_handler )
 	}
 	self._sock = Sockets:create( Sockets.ATCP )
+	-- SSL secure socket
+	self._sock.secure = url_parts.scheme == 'https' and true or false
+
 	self._sock:connect( self._host, self._port, params )
 
 end
@@ -259,8 +269,9 @@ function NetStream:_onConnect_handler( event )
 			-- print("== Newline Handler ==")
 
 			if not e.data then
-				-- print( event.emsg )
+				-- print( 'err>>', event.emsg )
 				self:_send( nil, event.emsg )
+				self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
 				removeNetStream( self )
 
 			else
@@ -277,15 +288,19 @@ function NetStream:_onConnect_handler( event )
 		end
 		sock:receiveUntilNewline( newlineCallback )
 
+		self:dispatchEvent( self.CONNECTED )
+
 	elseif event.status == sock.CLOSED then
 		-- print("=== Connection Closed ===\n\n")
 		-- print( event.emsg )
 		self:_send( nil, event.emsg )
+		self:dispatchEvent( self.DISCONNECTED, { emsg=event.emsg } )
 		removeNetStream( self )
 
 	else
 		-- print("=== Connection Error ===")
 		self:_send( nil, event.emsg )
+		self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
 		removeNetStream( self, event )
 
 	end
@@ -303,6 +318,7 @@ function NetStream:_onData_handler( event )
 		-- print( 'data re>> ', e.data, e.emsg )
 		-- Utils.hexDump( e.data )
 		self:_send( e.data, e.emsg )
+		self:dispatchEvent( self.DATA, { data=e.data, emsg=event.emsg } )
 	end
 	self._sock:receive( '*a', cb  )
 end
@@ -315,7 +331,7 @@ end
 
 
 return {
-	stream = createNetStream
+	newStream = createNetStream
 }
 
 
