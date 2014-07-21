@@ -63,7 +63,6 @@ local ObjectBase = Objects.ObjectBase
 
 local tconcat = table.concat
 local tinsert = table.insert
-local tpop = table.pop
 
 local NetStream -- forward
 local netstream_table = {}
