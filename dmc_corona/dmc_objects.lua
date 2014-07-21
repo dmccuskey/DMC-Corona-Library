@@ -145,6 +145,18 @@ end
 local CoronaBase = inheritsFrom( ObjectBase )
 CoronaBase.NAME = "Corona Base"
 
+--== references for setAnchor()
+
+CoronaBase.TopLeftReferencePoint = { 0, 0 }
+CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
+CoronaBase.TopRightReferencePoint = { 1, 0 }
+CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
+CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
+CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
+CoronaBase.BottomLeftReferencePoint = { 0, 1 }
+CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
+CoronaBase.BottomRightReferencePoint = { 1, 1 }
+
 
 -- new()
 -- class constructor
@@ -174,6 +186,9 @@ function CoronaBase:new( options )
 	return o
 end
 
+
+--====================================================================--
+--== Start: Setup DMC Objects
 
 -- _init()
 -- initialize the object - setting the view
@@ -246,6 +261,13 @@ function CoronaBase:_undoInitComplete()
 	self:superCall( "_initComplete" )
 end
 
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+--====================================================================--
+--== Private Methods
+
 
 -- _setView( viewObject )
 -- set the view property to incoming view object
@@ -255,7 +277,7 @@ function CoronaBase:_setView( viewObject )
 	self:_unsetView()
 
 	self.view = viewObject
-	self.display = self.view
+	self.display = self.view -- deprecated
 	-- save ref of our Lua object on Corona element
 	-- in case we need to get back to the object
 	self.view.__dmc_ref = self
@@ -281,6 +303,9 @@ function CoronaBase:_unsetView()
 	end
 end
 
+
+--====================================================================--
+--== Public Methods / Corona API
 
 -- destroy()
 -- remove the view object from the stage
@@ -554,19 +579,7 @@ function CoronaBase:scale( ... )
 	self.view:scale( ... )
 end
 
-
-CoronaBase.TopLeftReferencePoint = { 0, 0 }
-CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
-CoronaBase.TopRightReferencePoint = { 1, 0 }
-CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
-CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
-CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
-CoronaBase.BottomLeftReferencePoint = { 0, 1 }
-CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
-CoronaBase.BottomRightReferencePoint = { 1, 1 }
-
-
---
+-- setAnchor
 --
 function CoronaBase:setAnchor( ... )
 	local args = {...}
