@@ -128,10 +128,19 @@ local inheritsFrom = LuaObject.inheritsFrom
 local ObjectBase = LuaObject.ObjectBase
 
 
+--====================================================================--
+-- Support Functions
+
+_G.getDMCObject = function( object )
+	return object.__dmc_ref
+end
+
+
 
 --====================================================================--
 -- CoronaBase Class
 --====================================================================--
+
 
 local CoronaBase = inheritsFrom( ObjectBase )
 CoronaBase.NAME = "Corona Base"
