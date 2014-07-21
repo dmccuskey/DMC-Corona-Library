@@ -179,7 +179,7 @@ end
 -- initialize the object - setting the view
 --
 function CoronaBase:_init( options )
-	-- OVERRIDE THIS
+	self:superCall( "_init" )
 
 	--== Create Properties ==--
 	--== Display Groups ==--
@@ -193,8 +193,9 @@ end
 -- remove items added during _init()
 --
 function CoronaBase:_undoInit( options )
-	-- OVERRIDE THIS
 	self:_unsetView()
+	--==--
+	self:superCall( "_undoInit" )
 end
 
 
@@ -202,7 +203,8 @@ end
 -- create any visual items specific to object
 --
 function CoronaBase:_createView()
-	-- OVERRIDE THIS
+	self:superCall( "_createView" )
+	--==--
 
 	-- Subclasses should call self:superCall( "_createView" )
 
@@ -220,13 +222,12 @@ end
 -- remove any items added during _createView()
 --
 function CoronaBase:_undoCreateView()
-	-- OVERRIDE THIS
-
 	if dmc_objects_data.auto_touch_block and o.touch then
 		o:removeEventListener( 'touch', o.touch )
 		o.touch = nil
 	end
-
+	--==--
+	self:superCall( "_undoCreateView" )
 end
 
 
@@ -234,13 +235,15 @@ end
 -- any setup after object is done being created
 --
 function CoronaBase:_initComplete()
-	-- OVERRIDE THIS
+	self:superCall( "_initComplete" )
+	--==--
 end
 -- _undoInitComplete()
 -- remove any items added during _initComplete()
 --
 function CoronaBase:_undoInitComplete()
-	-- OVERRIDE THIS
+	--==--
+	self:superCall( "_initComplete" )
 end
 
 
@@ -286,7 +289,6 @@ function CoronaBase:destroy()
 	self:removeSelf()
 end
 
-
 function CoronaBase:show()
 	self.view.isVisible = true
 end
@@ -321,40 +323,6 @@ end
 function CoronaBase:remove( ... )
 	self.view:remove( ... )
 end
-
-
-
---= CORONA OBJECT =--
-
-
--- _dispatchEvent
---
-function CoronaBase:_dispatchEvent( e_type, data, params )
-	-- print( "Object:_dispatchEvent ", e_type, data )
-	params = params or {}
-	if params.merge == nil then params.merge = false end
-	--==--
-
-	-- setup custom event
-	local e = {
-		name = self.EVENT,
-		type = e_type,
-		target = self
-	}
-
-	if params.merge and type( data ) == 'table' then
-		e = data
-		e.name = self.EVENT
-		e.type = e_type
-		e.target = self
-
-	else
-		e.data = data
-	end
-
-	self:dispatchEvent( e )
-end
-
 
 
 --= CORONA OBJECT =--
@@ -552,38 +520,15 @@ end
 
 -- Methods --
 
--- addEventListener( eventName, listener )
---
-function CoronaBase:addEventListener( ... )
-	local args = { ... }
-	if args[1] == nil then
-		error( "ERROR addEventListener: event type can't be nil", 2 )
-	end
-	if args[2] == nil then
-		error( "ERROR addEventListener: listener function can't be nil", 2 )
-	end
-
-	self.view:addEventListener( ... )
-end
 -- contentToLocal( x_content, y_content )
 --
 function CoronaBase:contentToLocal( ... )
 	self.view:contentToLocal( ... )
 end
--- dispatchEvent( event )
---
-function CoronaBase:dispatchEvent( ... )
-	self.view:dispatchEvent( ... )
-end
 -- localToContent( x, y )
 --
 function CoronaBase:localToContent( ... )
 	self.view:localToContent( ... )
-end
--- removeEventListener( eventName, listener )
---
-function CoronaBase:removeEventListener( ... )
-	self.view:removeEventListener( ... )
 end
 -- removeSelf()
 --
