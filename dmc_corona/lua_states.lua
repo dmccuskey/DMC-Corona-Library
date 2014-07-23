@@ -46,7 +46,7 @@ local VERSION = "1.1.0"
 
 
 function outStr( msg )
-	return "Lua States :: " .. tostring( msg )
+	return "Lua States (debug) :: " .. tostring( msg )
 end
 
 function errStr( msg )
