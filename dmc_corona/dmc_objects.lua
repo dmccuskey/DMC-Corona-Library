@@ -260,7 +260,7 @@ end
 --
 function CoronaBase:_undoInitComplete()
 	--==--
-	self:superCall( "_initComplete" )
+	self:superCall( "_undoInitComplete" )
 end
 
 --== END: Setup DMC Objects
