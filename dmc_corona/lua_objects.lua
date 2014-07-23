@@ -599,21 +599,7 @@ end
 --====================================================================--
 --== Private Methods
 
--- _corona_dispatchEvent( event, params )
---
-function ObjectBase:_corona_dispatchEvent( event, params )
-	-- print( "ObjectBase:_corona_dispatchEvent", e_type );
-	params = params or {}
-	if params.merge == nil then params.merge = false end
-	--==--
-	self:_dispatchEvent( event )
-end
-
-
--- _dmc_dispatchEvent( event, data, params )
---
-function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
-	-- print( "ObjectBase:_dmc_dispatchEvent", e_type );
+function ObjectBase:_buildDmcEvent( e_type, data, params )
 	params = params or {}
 	if params.merge == nil then params.merge = true end
 	--==--
@@ -634,8 +620,25 @@ function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
 		}
 
 	end
+	return e
+end
 
-	self:_dispatchEvent( e )
+-- _corona_dispatchEvent( event, params )
+--
+function ObjectBase:_corona_dispatchEvent( event, params )
+	-- print( "ObjectBase:_corona_dispatchEvent", e_type );
+	params = params or {}
+	if params.merge == nil then params.merge = false end
+	--==--
+	self:_dispatchEvent( event )
+end
+
+
+-- _dmc_dispatchEvent( event, data, params )
+--
+function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
+	-- print( "ObjectBase:_dmc_dispatchEvent", e_type );
+	self:_dispatchEvent( self:_buildDmcEvent( e_type, data, params ) )
 end
 
 
@@ -669,7 +672,7 @@ end
 -- _setDispatchType
 function ObjectBase:_setDispatchType( dispatch_type )
 	-- print( "ObjectBase:_setDispatchType", dispatch_type );
-
+	self._dispatchEventType = dispatch_type
 	if dispatch_type == ObjectBase.CORONA_EVENT_DISPATCH then
 		self.dispatchEvent = ObjectBase._corona_dispatchEvent
 	else
