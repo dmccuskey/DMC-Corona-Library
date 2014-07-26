@@ -23,35 +23,18 @@ local WebSockets = require 'dmc_corona.dmc_websockets'
 -- Setup, Constants
 
 local ws
+local num_msgs = 5
+local count = 0
 
 
 --====================================================================--
 -- Support Functions
 
-local function sendMessages()
-
-	local num_msgs = 5
-	local count = 0
-
-	print("=== Sending " .. tostring( num_msgs ) .. " messages ===\n")
-
-	local f = function()
-
-		count = count + 1
-		local str = "Current app time: " .. tostring( system.getTimer() )
-		print( "Sending message (" .. tostring( count ) .. "): '" .. str .. "'")
-
-		-- ws:_sendPing()
-		ws:send( str )
-
-		if count == num_msgs then
-			timer.performWithDelay( 1500, function() print( "Closing WebSocket connection" ); ws:close() end )
-		end
-
-	end
-
-	timer.performWithDelay( 1000, f, num_msgs )
-
+local function sendMessage()
+	count = count + 1
+	local str = "Current app time: " .. tostring( system.getTimer() )
+	print( "Sending message (" .. tostring( count ) .. "): '" .. str .. "'")
+	ws:send( str )
 end
 
 
@@ -64,13 +47,21 @@ local function webSocketsEvent_handler( event )
 
 	if evt_type == ws.ONOPEN then
 		print( 'Received event: ONOPEN' )
-		sendMessages()
+
+		print("=== Sending " .. tostring( num_msgs ) .. " messages ===\n")
+		sendMessage()
 
 	elseif evt_type == ws.ONMESSAGE then
 		local msg = event.message
 
 		print( "Received event: ONMESSAGE" )
 		print( "echoed message: '" .. tostring( msg.data ) .. "'\n\n" )
+
+		if count == num_msgs then
+			ws:close()
+		else
+			timer.performWithDelay( 500, function() sendMessage() end)
+		end
 
 	elseif evt_type == ws.ONCLOSE then
 		print( "Received event: ONCLOSE" )
