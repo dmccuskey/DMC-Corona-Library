@@ -404,9 +404,11 @@ if _G.__dmc_require == nil then
 				library = result
 			else
 				if string.find( result, '^error loading module' ) then
+					print( result )
 					error( result, 2 )
 				else
 					table.insert( err_tbl, resource_path..'/'..mod_path )
+					table.insert( err_tbl, result )
 				end
 			end
 
@@ -415,6 +417,7 @@ if _G.__dmc_require == nil then
 
 		if not library then
 			table.insert( err_tbl, 1, "module '".. module_name.."' not found in archive:" )
+			-- print( table.concat( err_tbl, '\n' ) )
 			error( table.concat( err_tbl, '\n' ), 2 )
 		end
 
