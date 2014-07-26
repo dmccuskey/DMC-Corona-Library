@@ -53,7 +53,7 @@ local Objects = require 'lua_objects'
 local Patch = require('lua_patch')('string-format')
 local Utils = require 'lua_utils'
 
-local Sockets = require 'dmc_corona.dmc_sockets'
+local Sockets = require 'dmc_sockets'
 
 
 --====================================================================--
