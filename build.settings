@@ -1,0 +1,10 @@
+settings =
+{
+	android =
+	{
+		usesPermissions =
+		{
+			"android.permission.INTERNET",
+		},
+	},  -- end Android
+}

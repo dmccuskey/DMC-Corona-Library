@@ -1,0 +1,19 @@
+settings =
+{
+	plugins =
+	{
+		-- key is the name passed to Lua's 'require()'
+		["plugin.openssl"] =
+		{
+				-- required
+				publisherId = "com.coronalabs",
+		},
+	},
+	android =
+	{
+		usesPermissions =
+		{
+			"android.permission.INTERNET",
+		},
+	},  -- end Android
+}
