@@ -600,9 +600,9 @@ function WebSocket:_receiveFrame()
 		-- pass, WebSocket.STATE_CLOSED
 
 	elseif not err.isa then
-		if LOCAL_DEBUG then
-			print( "dmc_websockets :: Unknown Error", err )
-		end
+		-- always print this out, most likely a regular Lua error
+		print( "\n\ndmc_websockets :: Unknown Error", err )
+		print( debug.traceback() )
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
@@ -614,6 +614,7 @@ function WebSocket:_receiveFrame()
 	elseif err:isa( ws_error.ProtocolError ) then
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Protocol Error:", err.message )
+			print( "dmc_websockets :: Protocol Error:", err.traceback )
 		end
 		self:_close{
 			code=err.code,
