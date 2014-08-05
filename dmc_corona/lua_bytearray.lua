@@ -11,7 +11,7 @@ Creation 2013-11-14
 Last Modification 2014-01-01
 ]]
 
-local Error = require 'lua_bytearray.errors'
+local Error = require 'lua_bytearray.exceptions'
 
 function iskindof(obj, classname)
     local t = type(obj)
@@ -128,7 +128,7 @@ end
 
 function ByteArray:ctor(__endian)
 	self._endian = __endian
-	self._buf = {}
+	self._buf = ""
 	self._pos = 1
 end
 
@@ -159,12 +159,15 @@ end
 
 --- Get all byte array as a lua string.
 -- Do not update position.
-function ByteArray:getBytes(__offset, __length)
-	-- print( "getBytes", __offset, __length )
-	__offset = __offset or 1
-	__length = __length or #self._buf
-	-- print("getBytes,offset:%u, length:%u", __offset, __length)
-	return table.concat(self._buf, "", __offset, __length)
+function ByteArray:getBytes(__idx_start, __idx_end)
+	-- print( "getBytes", __idx_start, __idx_end )
+	__idx_start = __idx_start or 1
+	__idx_end = __idx_end or #self._buf
+	-- local __index = __idx_start + __idx_end
+	-- print("getBytes,offset:%u, length:%u", __idx_start, __idx_end)
+	-- print("getBytes,offset:%u, length:%u", __idx_start, __idx_end)
+	return string.sub( self._buf, __idx_start, __idx_end)
+	-- return table.concat(self._buf, "", __offset, __idx_end)
 end
 
 --- Get pack style string by lpack.
@@ -345,8 +348,6 @@ function ByteArray:readStringBytes(__len)
 	assert(__len, "Need a length of the string!")
 	if __len == 0 then return "" end
 	self:_checkAvailable(__len)
-	if __len > 1000 then return self:readBuf(__len ) end
-	-- print( self:readBuf(__len) )
 	local __, __v = string.unpack(self:readBuf(__len), self:_getLC("A"..__len))
 	return __v
 end
@@ -393,7 +394,7 @@ end
 function ByteArray:readStringSizeT()
 	self:_checkAvailable(8) -- TODO
 	local __s = self:rawUnPack(self:_getLC("a"))
-	return  __s
+	return __s
 end
 
 --- Perform rawPack() simply.
@@ -470,26 +471,33 @@ end
 --- Use the lua string library to write a byte.
 -- The byte is a number between 0 and 255, otherwise, the lua will get an error.
 function ByteArray:writeByte(__byte)
+	assert( __byte>=0 and __byte<=255 )
 	self:writeRawByte(string.char(__byte))
 	return self
 end
 
 function ByteArray:readRawByte()
 	self:_checkAvailable(1)
-	local __byte = self._buf[self._pos]
+	-- local __byte = self._buf[self._pos]
+	local __byte = string.sub( self._buf, self._pos, self._pos )
 	self._pos = self._pos + 1
 	return __byte
 end
 
 function ByteArray:writeRawByte(__rawByte)
-	-- print("raw byte", __rawByte)
+	assert( __rawByte ~= nil )
+	local t = {}
+	table.insert( t, self._buf )
+
 	if self._pos > #self._buf+1 then
 		for i=#self._buf+1,self._pos-1 do
-			self._buf[i] = string.char(0)
+			-- self._buf[i] = string.char(0)
+			table.insert( t, string.char(0) )
 		end
 	end
-	if __rawByte == nil then error("got il") end
-	self._buf[self._pos] = __rawByte
+	-- self._buf[self._pos] = __rawByte
+	table.insert( t, __rawByte )
+	self._buf = table.concat(t, '')
 	self._pos = self._pos + 1
 	return self
 end
@@ -498,7 +506,7 @@ end
 function ByteArray:readBuf(__len)
 	-- print("readBuf,len:%u, pos:%u", __len, self._pos)
 	self:_checkAvailable(__len)
-	local __ba = self:getBytes(self._pos, self._pos + __len - 1)
+	local __ba = self:getBytes(self._pos, (self._pos-1) + __len)
 	self._pos = self._pos + __len
 	return __ba
 end
@@ -506,10 +514,10 @@ end
 --- Write a encoded char array into buf
 function ByteArray:writeBuf(__s)
 	assert( type(__s) == 'string', "must be string" )
-	for i=1,#__s do
-		-- print( '>>', __s:sub(i,i) )
-		self:writeRawByte(__s:sub(i,i))
-	end
+	-- for i=1,#__s do
+	-- 	self:writeRawByte(__s:sub(i))
+	-- end
+	self._buf = __s
 	return self
 end
 
