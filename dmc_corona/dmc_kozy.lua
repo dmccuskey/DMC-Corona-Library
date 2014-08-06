@@ -120,14 +120,12 @@ local dmc_kozy_data = Utils.extend( dmc_lib_data.dmc_kozy, DMC_KOZY_DEFAULTS )
 
 
 --====================================================================--
--- Imports
---====================================================================--
+--== Imports
 
 
 
 --====================================================================--
--- Setup, Constants
---====================================================================--
+--== Setup, Constants
 
 -- reference to the native object
 local _DISPLAY = _G.display
@@ -139,11 +137,8 @@ local dkd = dmc_kozy_data -- make shorter reference
 local Display, Native
 
 
-
 --====================================================================--
--- Support Methods
---====================================================================--
-
+--== Support Methods
 
 -- translateRGBToHDR()
 -- translates RGB color sequence to equivalent HDR values
