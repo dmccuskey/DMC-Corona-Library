@@ -45,9 +45,6 @@ local VERSION = "0.1.1"
 --====================================================================--
 -- Imports
 
--- 'lua_utils' is required for a couple of functions
--- those functions can be put into this class if wanted
---
 local Utils = require 'lua_utils'
 
 
@@ -63,6 +60,13 @@ local function setConstructorName( name )
 	assert( type(name)=='string', "expected string for constructor name" )
 	CONSTRUCTOR_FUNC_NAME = name
 end
+
+-- cache globals
+local assert, type, rawget, rawset = assert, type, rawget, rawset
+local getmetatable, setmetatable = getmetatable, setmetatable
+
+local tinsert = table.insert
+local tremove = table.remove
 
 
 --====================================================================--
@@ -158,19 +162,6 @@ local function indexFunc( t, k )
 	if o then val = o[k] end
 	if val ~= nil then return val end
 
-	-- check object's view
-	--[[
-	o = rawget( t, 'view' )
-	if o ~= nil and o[k] ~= nil then
-		print("on view ", type(o[k]), o.x, k, o )
-		if type(o[k]) == 'function' then
-			return o[k]()
-		else
-			return o[k]
-		end
-	end
-	--]]
-
 	return nil
 end
 
@@ -223,7 +214,7 @@ local function bless( base, obj )
 	o.__setters = {}
 	o.__getters = {}
 	if base then
-		-- we have a parent, so let's copy down all its getters/setters
+		-- copy down all getters/setters of parent
 		o.__getters = Utils.extend( base.__getters, o.__getters )
 		o.__setters = Utils.extend( base.__setters, o.__setters )
 	end
@@ -240,7 +231,7 @@ local function inheritsFrom( baseClass, options, constructor )
 	-- flag to indicate this is a subclass object
 	-- will be set in the regular constructor
 	options = options or {}
-	options.__setIntermediate = true
+	options.__set_intermediate = true
 
 	-- get default constructor
 	if baseClass and constructor == nil then
@@ -294,7 +285,7 @@ end
 --====================================================================--
 
 local ClassBase = inheritsFrom( nil )
-ClassBase.NAME = "Class Base"
+ClassBase.NAME = "Base Class"
 
 ClassBase._PRINT_INCLUDE = {}
 ClassBase._PRINT_EXCLUDE = { '__dmc_super' }
@@ -344,21 +335,21 @@ function ClassBase:superCall( name, ... )
 		self_dmc_super = self.__dmc_super
 		-- here we start with our class
 		s = findMethod( self:class(), name )
-		table.insert( self_dmc_super, s )
+		tinsert( self_dmc_super, s )
 	end
 
 	c = self_dmc_super[ # self_dmc_super ]
 	-- here we start with the super class
 	s = findMethod( c:superClass(), name )
 	if s then
-		table.insert( self_dmc_super, s )
+		tinsert( self_dmc_super, s )
 		result = s[name]( self, unpack( arg ) )
-		table.remove( self_dmc_super, # self_dmc_super )
+		tremove( self_dmc_super, # self_dmc_super )
 	end
 
-	-- here were the first and last on callstack, so clean up
+	-- here we're the first and last on callstack, so clean up
 	if super_flag == nil then
-		table.remove( self_dmc_super, # self_dmc_super )
+		tremove( self_dmc_super, # self_dmc_super )
 		self.__dmc_super = nil
 	end
 
@@ -418,23 +409,19 @@ end
 
 
 --====================================================================--
--- Object Base Class
+--== Object Base Class
 --====================================================================--
+
 
 local ObjectBase = inheritsFrom( ClassBase )
 ObjectBase.NAME = "Object Base"
 
---== Class Constants
-
-ObjectBase.DMC_EVENT_DISPATCH = 'dmc_event_style_dispatch'
-ObjectBase.CORONA_EVENT_DISPATCH = 'corona_event_style_dispatch'
-
 
 --====================================================================--
--- Class Support Functions
+--== Class Support Functions
 
 -- callback is either function or object (table)
--- creates lookup key given event name and handler
+-- creates listener lookup key given event name and handler
 --
 local function createEventListenerKey( e_name, handler )
 	return e_name .. "::" .. tostring( handler )
@@ -444,22 +431,20 @@ end
 --====================================================================--
 --== Constructor
 
--- this is the flow for DMC-style objects
--- typically, you won't override this
+-- new()
+-- this method drives the initialization flow for DMC-style objects
+-- typically you won't override this
 --
 function ObjectBase:new( params )
 	params = params or {}
+	params.__set_intermediate = params.__set_intermediate == true and params.__set_intermediate or false
 	--==--
 
 	local o = self:_bless()
 
 	-- set flag if this is an Intermediate class
-	if params.__setIntermediate == true then
-		o.is_intermediate = true
-		params.__setIntermediate = nil
-	else
-		o.is_intermediate = false
-	end
+	o.is_intermediate = params.__set_intermediate
+	params.__set_intermediate = nil
 
 	o:_init( params )
 
@@ -472,8 +457,8 @@ function ObjectBase:new( params )
 end
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup Lua Objects
 
 -- _init()
 -- initialize the object - setting the view
@@ -509,8 +494,6 @@ end
 --
 function ObjectBase:_initComplete()
 	-- OVERRIDE THIS
-
-	self:_setDispatchType( ObjectBase.DMC_EVENT_DISPATCH )
 end
 -- _undoInitComplete()
 -- remove any items added during _initComplete()
@@ -519,13 +502,20 @@ function ObjectBase:_undoInitComplete()
 	-- OVERRIDE THIS
 end
 
---== END: Setup DMC Objects
---====================================================================--
-
+-- END: Setup Lua Objects
+--======================================================--
 
 
 --====================================================================--
 --== Public Methods
+
+-- dispatchEvent( event, data, params )
+--
+function ObjectBase:dispatchEvent( e_type, data, params )
+	-- print( "ObjectBase:dispatchEvent", e_type );
+	self:_dispatchEvent( self:_buildDmcEvent( e_type, data, params ) )
+end
+
 
 -- addEventListener()
 --
@@ -558,7 +548,6 @@ function ObjectBase:addEventListener( e_name, listener )
 
 end
 
-
 -- removeEventListener()
 --
 function ObjectBase:removeEventListener( e_name, listener )
@@ -584,10 +573,13 @@ end
 
 -- removeSelf()
 --
+-- this method drives the destruction flow for DMC-style objects
+-- typically, you won't override this
+--
 function ObjectBase:removeSelf()
 	-- print( "ObjectBase:removeSelf" );
 
-	-- skip these if we're an intermediate class (eg, subclass)
+	-- skip these if we're an intermediate class (eg, subclass class)
 	if rawget( self, 'is_intermediate' ) == false then
 		self:_undoInitComplete()
 	end
@@ -623,24 +615,6 @@ function ObjectBase:_buildDmcEvent( e_type, data, params )
 	return e
 end
 
--- _corona_dispatchEvent( event, params )
---
-function ObjectBase:_corona_dispatchEvent( event, params )
-	-- print( "ObjectBase:_corona_dispatchEvent", e_type );
-	params = params or {}
-	if params.merge == nil then params.merge = false end
-	--==--
-	self:_dispatchEvent( event )
-end
-
-
--- _dmc_dispatchEvent( event, data, params )
---
-function ObjectBase:_dmc_dispatchEvent( e_type, data, params )
-	-- print( "ObjectBase:_dmc_dispatchEvent", e_type );
-	self:_dispatchEvent( self:_buildDmcEvent( e_type, data, params ) )
-end
-
 
 function ObjectBase:_dispatchEvent( event )
 	-- print( "ObjectBase:_dispatchEvent", event.name );
@@ -669,19 +643,6 @@ function ObjectBase:_dispatchEvent( event )
 end
 
 
--- _setDispatchType
-function ObjectBase:_setDispatchType( dispatch_type )
-	-- print( "ObjectBase:_setDispatchType", dispatch_type );
-	self._dispatchEventType = dispatch_type
-	if dispatch_type == ObjectBase.CORONA_EVENT_DISPATCH then
-		self.dispatchEvent = ObjectBase._corona_dispatchEvent
-	else
-		self.dispatchEvent = ObjectBase._dmc_dispatchEvent
-	end
-
-end
-
-
 --====================================================================--
 --== Event Handlers
 
@@ -690,11 +651,10 @@ end
 
 
 
-
-
 --====================================================================--
 -- Lua Objects Exports
 --====================================================================--
+
 
 return {
 	setConstructorName = setConstructorName,

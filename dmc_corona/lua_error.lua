@@ -97,12 +97,13 @@ function Error:_init( params )
 
 	if self.is_intermediate then return end
 
-	self.message = params.message or "ERROR"
+	self.prefix = params.prefix or "ERROR: "
+	self.message = params.message or "there was an error"
 	self.traceback = debug.traceback()
 
 	local mt = getmetatable( self )
 	mt.__tostring = function(e)
-		return table.concat({"ERROR: ",e.message,"\n",e.traceback})
+		return table.concat({self.prefix,e.message,"\n",e.traceback})
 	end
 
 end
@@ -110,13 +111,14 @@ end
 
 
 --====================================================================--
--- Error Facade
+--== Error API Setup
 --====================================================================--
 
--- create Globals
+-- globals
 _G.try = try
 _G.catch = catch
 _G.finally = finally
+
 
 
 return Error
