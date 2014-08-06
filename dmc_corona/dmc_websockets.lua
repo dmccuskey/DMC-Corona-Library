@@ -575,7 +575,7 @@ function WebSocket:_receiveFrame()
 	--== processing loop
 
 	-- TODO: hook this up to enterFrame so large
-	-- amount of frames will pause processing
+	-- amount of frames won't pause processing
 
 	local err = nil
 	repeat
