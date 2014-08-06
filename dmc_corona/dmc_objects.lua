@@ -161,21 +161,18 @@ CoronaBase.BottomRightReferencePoint = { 1, 1 }
 -- new()
 -- class constructor
 --
-function CoronaBase:new( options )
-
-	options = options or {}
+function CoronaBase:new( params )
+	params = params or {}
+	params.__set_intermediate = params.__set_intermediate == true and true or false
+	--==--
 
 	local o = self:_bless()
 
 	-- set flag if this is an Intermediate class
-	if options.__setIntermediate == true then
-		o.is_intermediate = true
-		options.__setIntermediate = nil
-	else
-		o.is_intermediate = false
-	end
+	o.is_intermediate = params.__set_intermediate
+	params.__set_intermediate = nil
 
-	o:_init( options )
+	o:_init( params )
 
 	-- skip these if we're an intermediate class (eg, subclass)
 	if rawget( o, 'is_intermediate' ) == false then
