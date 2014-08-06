@@ -157,6 +157,11 @@ CoronaBase.BottomLeftReferencePoint = { 0, 1 }
 CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
 CoronaBase.BottomRightReferencePoint = { 1, 1 }
 
+-- style of event dispatch
+CoronaBase.DMC_EVENT_DISPATCH = 'dmc_event_style_dispatch'
+CoronaBase.CORONA_EVENT_DISPATCH = 'corona_event_style_dispatch'
+
+
 
 -- new()
 -- class constructor
@@ -174,6 +179,9 @@ function CoronaBase:new( options )
 	else
 		o.is_intermediate = false
 	end
+
+	-- configure the type of event dispatch
+	o.dispatch_type = options.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or options.dispatch_type
 
 	o:_init( options )
 
@@ -308,6 +316,11 @@ end
 
 --====================================================================--
 --== Public Methods / Corona API
+
+function CoronaBase.__setters:dispatch_type( value )
+	self._dispatch_type = value
+end
+
 
 -- destroy()
 -- remove the view object from the stage
@@ -573,10 +586,11 @@ CoronaBase._buildDmcEvent = ObjectBase._buildDmcEvent
 -- can either be dmc style event
 -- or corona style event
 function CoronaBase:dispatchEvent( ... )
-	if self._dispatchEventType == ObjectBase.CORONA_EVENT_DISPATCH then
-		self.view:dispatchEvent( self:_buildDmcEvent( ... ) )
-	else
+	-- print( 'CoronaBase:dispatchEvent', self._dispatch_type)
+	if self._dispatch_type == CoronaBase.CORONA_EVENT_DISPATCH then
 		self.view:dispatchEvent( ... )
+	else
+		self.view:dispatchEvent( self:_buildDmcEvent( ... ) )
 	end
 end
 -- localToContent( x, y )
