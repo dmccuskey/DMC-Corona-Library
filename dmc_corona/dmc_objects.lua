@@ -176,8 +176,11 @@ function CoronaBase:new( params )
 	o.is_intermediate = params.__set_intermediate
 	params.__set_intermediate = nil
 
-	o:_init( params )
+	-- configure the type of event dispatch
+	o._dispatch_type = options.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or options.dispatch_type
 
+	-- go through setup sequence
+	o:_init( params )
 	-- skip these if we're an intermediate class (eg, subclass)
 	if rawget( o, 'is_intermediate' ) == false then
 		o:_createView()
@@ -309,6 +312,10 @@ end
 
 --====================================================================--
 --== Public Methods / Corona API
+
+function CoronaBase.__setters:dispatch_type( value )
+	self._dispatch_type = value
+end
 
 -- destroy()
 -- remove the view object from the stage
@@ -574,8 +581,8 @@ CoronaBase._buildDmcEvent = ObjectBase._buildDmcEvent
 -- can either be dmc style event
 -- or corona style event
 function CoronaBase:dispatchEvent( ... )
-	-- print( 'CoronaBase:dispatchEvent', self._dispatchEventType)
-	if self._dispatchEventType == CoronaBase.CORONA_EVENT_DISPATCH then
+	-- print( 'CoronaBase:dispatchEvent', self._dispatch_type )
+	if self._dispatch_type == CoronaBase.CORONA_EVENT_DISPATCH then
 		self.view:dispatchEvent( ... )
 	else
 		self.view:dispatchEvent( self:_buildDmcEvent( ... ) )
