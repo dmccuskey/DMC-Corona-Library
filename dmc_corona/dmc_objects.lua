@@ -145,8 +145,9 @@ end
 local CoronaBase = inheritsFrom( ObjectBase )
 CoronaBase.NAME = "Corona Base"
 
---== references for setAnchor()
+--== Class Constants
 
+--references for setAnchor()
 CoronaBase.TopLeftReferencePoint = { 0, 0 }
 CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
 CoronaBase.TopRightReferencePoint = { 1, 0 }
@@ -203,7 +204,7 @@ end
 --
 function CoronaBase:_init( options )
 	self:superCall( "_init" )
-
+	--==--
 	--== Create Properties ==--
 	--== Display Groups ==--
 	--== Object References ==--
@@ -810,11 +811,12 @@ end
 
 
 --====================================================================--
--- DMC Objects Exports
+--== DMC Objects Exports
 --====================================================================--
 
 
 LuaObject.CoronaBase = CoronaBase
+
 
 return LuaObject
 
