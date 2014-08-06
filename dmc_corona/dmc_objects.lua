@@ -225,7 +225,7 @@ function CoronaBase:_createView()
 	-- Used to block touches at the level of parent display
 	-- It can be moved to another subclass if the feature is not
 	-- generic for all Corona Base children
-	if dmc_objects_data.auto_touch_block then
+	if dmc_objects_data.auto_touch_block == true then
 		o.touch = function(e) return true end
 		o:addEventListener( 'touch', o )
 	end
@@ -236,7 +236,7 @@ end
 function CoronaBase:_undoCreateView()
 	local o = self.view
 
-	if dmc_objects_data.auto_touch_block and o.touch then
+	if dmc_objects_data.auto_touch_block == true and o.touch then
 		o:removeEventListener( 'touch', o.touch )
 		o.touch = nil
 	end
