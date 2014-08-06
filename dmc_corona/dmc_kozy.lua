@@ -182,9 +182,10 @@ local function translateRGBToHDR( ... )
 
 		-- gradient RGB
 
-
 		t = args[2].color1
-		if dkd.activate_zeroone_alpha then
+		if not t[4] then
+			alpha = 1
+		elseif dkd.activate_zeroone_alpha then
 			alpha = t[4]
 		else
 			alpha = t[4]/255
@@ -192,12 +193,14 @@ local function translateRGBToHDR( ... )
 		args[2].color1 = { t[1]/255, t[2]/255, t[3]/255, alpha }
 
 		t = args[2].color2
-		if dkd.activate_zeroone_alpha then
+		if not t[4] then
+			alpha = 1
+		elseif dkd.activate_zeroone_alpha then
 			alpha = t[4]
 		else
 			alpha = t[4]/255
 		end
-		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, t[4] }
+		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, alpha }
 
 		color = { args[2] }
 
