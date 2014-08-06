@@ -179,7 +179,7 @@ function CoronaBase:new( params )
 	params.__set_intermediate = nil
 
 	-- configure the type of event dispatch
-	o._dispatch_type = options.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or options.dispatch_type
+	o._dispatch_type = params.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or params.dispatch_type
 
 	-- go through setup sequence
 	o:_init( params )
@@ -811,7 +811,7 @@ end
 --====================================================================--
 
 
--- simply add to current exports 
+-- simply add to current exports
 LuaObject.CoronaBase = CoronaBase
 
 
