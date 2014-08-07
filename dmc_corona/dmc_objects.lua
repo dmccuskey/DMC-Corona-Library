@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC Objects
+--== DMC Corona Library : DMC Objects
 --====================================================================--
 
 
@@ -42,12 +42,12 @@ local VERSION = "1.1.0"
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -78,7 +78,7 @@ end
 
 
 --====================================================================--
--- Configuration
+--== Configuration
 
 local dmc_lib_data, dmc_lib_info
 
@@ -97,12 +97,12 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC Objects
+--== DMC Objects
 --====================================================================--
 
 
 --====================================================================--
--- Configuration
+--== Configuration
 
 dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
 
@@ -114,14 +114,14 @@ local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEF
 
 
 --====================================================================--
--- Imports
+--== Imports
 
 local LuaObject = require 'lua_objects'
 local Utils = require 'dmc_utils'
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = LuaObject.inheritsFrom
@@ -129,7 +129,7 @@ local ObjectBase = LuaObject.ObjectBase
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
 
 _G.getDMCObject = function( object )
 	return object.__dmc_ref
@@ -138,7 +138,7 @@ end
 
 
 --====================================================================--
--- CoronaBase Class
+--== Corona Base Class
 --====================================================================--
 
 
@@ -167,25 +167,22 @@ CoronaBase.CORONA_EVENT_DISPATCH = 'corona_event_style_dispatch'
 -- new()
 -- class constructor
 --
-function CoronaBase:new( options )
-
-	options = options or {}
+function CoronaBase:new( params )
+	params = params or {}
+	params.__set_intermediate = params.__set_intermediate == true and true or false
+	--==--
 
 	local o = self:_bless()
 
 	-- set flag if this is an Intermediate class
-	if options.__setIntermediate == true then
-		o.is_intermediate = true
-		options.__setIntermediate = nil
-	else
-		o.is_intermediate = false
-	end
+	o.is_intermediate = params.__set_intermediate
+	params.__set_intermediate = nil
 
 	-- configure the type of event dispatch
-	o.dispatch_type = options.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or options.dispatch_type
+	o._dispatch_type = params.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or params.dispatch_type
 
-	o:_init( options )
-
+	-- go through setup sequence
+	o:_init( params )
 	-- skip these if we're an intermediate class (eg, subclass)
 	if rawget( o, 'is_intermediate' ) == false then
 		o:_createView()
@@ -809,12 +806,12 @@ end
 
 
 
-
 --====================================================================--
 --== DMC Objects Exports
 --====================================================================--
 
 
+-- simply add to current exports
 LuaObject.CoronaBase = CoronaBase
 
 
