@@ -1,6 +1,6 @@
 # Overview #
 
-The DMC Corona Library is collection of classes and utilities for use with the Corona SDK. As it has grown, so has their dependency on each other, so the library is intended to use as a whole.
+The DMC Corona Library is collection of classes and utilities for use with the Corona SDK. As it has grown, so has their dependency on each other, so the library is intended to be used as a whole.
 
 **Documentation & Examples**
 
@@ -28,7 +28,7 @@ For those who are upgrading from an older version, the library folder has been r
 
 
 
-## Installation ##
+## Installation & Use ##
 
 For easy installation, copy the following items at the root-level of your Corona project:
 
@@ -36,7 +36,12 @@ For easy installation, copy the following items at the root-level of your Corona
 * `dmc_corona_boot.lua`
 * `dmc_corona.cfg`
 
-The library gives a lot of flexibility where it is stored in your project. For more information regarding installation, read more online on how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+DMC+Corona+Library).
+With this setup, modules should be imported like so:
+
+`local module = require 'dmc_corona.module'
+
+
+The library has been designed to give a lot of flexibility where it is stored in your project. For more information regarding installation, visit how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+DMC+Corona+Library).
 
 
 
