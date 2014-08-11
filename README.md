@@ -38,7 +38,9 @@ For easy installation, copy the following items at the root-level of your Corona
 
 With this setup, modules should be imported like so:
 
-`local module = require 'dmc_corona.module'`
+```lua
+local module = require 'dmc_corona.<module_name>'
+```
 
 
 The library has been designed to give a lot of flexibility where it is stored in your project. For more information regarding installation, visit how to [install the library](http://docs.davidmccuskey.com/display/docs/Install+the+DMC+Corona+Library).
@@ -53,7 +55,7 @@ The library has been designed to give a lot of flexibility where it is stored in
 
 * [dmc_buttons](#dmc_buttons)
 
-  Full-featured button set. [Read more...](#dmc_buttons)
+  *This module has been deprecated.* Please use the buttons from [dmc-corona-widgets](https://github.com/dmccuskey/dmc-corona-widgets)  [Read more...](#dmc_buttons)
 
 * [dmc_dragdrop](#dmc_dragdrop)
 
@@ -166,27 +168,7 @@ There is a detailed example in the folder `examples/dmc_autostore/` which shows 
 <a name="dmc_buttons"></a>
 ### Module: dmc_buttons ###
 
-This file contains classes to create different types of graphical buttons and button groups. It can create:
-
-* a Push button with optional text label
-* a Radio/Toggle button (on/off state) with optional text label
-* Toggle Group which allows either none or one selection of a group of buttons
-* Radio Group which allows single selection of a group of buttons
-
-
-_The code in this file is also great if you're looking for an example of multi-level class inheritance in Lua. If you want an easier example of multi-level inheritance, see `examples/dmc_objects/DMC-Multishapes/`._
-
-(this version is deprecated and will be re-written from ground-up for G2. watch dmc-corona-widgets repo)
-
-
-**Documentation**
-
-http://docs.davidmccuskey.com/display/docs/dmc_buttons.lua
-
-
-**Examples**
-
-There are examples in the folder `examples/dmc_buttons/` which show how to use the `dmc_buttons` library.
+This module has been re-written and added to the new widget library. Please use the buttons there [dmc-corona-widgets](https://github.com/dmccuskey/dmc-corona-widgets)  [Read more...](#dmc_buttons)
 
 
 
