@@ -1,10 +1,16 @@
 # Overview #
 
-The DMC Corona Library is collection of classes and utilities for use with the Corona SDK. As it has grown, so has their dependency on each other, so the library is intended to be used as a whole.
+The DMC Corona Library is collection of advanced modules and utilities for use with the Corona SDK. It has grown from the needs of several medium- to large-sized projects focused primarily on business-type apps, though it can be used for any size or type of application.
+
+The module architecture is heavily object-oriented, but each module can be used with any style of coding. The OO-nature ensures that the modules can be easily re-used or modified as necessary.
+
+As the library has grown, so has their dependency on each other, so it is intended to be used as a whole. That said, the architecture allows it to be split into different folders to be organized as you wish.
+
 
 **Documentation & Examples**
 
 There are examples and documentation available for the modules. Look in the `examples` folder for available examples which can be run directly in the Corona SDK. Documentation is online at: [docs.davidmccuskey.com](http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library)
+
 
 **Questions or Comments**
 
@@ -14,9 +20,10 @@ If you have questions or comments you can either (preferred order):
 * post an issue here on github
 * post to the Corona forums: http://forums.coronalabs.com
 
+
 **Issues**
 
-If you have any issues, please post them here on github: [dmc-corona-library issues](https://github.com/dmccuskey/DMC-Corona-Library/issues)
+If you discover any bugs, please post them here on github: [dmc-corona-library issues](https://github.com/dmccuskey/DMC-Corona-Library/issues)
 
 
 
@@ -24,7 +31,7 @@ If you have any issues, please post them here on github: [dmc-corona-library iss
 
 A huge re-org is now complete and I have touched every module in the library and then some. Be careful. =)
 
-For those who are upgrading from an older version, the library folder has been renamed from `dmc_library` to `dmc_corona`, since I now have another library &ndash; `dmc_lua`.
+For those who are upgrading from an older version, the library folder has been renamed from `dmc_library` to `dmc_corona`, since there is now another library &ndash; `dmc_lua`.
 
 
 
