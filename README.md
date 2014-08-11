@@ -1,17 +1,18 @@
 # Overview #
 
-The DMC Corona Library is collection of classes and utilities for use with Lua and Corona SDK. As it has grown, so has their dependency on each other, so it's best to use the library as a single unit.
+The DMC Corona Library is collection of classes and utilities for use with the Corona SDK. As it has grown, so has their dependency on each other, so the library is intended to use as a whole.
 
 **Documentation & Examples**
 
-There are examples and documentation available. Look in the `examples` folder for a listing of modules. Each example can be run directly in the Corona SDK. Documentation is online at: [docs.davidmccuskey.com](http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library)
+There are examples and documentation available for the modules. Look in the `examples` folder for available examples which can be run directly in the Corona SDK. Documentation is online at: [docs.davidmccuskey.com](http://docs.davidmccuskey.com/display/docs/DMC+Corona+Library)
 
 **Questions or Comments**
 
-If you have questions or comments you can either:
-* post to the Corona forums: http://forums.coronalabs.com
-* send a PM @ coronalabs.com: @dmccuskey
+If you have questions or comments you can either (preferred order):
 * send me an email: corona-lib at davidmccuskey com
+* send a PM @ coronalabs.com: @dmccuskey
+* post an issue here on github
+* post to the Corona forums: http://forums.coronalabs.com
 
 **Issues**
 
@@ -21,9 +22,9 @@ If you have any issues, please post them here on github: [dmc-corona-library iss
 
 ## Note ##
 
-The huge re-org is complete. I have touched every module in the library and then some. Be careful. =)
+A huge re-org is now complete and I have touched every module in the library and then some. Be careful. =)
 
-The library folder has been renamed from `dmc_library` to `dmc_corona`, since I now have another library &ndash; `dmc_lua`.
+For those who are upgrading from an older version, the library folder has been renamed from `dmc_library` to `dmc_corona`, since I now have another library &ndash; `dmc_lua`.
 
 
 
@@ -131,11 +132,15 @@ This module contains a data-storage manager which makes saving application data 
 
 * **allows saving of structured data (ie, JSON), not just key/value pairs**
 
-	Saving application or game data can get ugly with key/value storage. `dmc_autostore` saves data with a flexible JSON structure which can be modified on-the-fly.
+  Saving application or game data can get ugly with key/value storage. `dmc_autostore` saves data with a flexible JSON structure which can be modified on-the-fly.
 
 * **simplicity in data storage -- there is NO API !!**
 
-	`dmc_autostore` saves modifications to data *automatically*. There is no API to learn in order to load or save data. Any change to your data structure will trigger the save mechanism.
+  `dmc_autostore` saves modifications to data *automatically*. There is no API to learn in order to load or save data. Any change to your data structure will trigger the save mechanism.
+
+* **a best-friend for object-oriented code**
+
+  Every object can be given a reference to a small part of the "magic" data-structure which can be that object's data area. The object can only write to that part of the structure, yet any changes to that small part trigger the save mechanism for the entire thing.
 
 * **AutoStore is configurable**
 
