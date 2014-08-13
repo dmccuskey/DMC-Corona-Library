@@ -107,7 +107,6 @@ dmc_lib_info = dmc_lib_data.dmc_library
 dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
 
 local DMC_OBJECTS_DEFAULTS = {
-	auto_touch_block=false,
 }
 
 local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEFAULTS )
@@ -225,32 +224,15 @@ end
 --
 function CoronaBase:_createView()
 	self:superCall( "_createView" )
-	--==--
-
 	-- Subclasses should call self:superCall( "_createView" )
-
-	local o = self.view
-
-	-- Used to block touches at the level of parent display
-	-- It can be moved to another subclass if the feature is not
-	-- generic for all Corona Base children
-	if dmc_objects_data.auto_touch_block == true then
-		o.touch = function(e) return true end
-		o:addEventListener( 'touch', o )
-	end
+	--==--
 end
 -- _undoCreateView()
 -- remove any items added during _createView()
 --
 function CoronaBase:_undoCreateView()
-	local o = self.view
-
-	-- remove automatic touch-blocking handler
-	if dmc_objects_data.auto_touch_block == true and o.touch then
-		o:removeEventListener( 'touch', o.touch )
-		o.touch = nil
-	end
 	--==--
+	-- Subclasses should call self:superCall( "_undoCreateView" )
 	self:superCall( "_undoCreateView" )
 end
 
@@ -314,6 +296,22 @@ end
 
 --====================================================================--
 --== Public Methods / Corona API
+
+
+function CoronaBase:setTouchBlock( o )
+	assert( o, 'setTouchBlock: expected object' )
+	o.touch = function(e) return true end
+	o:addEventListener( 'touch', o )
+end
+function CoronaBase:unsetTouchBlock( o )
+	assert( o, 'unsetTouchBlock: expected object' )
+	if o and o.touch then
+		o:removeEventListener( 'touch', o )
+		o.touch = nil
+	end
+end
+
+
 
 function CoronaBase.__setters:dispatch_type( value )
 	self._dispatch_type = value
