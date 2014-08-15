@@ -546,6 +546,32 @@ function Utils.shuffle( t )
 end
 
 
+-- tableLength()
+-- Count the number of items in a table
+-- http://stackoverflow.com/questions/2705793/how-to-get-number-of-entries-in-a-lua-table
+--
+-- @param t the table in which to count items
+-- @return number of items in table
+--
+function Utils.tableLength( t )
+	local count = 0
+	for _, _ in pairs(t) do count = count + 1 end
+	return count
+end
+
+
+-- take objects from hashed table, make array table
+--
+function Utils.tableList( t )
+	assert( type(t)=='table', "Utils.tableList expected table" )
+	local list = {}
+	for _, o in pairs( t ) do
+		tinsert( list, o )
+	end
+	return list
+end
+
+
 -- calculates size of table, mostly used as a dictionary
 --
 function Utils.tableSize( t1 )
@@ -578,20 +604,6 @@ function Utils.tableSlice( values, i1, i2 )
 		k = k + 1
 	end
 	return res
-end
-
-
--- tableLength()
--- Count the number of items in a table
--- http://stackoverflow.com/questions/2705793/how-to-get-number-of-entries-in-a-lua-table
---
--- @param t the table in which to count items
--- @return number of items in table
---
-function Utils.tableLength( t )
-	local count = 0
-	for _, _ in pairs(t) do count = count + 1 end
-	return count
 end
 
 

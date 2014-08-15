@@ -1,12 +1,14 @@
 --====================================================================--
--- dmc_lua/lua_bytearray/exceptions.lua
+-- lua_megaphone.lua
 --
--- Documentation: http://docs.davidmccuskey.com/display/docs/lua_bytearray.lua
+--
+-- by David McCuskey
+-- Documentation:
 --====================================================================--
 
 --[[
 
-Copyright (C) 2014 David McCuskey. All Rights Reserved.
+Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in the
@@ -28,52 +30,102 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
-
---====================================================================--
---== DMC Lua Library : Byte Array Errors
---====================================================================--
-
-
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
+
 
 
 --====================================================================--
---== Imports
+-- Megaphone Global Communicator
+--====================================================================--
+
+--[[
+
+== Overview ==
+
+The Megaphone is to be used for inter-app communication
+
+This is a singleton by nature and is imported by the app controller
+Because it is global, any other component, view, etc can gain access to it
+
+As any global object it should be used for only _well-defined events_!
+
+
+== Usage ==
+
+
+=== Access ===
+
+this is a global variable accessible anywhere in the application.
+so far messages are in one direction. there is a distinct speaker and receiver.
+
+
+=== Event Listener ===
+
+listening for global messages (ie, addEventListener):
+( o/f is object or function listener )
+
+gMegaphone:listen( o/f )
+
+
+sending global messages:
+
+gMegaphone:say( gMegaphone.DATA_RENDER_REQUEST, { ...params...} )
+
+
+ignoring global messages (ie, removeEventListener):
+( o/f is object or function listener, same as listen )
+
+gMegaphone:ignore( o/f )
+
+--]]
+
+
+
+--====================================================================--
+-- Imports
 
 local Objects = require 'lua_objects'
-local Error = require 'lua_error'
 
 
 --====================================================================--
---== Setup, Constants
+-- Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
+local ObjectBase = Objects.ObjectBase
 
 
 
 --====================================================================--
---== Buffer Error Class
+-- Megaphone Object
 --====================================================================--
 
+local Megaphone = inheritsFrom( ObjectBase )
 
---[[
-	This exception is triggered when there isn't enough data available
-	for a read, eg, 2 bytes available and requesting 10 bytes.
---]]
+--== Event Constants
 
-local BufferError = inheritsFrom( Error )
-BufferError.NAME = "Buffer Error"
+Megaphone.EVENT = "megaphone_event"
 
 
+--======================================================--
+-- Support Methods
+
+function Megaphone:say( message, params )
+	--print("Megaphone:say ", message )
+	self:dispatchEvent( message, params )
+end
+function Megaphone:listen( listener )
+	-- print("Megaphone:listen " )
+	self:addEventListener( Megaphone.EVENT, listener )
+end
+function Megaphone:ignore( listener )
+	-- print("Megaphone:ignore " )
+	self:removeEventListener( Megaphone.EVENT, listener )
+end
 
 
---====================================================================--
---== Error Facade
---====================================================================--
 
-return {
-	BufferError=BufferError
-}
+
+return Megaphone

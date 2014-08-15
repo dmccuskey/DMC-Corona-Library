@@ -59,8 +59,6 @@ local Utils = require 'lua_utils'
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
-local tconcat = table.concat
-
 local LOCAL_DEBUG = false
 
 
@@ -87,7 +85,6 @@ TCPSocket.CLOSED = 'socket_closed'
 TCPSocket.ERR_CONNECTED = 'already connected'
 TCPSocket.ERR_CONNECTION = 'Operation already in progress'
 TCPSocket.ERR_TIMEOUT = 'timeout'
-TCPSocket.SSL_READTIMEOUT = 'wantread'
 TCPSocket.ERR_CLOSED = 'already closed'
 
 --== Event Constants
@@ -119,10 +116,6 @@ function TCPSocket:_init( params )
 
 	self._status = nil
 	self._buffer = "" -- string
-
-	self._status = nil
-	self.secure = false
-
 
 	--== Object References ==--
 
@@ -234,7 +227,7 @@ end
 
 function TCPSocket:unreceive( data )
 	-- print( 'TCPSocket:unreceive', #data )
-	self._buffer = tconcat( { data, self._buffer } )
+	self._buffer = table.concat( { data, self._buffer } )
 end
 
 function TCPSocket:receive( ... )
@@ -361,12 +354,12 @@ function TCPSocket:_readStatus( status )
 
 	local buff_tmp, buff_len
 
-	local bytes, status, partial = self._socket:receive( '*a' )
+	local bytes, emsg, partial = self._socket:receive( '*a' )
 	if LOCAL_DEBUG then
-		print( 'TCP:dataReady', bytes, status, partial )
+		print( 'TCP:dataReady', bytes, emsg, partial )
 	end
 
-	if bytes == nil and status == 'closed' then
+	if bytes == nil and emsg == 'closed' then
 		self:close()
 		return
 	end
@@ -374,16 +367,13 @@ function TCPSocket:_readStatus( status )
 	if bytes ~= nil then
 		buff_tmp = { self._buffer, bytes }
 
-	elseif not self.secure and status == self.ERR_TIMEOUT and partial then
-		buff_tmp = { self._buffer, partial }
-
-	elseif self.secure and status==self.SSL_READTIMEOUT and partial then
+	elseif emsg == self.ERR_TIMEOUT and partial then
 		buff_tmp = { self._buffer, partial }
 
 	end
 
 	if buff_tmp then
-		self._buffer = tconcat( buff_tmp )
+		self._buffer = table.concat( buff_tmp )
 	end
 
 	if LOCAL_DEBUG then

@@ -50,20 +50,12 @@ local Objects = require 'lua_objects'
 local socket = require 'socket'
 local tcp_socket = require 'dmc_sockets.tcp'
 
-local openssl = require 'plugin.openssl'
-local ssl = require 'plugin_luasec_ssl'
--- require("ssl")
-
 
 --====================================================================--
 -- Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-
-local tconcat = table.concat
-local tinsert = table.insert
-local tremove = table.remove
 
 local LOCAL_DEBUG = false
 
@@ -89,9 +81,9 @@ function ATCPSocket:_init( params )
 
 	--== Create Properties ==--
 
+	self.__timer_is_active = false
 	self._timeout = 6000
-
-	self.__coroutine_queue_active = false
+	self._active_coroutine = nil
 	self._coroutine_queue = {}
 
 	self._read_in_process = false
@@ -156,41 +148,9 @@ function ATCPSocket:connect( host, port, params )
 				evt.status = self._status
 				evt.emsg = emsg
 
-				if self.secure == true then
-					local sslparams = {
-					  mode = "client",
-					  -- protocol = "tlsv1",
-					  protocol = "sslv3",
-					  verify = "none",
-					  options = "all",
-					}
-
-					local sock, emsg = ssl.wrap( self._socket, sslparams )
-					if sock then
-						self._socket = sock
-
-					else
-						evt.isError = true
-						evt.emsg = emsg
-						if self._onConnect then self._onConnect( evt ) end
-						return
-					end
-
-					local result, emsg = self._socket:dohandshake()
-					if not result then
-						evt.isError = true
-						evt.emsg = emsg
-						if self._onConnect then self._onConnect( evt ) end
-						return
-					end
-
-					self._socket:settimeout( 0 ) -- need to re-set for wrapped socket
-
-				end
-
 				self._master:_connect( self )
 
-				self:_removeCoroutineFromQueue()
+				self._timer_is_active = false -- do this before calling connect
 
 				if self._onConnect then self._onConnect( evt ) end
 
@@ -209,14 +169,18 @@ function ATCPSocket:connect( host, port, params )
 			evt.status = self._status
 			evt.emsg = self.ERR_TIMEOUT
 
-			self:_removeCoroutineFromQueue()
+			self._timer_is_active = false -- do this before calling connect
 
 			if self._onConnect then self._onConnect( evt ) end
 		end
 
 	end
 
-	self:_addCoroutineToQueue( f )
+	local co = coroutine.create( f )
+	table.insert( self._coroutine_queue, co )
+
+	self._timer_is_active = true
+
 end
 
 
@@ -300,7 +264,8 @@ function ATCPSocket:receive( option, callback )
 			evt.data, evt.emsg = data, nil
 			callback( evt )
 		else
-			self:_addCoroutineToQueue( f )
+			local co = coroutine.create( f )
+			table.insert( self._coroutine_queue, co )
 		end
 
 	end
@@ -328,13 +293,13 @@ function ATCPSocket:receiveUntilNewline( callback )
 
 			-- data handling
 			if data then
-				tinsert( data_list, data )
+				table.insert( data_list, data )
 
 				if data == '' then
 					if not_coroutine then
 						return true
 					else
-						self:_removeCoroutineFromQueue()
+						self._timer_is_active = false
 
 						evt.data, evt.emsg = data_list, nil
 						callback( evt )
@@ -356,11 +321,11 @@ function ATCPSocket:receiveUntilNewline( callback )
 
 		until data == '' or time_diff > timeout
 
-		self:_removeCoroutineFromQueue()
+		self._timer_is_active = false
 
 		if data_list[#data_list] ~= '' then
 			if #data_list > 0 then
-				local str = tconcat( data_list, '\r\n' )
+				local str = table.concat( data_list, '\r\n' )
 				self:unreceive( str )
 			end
 			evt.data, evt.emsg = nil, self.ERR_TIMEOUT
@@ -379,11 +344,15 @@ function ATCPSocket:receiveUntilNewline( callback )
 
 	else
 		if #data_list > 0 then
-			local str = tconcat( data_list, '\r\n' )
+			local str = table.concat( data_list, '\r\n' )
 			self:unreceive( str )
 		end
 
-		self:_addCoroutineToQueue( doDataCall )
+		local co = coroutine.create( doDataCall )
+		table.insert( self._coroutine_queue, co )
+
+		self._timer_is_active = true
+
 	end
 
 end
@@ -391,6 +360,22 @@ end
 
 --====================================================================--
 --== Private Methods
+
+function ATCPSocket.__setters:_timer_is_active( value )
+	-- print( 'ATCPSocket.__setters:_timer_is_active', value )
+
+	if self.__timer_is_active == value then return end
+
+	if value then
+		Runtime:addEventListener( 'enterFrame', self )
+	else
+		Runtime:removeEventListener( 'enterFrame', self )
+	end
+
+	self.__timer_is_active = value
+
+end
+
 
 function ATCPSocket:_closeSocketDispatch( evt )
 	-- print( 'ATCPSocket:_closeSocketDispatch', evt )
@@ -403,7 +388,7 @@ function ATCPSocket:_doAfterReadAction()
 	-- print( 'ATCPSocket:_doAfterReadAction' )
 	local buff_len = #self._buffer
 	if buff_len > 0 then
-		self:_processCoroutineQueue()
+		self:_checkCoroutineQueue()
 	end
 	buff_len = #self._buffer
 	if buff_len > 0 and not self._read_in_process then
@@ -418,58 +403,23 @@ function ATCPSocket:_doAfterReadAction()
 end
 
 
+function ATCPSocket:_checkCoroutineQueue()
+	-- print( 'ATCPSocket:_checkCoroutineQueue' )
 
-function ATCPSocket:_getActiveCoroutine()
-	-- print( 'ATCPSocket:_getActiveCoroutine' )
-	return self._coroutine_queue[ 1 ]
-end
+	local co = self._active_coroutine
 
-function ATCPSocket:_addCoroutineToQueue( func )
-	-- print( 'ATCPSocket:_addCoroutineToQueue' )
-	assert( type(func)=='function', "expected function" )
-	--==--
-	local co = coroutine.create( func )
-	tinsert( self._coroutine_queue, co )
+	if not co and #self._coroutine_queue == 0 then return end
 
-	-- if we still have info left, then set listener
-	if not self._coroutine_queue_active and #self._coroutine_queue > 0 then
-		Runtime:addEventListener( 'enterFrame', self )
-		self._coroutine_queue_active = true
-	end
-end
-
-function ATCPSocket:_removeCoroutineFromQueue()
-	-- print( 'ATCPSocket:_removeCoroutineFromQueue' )
-	-- assert( type(func)=='function', "expected function" )
-	--==--
-
-	if #self._coroutine_queue > 0 then
-		tremove( self._coroutine_queue, 1 )
+	if not co then
+		co = table.remove( self._coroutine_queue )
+		self._active_coroutine = co
 	end
 
-	-- if no more routines, then unset listener
-	if #self._coroutine_queue == 0 and self._coroutine_queue_active then
-		Runtime:removeEventListener( 'enterFrame', self )
-		self._coroutine_queue_active = false
-	end
-end
+	local status = coroutine.resume( co )
+	if coroutine.status( co ) ~= 'dead' then return end
 
-function ATCPSocket:_processCoroutineQueue()
-	-- print( 'ATCPSocket:_processCoroutineQueue' )
+	self._active_coroutine = nil
 
-	local co = self:_getActiveCoroutine()
-	if co then
-		local status, msg = coroutine.resume( co )
-		if not status then 
-			self:_removeCoroutineFromQueue()
-			print( "ERROR in async_tcp coroutine" )
-			error( msg )
-		end 
-		if coroutine.status( co ) ~= 'dead' then return end
-	end
-
-	-- coroutine is finished, remove it
-	self:_removeCoroutineFromQueue()
 end
 
 
@@ -478,13 +428,13 @@ end
 
 function ATCPSocket:_socketsEvent_handler( event )
 	-- print( 'ATCPSocket:_socketsEvent_handler', event )
-	self:_processCoroutineQueue()
+	self:_checkCoroutineQueue()
 end
 
 
 function ATCPSocket:enterFrame( event )
 	-- print( 'ATCPSocket:enterFrame', event )
-	self:_processCoroutineQueue()
+	self:_checkCoroutineQueue()
 end
 
 
