@@ -11,7 +11,8 @@ Creation 2013-11-14
 Last Modification 2014-01-01
 ]]
 
-local Error = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
+local BufferError = ByteArrayError.BufferErrorFactory
 
 function iskindof(obj, classname)
     local t = type(obj)
@@ -527,7 +528,7 @@ end
 function ByteArray:_checkAvailable(__len)
 	local avail = #self._buf - (self._pos-1)
 	if avail < __len then
-		error( Error.BufferError("Read surpasses buffer size") )
+		error( BufferError( "Read surpasses buffer size" ) )
 	end
 end
 

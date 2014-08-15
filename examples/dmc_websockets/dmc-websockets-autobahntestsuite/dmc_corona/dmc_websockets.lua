@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC Websockets
+--== DMC Corona Library : DMC Websockets
 --====================================================================--
 
 --[[
@@ -52,7 +52,7 @@ local VERSION = "1.2.0"
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
@@ -107,7 +107,7 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC WebSockets
+--== DMC WebSockets
 --====================================================================--
 
 
@@ -130,7 +130,7 @@ local mime = require 'mime'
 local urllib = require 'socket.url'
 
 local ByteArray = require 'dmc_websockets.bytearray'
-local ByteArrayErrorFactory = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
 local Objects = require 'lua_objects'
 local Patch = require( 'lua_patch' )()
 local Sockets = require 'dmc_sockets'
@@ -156,7 +156,7 @@ local tconcat = table.concat
 local tremove = table.remove
 
 local ProtocolError = ws_error.ProtocolError
-local BufferError = ByteArrayErrorFactory.BufferError
+local BufferError = ByteArrayError.BufferError
 
 
 --== dmc_websocket Close Constants
@@ -179,7 +179,7 @@ local LOCAL_DEBUG = false
 
 
 --====================================================================--
--- WebSocket Class
+--== WebSocket Class
 --====================================================================--
 
 
@@ -231,8 +231,8 @@ WebSocket.ONERROR = 'onerror'
 WebSocket.ONCLOSE = 'onclose'
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
 function WebSocket:_init( params )
 	-- print( "WebSocket:_init" )
@@ -300,12 +300,12 @@ function WebSocket:_initComplete()
 	end
 end
 
---== END: Setup DMC Objects
---====================================================================--
+-- END: Setup DMC Objects
+--======================================================--
 
 
 --====================================================================--
---== Public Methods
+-- Public Methods
 
 function WebSocket:connect()
 	-- print( 'WebSocket:connect' )
@@ -347,7 +347,7 @@ end
 
 
 --====================================================================--
---== Private Methods
+-- Private Methods
 
 
 --== the following "_on"-methods dispatch event to app client level
@@ -781,8 +781,8 @@ function WebSocket:_processMessageQueue()
 end
 
 
---====================================================================--
---== START: STATE MACHINE
+--======================================================--
+-- START: STATE MACHINE
 
 function WebSocket:state_create( next_state, params )
 	-- print( "WebSocket:state_create >>", next_state )
@@ -1071,12 +1071,12 @@ function WebSocket:state_closed( next_state, params )
 
 end
 
---== END: STATE MACHINE
---====================================================================--
+-- END: STATE MACHINE
+--======================================================--
 
 
 --====================================================================--
---== Event Handlers
+-- Event Handlers
 
 function WebSocket:_socketEvent_handler( event )
 	-- print( "WebSocket:_socketEvent_handler", event.type, event.status )

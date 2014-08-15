@@ -40,14 +40,14 @@ local VERSION = "0.1.0"
 
 
 --====================================================================--
---== Imports
+-- Imports
 
 local Objects = require 'lua_objects'
 local Error = require 'lua_error'
 
 
 --====================================================================--
---== Setup, Constants
+-- Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -74,6 +74,12 @@ BufferError.NAME = "Buffer Error"
 --== Error Facade
 --====================================================================--
 
+local function BufferErrorFactory( message )
+	print( "BufferErrorFactory", message )
+	return BufferError:new{ message=message }
+end
+
 return {
-	BufferError=BufferError
+	BufferError=BufferError,
+	BufferErrorFactory=BufferErrorFactory
 }

@@ -56,7 +56,7 @@ local inheritsFrom = Objects.inheritsFrom
 
 
 --====================================================================--
--- Protocol Error Class
+--== Protocol Error Class
 --====================================================================--
 
 
@@ -83,7 +83,7 @@ end
 
 
 --====================================================================--
--- Exception Facade
+--== Exception Facade
 --====================================================================--
 
 local function ProtocolErrorFactory( message )

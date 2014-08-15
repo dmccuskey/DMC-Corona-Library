@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- Byte Array
+--== Byte Array
 --====================================================================--
 
 
@@ -51,7 +51,8 @@ local VERSION = "1.0.0"
 -- Imports
 
 local Objects = require 'lua_objects'
-local Error = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
+local BufferError = ByteArrayError.BufferErrorFactory
 
 
 --====================================================================--
@@ -64,7 +65,7 @@ local ObjectBase = Objects.ObjectBase
 
 
 --====================================================================--
--- Byte Array Class
+--== Byte Array Class
 --====================================================================--
 
 
@@ -72,8 +73,8 @@ local ByteArray = inheritsFrom( ObjectBase )
 ByteArray.NAME = "Byte Array"
 
 
---====================================================================--
---== Start: Setup Lua Objects
+--======================================================--
+-- Start: Setup Lua Objects
 
 function ByteArray:_init( params )
 	-- print( "Message:_init" )
@@ -86,12 +87,13 @@ function ByteArray:_init( params )
 
 end
 
---== END: Setup Lua Objects
---====================================================================--
+-- END: Setup Lua Objects
+--======================================================--
 
 
+
 --====================================================================--
---== Static Methods
+-- Static Methods
 
 function ByteArray.getBytes( buffer, idx_start, idx_end )
 	-- print( "ByteArray:getBytes", buffer, idx_start, idx_end )
@@ -136,7 +138,7 @@ end
 
 
 --====================================================================--
---== Public Methods
+-- Public Methods
 
 function ByteArray:getLen()
 	return #self._buf
@@ -209,12 +211,12 @@ end
 
 
 --====================================================================--
---== Private Methods
+-- Private Methods
 
 function ByteArray:_checkAvailable( len )
 	-- print( "ByteArray:_checkAvailable", len )
 	if len > self:getAvailable() then
-		error( Error.BufferError("Read surpasses buffer size") )
+		error( BufferError( "Read surpasses buffer size" ) )
 	end
 end
 

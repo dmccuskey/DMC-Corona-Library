@@ -48,14 +48,15 @@ local VERSION = "0.1.0"
 
 
 --====================================================================--
---== Imports
+-- Imports
 
 local Objects = require 'lua_objects'
-local Error = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
+local BufferError = ByteArrayError.BufferErrorFactory
 
 
 --====================================================================--
---== Setup, Constants
+-- Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -214,7 +215,7 @@ end
 function ByteArray:_checkAvailable( len )
 	-- print( "ByteArray:_checkAvailable", len )
 	if len > self:getAvailable() then
-		error( Error.BufferError("Read surpasses buffer size") )
+		error( BufferError( "Read surpasses buffer size" ) )
 	end
 end
 
