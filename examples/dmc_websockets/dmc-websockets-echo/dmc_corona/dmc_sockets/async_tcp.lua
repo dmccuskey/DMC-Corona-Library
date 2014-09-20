@@ -40,7 +40,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.2"
+local VERSION = "0.2.0"
 
 
 --====================================================================--

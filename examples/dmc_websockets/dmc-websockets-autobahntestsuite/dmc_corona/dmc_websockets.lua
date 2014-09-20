@@ -47,7 +47,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.0"
+local VERSION = "1.3.0"
 
 
 
@@ -353,7 +353,6 @@ end
 
 --====================================================================--
 -- Private Methods
-
 
 --== the following "_on"-methods dispatch event to app client level
 
