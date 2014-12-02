@@ -84,15 +84,31 @@ The library has been designed to give a lot of flexibility where it is stored in
 
   Make Corona SDK G1 code run in G2. [Read more...](#dmc_kompatible)
 
-* [dmc_kozy](#dmc_kozy)
+* [dmc_kozy](#dmc_kozy) - Comfortable Coding in Corona SDK
 
   Brings back old Corona G1 functionality and gives new capabilities for G2. [Read more...](#dmc_kozy)
 
-* [dmc_mockserver](#dmc_mockserver)
+* [dmc_language](#dmc_language) - i18n & i10n like a pro !
+
+  Coming soon ... !
+
+* [dmc_metadb](#dmc_metadb) - A SQL DB for those who hate SQL
+
+  Coming soon ... !
+
+* [dmc_megaphone](#dmc_megaphone) - Global inter-app communication
+
+  Coming soon ... !
+
+* [dmc_mockserver](#dmc_mockserver) - "Save-your-bacon" server integration
 
   Emulate a data server (eg REST) in your app - great for testing, API integration, etc. [Read more...](#dmc_mockserver)
 
-* [dmc_nicenet](#dmc_nicenet)
+* [dmc_navigator](#dmc_navigator) - screen transitions for the modern-day
+
+  Coming soon ... !
+
+* [dmc_nicenet](#dmc_nicenet) - Your server's best friend
 
   Makes client apps behave when sending data requests to the server. [Read more...](#dmc_nicenet)
 
@@ -100,7 +116,7 @@ The library has been designed to give a lot of flexibility where it is stored in
 
   Advanced OOP for Lua or the Corona SDK. [Read more...](#dmc_objects)
 
-* [dmc_patch](#dmc_patch)
+* [dmc_patch](#dmc_patch) - Supercharge Lua with more awesome !
 
   Mixin beneficial functionality into the Lua language. [Read more...](#dmc_patch)
 
@@ -108,11 +124,11 @@ The library has been designed to give a lot of flexibility where it is stored in
 
   Timed performance testing for your app. [Read more...](#dmc_performance)
 
-* [dmc_sockets](#dmc_sockets)
+* [dmc_sockets](#dmc_sockets) -  Enable your asynchronous event-driven networking fun !
 
   Buffered, non-blocking, callback- or event-based socket library for clients. [Read more...](#dmc_sockets)
 
-* [dmc_states](#dmc_states)
+* [dmc_states](#dmc_states) - Shiny State Machines for your apps
 
   Implement the State Machine design pattern with your objects. [Read more...](#dmc_states)
 
