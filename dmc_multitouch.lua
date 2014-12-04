@@ -1239,7 +1239,7 @@ function multitouchTouchHandler( event )
 		end
 
 
-	elseif ( event.phase == 'ended' or event.phase == 'canceled' ) then
+	elseif ( event.phase == 'ended' or event.phase == 'cancelled' ) then
 
 		if event.isFocused then
 
