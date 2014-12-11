@@ -1,9 +1,9 @@
 --====================================================================--
--- dmc_wamp.roles
+-- dmc_websockets/exception.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 --====================================================================--
 
 --[[
@@ -29,10 +29,10 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
---[[
-Wamp support adapted from:
-* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
---]]
+
+--====================================================================--
+-- DMC Corona Library : Exception
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -43,42 +43,55 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
+local Error = require 'lua_error'
 local Objects = require 'lua_objects'
-local Utils = require 'lua_utils'
+
+
+--====================================================================--
+-- Setup, Constants
+
+-- setup some aliases to make code cleaner
+local inheritsFrom = Objects.inheritsFrom
 
 
 
 --====================================================================--
--- Subscriber Role Features
+-- Protocol Error Class
 --====================================================================--
 
 
-local roleSubscriberFeatures = {
-	ROLE = 'subscriber',
+local ProtocolError = inheritsFrom( Error )
+ProtocolError.NAME = "Protocol Error"
 
-	features = {}
-}
+
+function ProtocolError:_init( params )
+	-- print( "ProtocolError:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
+
+	if not self.is_intermediate then
+		assert( params.code, "missing protocol code")
+	end
+
+	self.code = params.code
+	self.reason = params.reason or ""
+
+end
+
 
 
 
 --====================================================================--
--- Subscriber Caller Features
+-- Exception Facade
 --====================================================================--
 
-local roleCallerFeatures = {
-	ROLE = 'caller',
-
-	features = {}
-}
-
-
-
-
---====================================================================--
--- Roles Facade
---====================================================================--
+local function ProtocolErrorFactory( message )
+	-- print( "ProtocolErrorFactory", message )
+	return ProtocolError:new{ message=message }
+end
 
 return {
-	subscriberFeatures=roleSubscriberFeatures,
-	callerFeatures=roleCallerFeatures
+	ProtocolError=ProtocolError,
+	ProtocolErrorFactory=ProtocolErrorFactory,
 }

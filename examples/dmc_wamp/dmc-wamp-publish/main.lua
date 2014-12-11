@@ -14,55 +14,75 @@
 print( '\n\n##############################################\n\n' )
 
 
+
 --====================================================================--
--- Imports
+--== Imports
 
 local Wamp = require 'dmc_corona.dmc_wamp'
 
+-- read in app deployment configuration, global
+_G.gINFO = require 'app_config'
+
+
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 --== Fill in the IP Address and Port for the WAMP Server
 --
-local host, port, realm = 'ws://192.168.0.102', 8080, 'realm1'
+local HOST = gINFO.server.host
+local PORT = gINFO.server.port
+local REALM = gINFO.server.realm
 
 local wamp -- ref to WAMP object
+local doWampPublish -- forward delare function
+
+-- config for message count
+local num_msgs = 5
+local count = 0
+
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
 
-local function doWampPublish()
-	print( ">> doWampPublish")
 
-	local topic, onAcknowledge_handler
+doWampPublish = function()
+	print( ">> Wamp Publish event")
 
-	topic = 'com.myapp.topic1'
-	publish_handler = function( publication )
+	local topic = 'com.myapp.topic1'
+
+	local publish_handler = function( publication )
 		print( ">> WAMP publish acknowledgment" )
 
-		print( "publish id", publication.id )
+		print( string.format( "publish id: %d", publication.id ) )
+
+		if count == num_msgs then
+			-- wamp:close()
+		else
+			timer.performWithDelay( 500, function() doWampPublish() end )
+		end
 	end
 
-	for i=1,10 do
-		local params = {
-			options={ acknowledge=true },
-			args={ "hello-" .. tostring(i) },
-			kwargs={},
-			onSuccess=publish_handler,
-			onError=publish_handler
-		}
-		wamp:publish( topic, params )
-	end
+	count = count + 1
+	local params = {
+		options={ acknowledge=true },
+		args={ "hello-" .. tostring(i) },
+		kwargs={},
+		onSuccess=publish_handler,
+		onError=publish_handler
+	}
+	wamp:publish( topic, params )
 
 end
 
 
 
 --====================================================================--
--- Main
+--== Main
 --====================================================================--
+
 
 local wampEvent_handler = function( event )
 	print( ">> wampEvent_handler", event.type )
@@ -79,11 +99,10 @@ end
 
 print( "WAMP: Starting WAMP Communication" )
 
-local params = {
-	uri=host,
-	port=port,
+wamp = Wamp:new{
+	uri=HOST,
+	port=PORT,
 	protocols={ 'wamp.2.json' },
-	realm=realm
+	realm=REALM
 }
-wamp = Wamp:new( params )
 wamp:addEventListener( wamp.EVENT, wampEvent_handler )

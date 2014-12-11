@@ -1,9 +1,9 @@
 --====================================================================--
--- dmc_wamp.types
+-- dmc_websockets/message.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 --====================================================================--
 
 --[[
@@ -29,10 +29,10 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
---[[
-Wamp support adapted from:
-* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
---]]
+
+--====================================================================--
+-- dmc_websockets : Message
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -43,8 +43,8 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
+local ByteArray = require 'dmc_websockets.bytearray'
 local Objects = require 'lua_objects'
--- local Utils = require 'lua_utils'
 
 
 --====================================================================--
@@ -57,74 +57,71 @@ local ObjectBase = Objects.ObjectBase
 
 
 --====================================================================--
--- Close Details Class
+-- WebSocket Message Class
 --====================================================================--
 
 
-local CloseDetailsObj = inheritsFrom( ObjectBase )
+local Message = inheritsFrom( ObjectBase )
+Message.NAME = "WebSocket Message"
 
-function CloseDetailsObj:_init( params )
-	-- print( "CloseDetailsObj_init" )
+--====================================================================--
+--== Start: Setup Lua Objects
+
+function Message:_init( params )
+	-- print( "Message:_init" )
+	params = params or {}
 	self:superCall( "_init", params )
 	--==--
-	self.reason = params.reason
-	self.message = params.message
+
+	--== Create Properties ==--
+
+	self.masked = params.masked
+	self.opcode = params.opcode
+	self._bytearray = nil
+
+	self._data = params.data -- tmp
+
+end
+
+function Message:_initComplete()
+	-- print( "Message:_initComplete" )
+
+	local ba = ByteArray()
+	ba:writeBuf( self._data )
+	self._bytearray = ba
+	self._data = nil
+
+end
+
+--== END: Setup Lua Objects
+--====================================================================--
+
+
+--====================================================================--
+--== Public Methods
+
+function Message.__getters:start()
+	-- print( "Message.__getters:start" )
+	return self._bytearray.pos
+end
+
+
+function Message:getAvailable()
+	-- print( "Message:getAvailable" )
+	return self._bytearray:getAvailable()
+end
+
+-- reads chunk of data. if value > available data
+-- or value==nil then return all data
+--
+function Message:read( value )
+	-- print( "Message:read", value )
+	local avail = self:getAvailable()
+	if value > avail or value == nil then value = avail end
+	return self._bytearray:readBuf( value )
 end
 
 
 
---====================================================================--
--- Register Options Class
---====================================================================--
 
-
-local RegisterOptions = inheritsFrom( ObjectBase )
-
-function RegisterOptions:_init( params )
-	print( "RegisterOptionsObj:_init" )
-	self:superCall( "_init", params )
-	--==--
-	self.details_arg = params.details_arg
-	self.options = {
-		pkeys=params.pkeys,
-		disclose_caller=params.disclose_caller
-	}
-end
-
-
-
---====================================================================--
--- Call Details Class
---====================================================================--
-
-
-local CallDetails = inheritsFrom( ObjectBase )
-
-function CallDetails:_init( params )
-	self:superCall( "_init", params )
-	--==--
-	self.progress = params.progress
-	self.caller = params.caller
-	self.authid = params.authid
-	self.authrole = params.authrole
-	self.authrole = params.authrole
-end
-
-
-
-
-
---====================================================================--
--- Close Details Constructor
---====================================================================--
-
-
-local function CloseDetails( params )
-	return CloseDetailsObj:new( params )
-end
-
-
-return {
-	CloseDetails=CloseDetails,
-	RegisterOptions=RegisterOptions
-}
+return Message

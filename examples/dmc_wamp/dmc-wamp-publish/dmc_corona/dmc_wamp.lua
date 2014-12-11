@@ -122,15 +122,16 @@ local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
-local States = require 'dmc_states'
-local Utils = require 'dmc_utils'
+local Objects = require 'lua_objects'
+local States = require 'lua_states'
+local Utils = require 'lua_utils'
+
 local WebSocket = require 'dmc_websockets'
 
+local Error = require 'dmc_wamp.exception'
 local SerializerFactory = require 'dmc_wamp.serializer'
 local wprotocol = require 'dmc_wamp.protocol'
 
-local Error = require 'dmc_wamp.exception'
 
 
 --====================================================================--
@@ -148,9 +149,9 @@ local LOCAL_DEBUG = false
 -- Wamp Class
 --====================================================================--
 
+
 local Wamp = inheritsFrom( WebSocket )
 Wamp.NAME = "Wamp Class"
-
 
 --== Event Constants
 
@@ -191,7 +192,6 @@ end
 
 --== END: Setup DMC Objects
 --====================================================================--
-
 
 
 --====================================================================--
@@ -355,7 +355,7 @@ function Wamp:leave( reason, message )
 end
 
 function Wamp:close( reason, message )
-	-- print( "Wamp:close" )
+	print( "Wamp:close" )
 	self:_wamp_close( reason, message )
 	self:superCall( 'close' )
 end
@@ -365,7 +365,7 @@ end
 --== Private Methods
 
 function Wamp:_wamp_close( message, was_clean )
-	-- print( "Wamp:_wamp_close" )
+	print( "Wamp:_wamp_close" )
 	local had_session = ( self._session ~= nil )
 
 	if self._session then
@@ -374,7 +374,7 @@ function Wamp:_wamp_close( message, was_clean )
 	end
 
 	if had_session then
-		self:_dispatchEvent( Wamp.ONDISCONNECT )
+		self:dispatchEvent( Wamp.ONDISCONNECT )
 	end
 end
 
@@ -383,7 +383,7 @@ end
 
 -- coming from websockets
 function Wamp:_onOpen()
-	-- print( "Wamp:_onOpen" )
+	print( "Wamp:_onOpen" )
 
 	-- TODO: match with protocol
 	self._serializer = SerializerFactory.create( 'json' )
@@ -440,12 +440,12 @@ end
 --== Event Handlers
 
 function Wamp:_wampSessionEvent_handler( event )
-	-- print( "Wamp:_wampSessionEvent_handler: ", event.type )
+	print( "Wamp:_wampSessionEvent_handler: ", event.type )
 	local e_type = event.type
 	local session = event.target
 
 	if e_type == session.ONJOIN then
-		self:_dispatchEvent( Wamp.ONCONNECT )
+		self:dispatchEvent( Wamp.ONCONNECT )
 	end
 
 end

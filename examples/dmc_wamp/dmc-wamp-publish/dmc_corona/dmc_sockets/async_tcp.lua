@@ -40,13 +40,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.2"
 
 
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lua_objects'
 local socket = require 'socket'
 local tcp_socket = require 'dmc_sockets.tcp'
 
@@ -57,7 +57,6 @@ local tcp_socket = require 'dmc_sockets.tcp'
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 
--- local control of development functionality
 local LOCAL_DEBUG = false
 
 
@@ -115,10 +114,11 @@ function ATCPSocket:connect( host, port, params )
 	self._onConnect = params.onConnect
 	self._onData = params.onData
 
-
 	if self._status == ATCPSocket.CONNECTED then
-		local evt = {}
-		evt.type, evt.emsg = self.CONNECT, self.ERR_CONNECTED
+		local evt = {
+			type=self.CONNECT,
+			emsg=self.ERR_CONNECTED
+		}
 		if self._onConnect then self._onConnect( evt ) end
 		return
 	end
@@ -134,8 +134,9 @@ function ATCPSocket:connect( host, port, params )
 		repeat
 
 			local success, emsg = self._socket:connect( host, port )
-
-			-- print( success, emsg )
+			if LOCAL_DEBUG then
+				print( "dmc.ATCP: connect", success, emsg )
+			end
 			-- messages:
 			-- nil	timeout
 			-- nil	Operation already in progress
@@ -186,11 +187,12 @@ end
 function ATCPSocket:send( data, callback )
 	-- print( 'ATCPSocket:send', #data, callback )
 
-	local bytes, emsg = self._socket:send( data )
+	-- TODO: error handling
+	local bytes, emsg, index = self._socket:send( data )
 	local evt = {}
 
 	-- print( 'sent', bytes, emsg )
-	evt.error = nil
+	evt.isError = nil
 	evt.emsg = nil
 
 	if callback then callback( evt ) end
