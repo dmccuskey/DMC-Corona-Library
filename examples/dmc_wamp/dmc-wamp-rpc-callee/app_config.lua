@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc-wamp-publish: App Config
+-- dmc-wamp-rpc-callee: App Config
 --
 -- for specific application configurations
 --

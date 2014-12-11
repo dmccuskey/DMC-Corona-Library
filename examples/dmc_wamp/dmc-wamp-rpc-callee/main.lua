@@ -94,6 +94,8 @@ local wampEvent_handler = function( event )
 
 end
 
+print( "WAMP: Starting WAMP Communication" )
+
 wamp = Wamp:new{
 	uri=HOST,
 	port=PORT,

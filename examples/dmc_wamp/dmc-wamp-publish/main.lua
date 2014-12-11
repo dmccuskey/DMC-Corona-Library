@@ -11,6 +11,7 @@
 --====================================================================--
 
 
+
 print( '\n\n##############################################\n\n' )
 
 
@@ -18,10 +19,11 @@ print( '\n\n##############################################\n\n' )
 --====================================================================--
 --== Imports
 
-local Wamp = require 'dmc_corona.dmc_wamp'
 
 -- read in app deployment configuration, global
 _G.gINFO = require 'app_config'
+
+local Wamp = require 'dmc_corona.dmc_wamp'
 
 
 
@@ -29,7 +31,7 @@ _G.gINFO = require 'app_config'
 --== Setup, Constants
 
 
---== Fill in the IP Address and Port for the WAMP Server
+-- WAMP server info in file 'app_config.lua'
 --
 local HOST = gINFO.server.host
 local PORT = gINFO.server.port
