@@ -46,7 +46,7 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Imports
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lua_objects'
 local socket = require 'socket'
 local tcp_socket = require 'dmc_sockets.tcp'
 
@@ -56,9 +56,6 @@ local tcp_socket = require 'dmc_sockets.tcp'
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
-
--- local control of development functionality
-local LOCAL_DEBUG = false
 
 
 
