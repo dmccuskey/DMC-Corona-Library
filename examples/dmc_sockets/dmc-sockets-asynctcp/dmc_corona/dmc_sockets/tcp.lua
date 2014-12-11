@@ -41,7 +41,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.0.1"
 
 
 --====================================================================--
@@ -188,6 +188,9 @@ function TCPSocket:connect( host, port, params )
 	self:_createSocket()
 
 	local success, emsg = self._socket:connect( host, port )
+	if LOCAL_DEBUG then
+		print( "connect ", success, emsg )
+	end
 
 	if success then
 		self._status = TCPSocket.CONNECTED

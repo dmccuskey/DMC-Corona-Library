@@ -47,16 +47,20 @@ since pack isn't available. they will be merged later.
 local VERSION = "1.0.0"
 
 
+
 --====================================================================--
--- Imports
+--== Imports
+
 
 local Objects = require 'lua_objects'
 local ByteArrayError = require 'lua_bytearray.exceptions'
 local BufferError = ByteArrayError.BufferErrorFactory
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -93,7 +97,8 @@ end
 
 
 --====================================================================--
--- Static Methods
+--== Static Methods
+
 
 function ByteArray.getBytes( buffer, idx_start, idx_end )
 	-- print( "ByteArray:getBytes", buffer, idx_start, idx_end )
@@ -137,8 +142,10 @@ function ByteArray.putBytes( buffer, bytes, index )
 end
 
 
+
 --====================================================================--
--- Public Methods
+--== Public Methods
+
 
 function ByteArray:getLen()
 	return #self._buf
@@ -210,8 +217,10 @@ function ByteArray:readFromArray( ba, offset, length )
 end
 
 
+
 --====================================================================--
--- Private Methods
+--== Private Methods
+
 
 function ByteArray:_checkAvailable( len )
 	-- print( "ByteArray:_checkAvailable", len )

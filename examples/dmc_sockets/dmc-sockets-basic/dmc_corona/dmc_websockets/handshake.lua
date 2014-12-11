@@ -48,14 +48,15 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.2"
 
 
 --====================================================================--
 -- Imports
 
 local mime = require 'mime'
-local patch = require 'dmc_patch'
+local Patch = require( 'lua_patch' )( 'string-format' )
+local SHA1 = require 'libs.sha1'
 
 
 --====================================================================--
@@ -65,6 +66,9 @@ local mbase64_encode = mime.b64
 local mrandom = math.random
 local schar = string.char
 local tconcat = table.concat
+local tinsert = table.insert
+
+local HANDSHAKE_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 local LOCAL_DEBUG = false
 
@@ -90,55 +94,109 @@ local function createHttpRequest( params )
 	local host, port, path = params.host, params.port, params.path
 	local protos = params.protocols
 
-	local proto_header --, sock_opts
-	local bytes, key
-	local req_t, req
+	local proto_header, key
+	local req_t
 
-	if not protos then
-		proto_header = ""
-
+	if type( protos ) == "string" then
+		proto_header = protos
 	elseif type( protos ) == "table" then
 		proto_header = tconcat( protos, "," )
-
-	else
-		proto_header = protos
 	end
 
 	key = generateKey()
 
 	-- create http header
 	req_t = {
-		"GET %s HTTP/1.1\r\n" % path,
-		"Upgrade: websocket\r\n",
-		"Host: %s:%s\r\n" % { host, port },
-		"Sec-WebSocket-Key: %s\r\n" % key ,
-		"Sec-WebSocket-Protocol: %s\r\n" % proto_header,
-		"Sec-WebSocket-Version: 13\r\n",
-		"Connection: Upgrade\r\n",
-		"\r\n"
+		"GET %s HTTP/1.1" % path,
+		"Host: %s:%s" % { host, port },
+		"Upgrade: websocket",
+		"Connection: Upgrade",
+		"Sec-WebSocket-Version: 13",
+		"Sec-WebSocket-Key: %s" % key,
 	}
+	if proto_header then
+		tinsert( req_t, "Sec-WebSocket-Protocol: %s" % proto_header )
+	end
+	tinsert( req_t, "" )
+	tinsert( req_t, "" )
 
 	if LOCAL_DEBUG then
 		print( "Request Header" )
-		print( tconcat( req_t, "" ) )
+		print( tconcat( req_t, "\r\n" ) )
 	end
-	return tconcat( req_t, "" )
+	return tconcat( req_t, "\r\n" ), key
 end
 
 
+local function buildServerKey( key )
+	-- print( "handshake:buildServerKey" )
+	assert( type(key)=='string', "expected string for key" )
+	--==--
+	local srvr_key = key..HANDSHAKE_GUID
+	local key_sha = SHA1.sha1_binary( srvr_key )
+	return mbase64_encode( key_sha )
+end
+
+local function createHttpResponseHash( response )
+	-- print( "handshake:createHttpResponseHash" )
+	assert( type(response)=='table', "expected table of response lines" )
+	--==--
+	local resp_hash = {}
+	for i,v in ipairs( response ) do
+		local key, value = string.match( v, '^([%w-%p]+): (.+)$' )
+		if key and value then
+			key = string.lower( key )
+			if key == 'sec-websocket-accept' then
+				resp_hash[ key ] = value
+			else
+				resp_hash[ key ] = string.lower( value )
+			end
+		end
+	end
+	return resp_hash
+end
+
 -- @param response array of lines from http response string
 --
-local function checkHttpResponse( response )
+--[[
+-- requires:
+-- response code 101
+-- upgrade: websocket
+-- connection: upgrade
+-- sec=websocket-accept:
+--]]
+local function checkHttpResponse( response, key )
 	-- print( "handshake:checkHttpResponse" )
-	-- TODO: check response
-	-- for i,v in ipairs( response ) do
-	-- 	print(i,v)
-	-- end
+	assert( type(response)=='table', "expected table of response lines" )
+	assert( #response>0, "expected table of response lines" )
+	assert( type(key)=='string', "expected handshake key" )
+	--==--
+
+	-- check for http result code - 101
+	if string.match( response[1], '^HTTP/1.1%s+101' ) == nil then
+		return false
+	end
+
+	local resp_hash = createHttpResponseHash( response )
+	local srvr_key = buildServerKey( key )
+
+	if resp_hash.upgrade ~= 'websocket' then
+		return false
+	elseif resp_hash.connection ~= 'upgrade' then
+		return false
+	elseif resp_hash['sec-websocket-accept'] ~= srvr_key then
+		return false
+	end
+
 	return true
 end
 
 
 return {
 	createRequest = createHttpRequest,
-	checkResponse = checkHttpResponse
+	checkResponse = checkHttpResponse,
+
+	-- for unit testing
+	_buildServerKey = buildServerKey,
+	_createHttpResponseHash = createHttpResponseHash
 }

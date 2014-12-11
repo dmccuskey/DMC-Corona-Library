@@ -669,31 +669,63 @@ end
 -- Web Functions
 --====================================================================--
 
-
--- parse_query()
--- splits an HTTP query string (eg, 'one=1&two=2' ) into its components
---
--- @param  str  string containing url-type key/value pairs
--- @returns a table with the key/value pairs
---
-function Utils.parse_query( str )
-	local t = {}
-	if str ~= nil then
-		for k, v in string.gmatch( str, "([^=&]+)=([^=&]+)") do
-			t[k] = v
-		end
+function Utils.is_iOS()
+	if string.sub(system.getInfo('model'),1,2) == "iP" then
+		return true
 	end
-	return t
+	return false
 end
 
-function Utils.create_query( tbl )
-	local str = ''
-	for k,v in pairs( tbl ) do
-		if str ~= '' then str = str .. '&' end
-		str = str .. tostring( k ) .. '=' .. url_encode( tostring(v) )
+
+-- state -- 'show'/'hide'
+--
+function Utils.checkIsiPhone5( state, params )
+	local isiPhone5 = false
+
+	-- Check if device is iPhone 5
+	if string.sub(system.getInfo("model"),1,2) == "iP" and display.pixelHeight > 960 then
+		isiPhone5 = true
 	end
-	return str
+	return isiPhone5
 end
+
+
+--====================================================================--
+-- Status Bar Functions
+
+Utils.STATUS_BAR_DEFAULT = display.DefaultStatusBar
+Utils.STATUS_BAR_HIDDEN = display.HiddenStatusBar
+Utils.STATUS_BAR_TRANSLUCENT = display.TranslucentStatusBar
+Utils.STATUS_BAR_DARK = display.DarkStatusBar
+
+
+function Utils.setStatusBarDefault( status )
+	status = status == nil and display.DefaultStatusBar or status
+	Utils.STATUS_BAR_DEFAULT = status
+end
+
+
+-- state -- 'show'/'hide'
+--
+function Utils.setStatusBar( state, params )
+	params = params or {}
+	if params.type == nil then params.type = Utils.STATUS_BAR_DEFAULT end
+	assert( state=='show' or state=='hide', "Utils.setStatusBar: unknown state"..tostring(state) )
+	--==--
+
+	if not Utils.is_iOS() then return end
+
+	local status
+
+	if state == 'hide' then
+		status = Utils.STATUS_BAR_HIDDEN
+	else
+		status = params.type
+	end
+	display.setStatusBar( status )
+
+end
+
 
 
 

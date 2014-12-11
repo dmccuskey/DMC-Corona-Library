@@ -374,7 +374,7 @@ function Wamp:_wamp_close( message, was_clean )
 	end
 
 	if had_session then
-		self:_dispatchEvent( Wamp.ONDISCONNECT )
+		self:dispatchEvent( Wamp.ONDISCONNECT )
 	end
 end
 
@@ -445,7 +445,7 @@ function Wamp:_wampSessionEvent_handler( event )
 	local session = event.target
 
 	if e_type == session.ONJOIN then
-		self:_dispatchEvent( Wamp.ONCONNECT )
+		self:dispatchEvent( Wamp.ONCONNECT )
 	end
 
 end

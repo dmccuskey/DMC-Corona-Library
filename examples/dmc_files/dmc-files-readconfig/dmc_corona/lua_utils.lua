@@ -1,7 +1,6 @@
 --====================================================================--
 -- lua_utils.lua
 --
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/lua_utils.lua
 --====================================================================--
 
@@ -37,9 +36,10 @@ SOFTWARE.
 -- DMC Lua Library : Lua Utils
 --====================================================================--
 
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 
 
 --====================================================================--
@@ -50,7 +50,8 @@ local slower = string.lower
 local tconcat = table.concat
 local tinsert = table.insert
 
-local Utils = {}
+
+local Utils = {} -- Utils object
 
 
 
@@ -60,7 +61,8 @@ local Utils = {}
 
 
 -- createObjectCallback()
--- Creates a closure used to bind a method to an object. Useful for creating a custom callback.
+-- Creates a closure used to bind a method to an object.
+-- Useful for creating a custom callback.
 --
 -- @param object the object which has the method
 -- @param method the method to call
@@ -68,7 +70,7 @@ local Utils = {}
 function Utils.createObjectCallback( object, method )
 	assert( object ~= nil, "missing object in Utils.createObjectCallback" )
 	assert( method ~= nil, "missing method in Utils.createObjectCallback" )
-
+	--==--
 	return function( ... )
 		return method( object, ... )
 	end
@@ -76,9 +78,9 @@ end
 
 
 function Utils.getTransitionCompleteFunc( count, callback )
-	assert( type(count)=='number' )
-	assert( type(callback)=='function' )
-
+	assert( type(count)=='number', "requires number for count" )
+	assert( type(callback)=='function', "requires callback function" )
+	--==--
 	local total = 0
 	local func = function(...)
 		total = total + 1
@@ -93,10 +95,11 @@ end
 -- Date Functions
 --====================================================================--
 
+
 --[[
 
-	Given a UNIX time (seconds), calculate the number of weeks, days, etc
-	{ months=0, weeks=2, days=3, hours=8, minutes=35, seconds=21 }
+	Given a UNIX time (seconds), split that duration into number of weeks, days, etc
+	eg, { months=0, weeks=2, days=3, hours=8, minutes=35, seconds=21 }
 
 --]]
 
@@ -543,6 +546,32 @@ function Utils.shuffle( t )
 end
 
 
+-- tableLength()
+-- Count the number of items in a table
+-- http://stackoverflow.com/questions/2705793/how-to-get-number-of-entries-in-a-lua-table
+--
+-- @param t the table in which to count items
+-- @return number of items in table
+--
+function Utils.tableLength( t )
+	local count = 0
+	for _, _ in pairs(t) do count = count + 1 end
+	return count
+end
+
+
+-- take objects from hashed table, make array table
+--
+function Utils.tableList( t )
+	assert( type(t)=='table', "Utils.tableList expected table" )
+	local list = {}
+	for _, o in pairs( t ) do
+		tinsert( list, o )
+	end
+	return list
+end
+
+
 -- calculates size of table, mostly used as a dictionary
 --
 function Utils.tableSize( t1 )
@@ -575,20 +604,6 @@ function Utils.tableSlice( values, i1, i2 )
 		k = k + 1
 	end
 	return res
-end
-
-
--- tableLength()
--- Count the number of items in a table
--- http://stackoverflow.com/questions/2705793/how-to-get-number-of-entries-in-a-lua-table
---
--- @param t the table in which to count items
--- @return number of items in table
---
-function Utils.tableLength( t )
-	local count = 0
-	for _, _ in pairs(t) do count = count + 1 end
-	return count
 end
 
 

@@ -44,6 +44,7 @@ local VERSION = "0.1.0"
 -- Imports
 
 local Objects = require 'lua_objects'
+local Patch = require('lua_patch')('table-pop')
 local Utils = require 'lua_utils'
 
 local MessageFactory = require 'dmc_wamp.messages'
