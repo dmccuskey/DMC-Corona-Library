@@ -11,32 +11,45 @@
 --====================================================================--
 
 
+
 print( '\n\n##############################################\n\n' )
 
 
+
 --====================================================================--
--- Imports
+--== Imports
+
+
+-- read in app deployment configuration, global
+_G.gINFO = require 'app_config'
 
 local Wamp = require 'dmc_corona.dmc_wamp'
 
 
---====================================================================--
--- Setup, Constants
 
---== Fill in the IP Address and Port for the WAMP Server
+--====================================================================--
+--== Setup, Constants
+
+
+-- WAMP server info in file 'app_config.lua'
 --
-local host, port, realm = 'ws://192.168.0.102', 8080, 'realm1'
+local HOST = gINFO.server.host
+local PORT = gINFO.server.port
+local REALM = gINFO.server.realm
+local WAMP_SUB_TOPIC = gINFO.server.sub_topic
 
 local wamp -- ref to WAMP object
 
 
+
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local doWampPubSub = function()
 	print( ">> WAMP:doWampPubSub" )
 
-	local topic = 'com.myapp.topic1'
+	local topic = WAMP_SUB_TOPIC
 
 	local subscriptionEvent_handler = function( event )
 		print( ">> WAMP PubSub::subscription Event handler" )
@@ -71,8 +84,9 @@ end
 
 
 --====================================================================--
--- Main
+--== Main
 --====================================================================--
+
 
 local wampEvent_handler = function( event )
 	print( ">> wampEvent_handler", event.type )
@@ -87,11 +101,12 @@ local wampEvent_handler = function( event )
 
 end
 
-local params = {
-	uri=host,
-	port=port,
+print( "WAMP: Starting WAMP Communication" )
+
+wamp = Wamp:new{
+	uri=HOST,
+	port=PORT,
 	protocols={ 'wamp.2.json' },
-	realm=realm
+	realm=REALM
 }
-wamp = Wamp:new( params )
 wamp:addEventListener( wamp.EVENT, wampEvent_handler )

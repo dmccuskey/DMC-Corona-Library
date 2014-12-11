@@ -1,9 +1,9 @@
 --====================================================================--
--- dmc_wamp.roles
+-- bit.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/bit.lua
 --====================================================================--
 
 --[[
@@ -29,56 +29,84 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
---[[
-Wamp support adapted from:
-* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
---]]
+
+
+--====================================================================--
+-- DMC Corona Library : bit
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
-
-
---====================================================================--
--- Imports
-
-local Objects = require 'lua_objects'
-local Utils = require 'lua_utils'
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
--- Subscriber Role Features
+-- DMC Corona Library Config
 --====================================================================--
 
 
-local roleSubscriberFeatures = {
-	ROLE = 'subscriber',
+--====================================================================--
+-- Support Functions
 
-	features = {}
-}
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+-- Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
 
 
 
 --====================================================================--
--- Subscriber Caller Features
+-- Bit Library Import
 --====================================================================--
 
-local roleCallerFeatures = {
-	ROLE = 'caller',
 
-	features = {}
-}
-
-
-
-
---====================================================================--
--- Roles Facade
---====================================================================--
-
-return {
-	subscriberFeatures=roleSubscriberFeatures,
-	callerFeatures=roleCallerFeatures
-}
+local has_bitOp, bitOp = pcall( require, 'plugin.bit' )
+if has_bitOp then
+	print("dmc_library:: Loading faster bitOp plugin")
+	return bitOp
+else
+	print("dmc_library:: Loading slower bitOp library")
+	return require 'libs.bit.numberlua'
+end
