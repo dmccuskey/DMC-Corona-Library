@@ -305,7 +305,8 @@ end
 
 
 --====================================================================--
--- Public Methods
+--== Public Methods
+
 
 function WebSocket:connect()
 	-- print( 'WebSocket:connect' )
@@ -346,8 +347,9 @@ function WebSocket:close()
 end
 
 
+
 --====================================================================--
--- Private Methods
+--== Private Methods
 
 
 --== the following "_on"-methods dispatch event to app client level
@@ -1076,7 +1078,8 @@ end
 
 
 --====================================================================--
--- Event Handlers
+--== Event Handlers
+
 
 function WebSocket:_socketEvent_handler( event )
 	-- print( "WebSocket:_socketEvent_handler", event.type, event.status )
