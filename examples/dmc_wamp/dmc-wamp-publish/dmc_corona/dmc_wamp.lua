@@ -355,7 +355,7 @@ function Wamp:leave( reason, message )
 end
 
 function Wamp:close( reason, message )
-	print( "Wamp:close" )
+	-- print( "Wamp:close" )
 	self:_wamp_close( reason, message )
 	self:superCall( 'close' )
 end
@@ -365,7 +365,7 @@ end
 --== Private Methods
 
 function Wamp:_wamp_close( message, was_clean )
-	print( "Wamp:_wamp_close" )
+	-- print( "Wamp:_wamp_close" )
 	local had_session = ( self._session ~= nil )
 
 	if self._session then
@@ -383,7 +383,7 @@ end
 
 -- coming from websockets
 function Wamp:_onOpen()
-	print( "Wamp:_onOpen" )
+	-- print( "Wamp:_onOpen" )
 
 	-- TODO: match with protocol
 	self._serializer = SerializerFactory.create( 'json' )
@@ -440,7 +440,7 @@ end
 --== Event Handlers
 
 function Wamp:_wampSessionEvent_handler( event )
-	print( "Wamp:_wampSessionEvent_handler: ", event.type )
+	-- print( "Wamp:_wampSessionEvent_handler: ", event.type )
 	local e_type = event.type
 	local session = event.target
 

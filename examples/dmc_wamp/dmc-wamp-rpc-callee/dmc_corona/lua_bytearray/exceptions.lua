@@ -1,9 +1,7 @@
 --====================================================================--
--- dmc_wamp/exception.lua
+-- dmc_lua/lua_bytearray/exceptions.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/lua_bytearray.lua
 --====================================================================--
 
 --[[
@@ -30,8 +28,9 @@ DEALINGS IN THE SOFTWARE.
 --]]
 
 
+
 --====================================================================--
--- DMC Lua Library : Byte Array Errors
+--== DMC Lua Library : Byte Array Errors
 --====================================================================--
 
 
@@ -56,9 +55,14 @@ local inheritsFrom = Objects.inheritsFrom
 
 
 --====================================================================--
--- Buffer Error Class
+--== Buffer Error Class
 --====================================================================--
 
+
+--[[
+	This exception is triggered when there isn't enough data available
+	for a read, eg, 2 bytes available and requesting 10 bytes.
+--]]
 
 local BufferError = inheritsFrom( Error )
 BufferError.NAME = "Buffer Error"
@@ -67,9 +71,15 @@ BufferError.NAME = "Buffer Error"
 
 
 --====================================================================--
--- Error Facade
+--== Error Facade
 --====================================================================--
 
+local function BufferErrorFactory( message )
+	print( "BufferErrorFactory", message )
+	return BufferError:new{ message=message }
+end
+
 return {
-	BufferError=BufferError
+	BufferError=BufferError,
+	BufferErrorFactory=BufferErrorFactory
 }

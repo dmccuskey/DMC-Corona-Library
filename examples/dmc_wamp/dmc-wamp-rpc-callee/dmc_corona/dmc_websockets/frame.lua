@@ -48,7 +48,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 
 --====================================================================--
@@ -219,7 +219,7 @@ end
 
 
 --====================================================================--
--- Main Functions
+--== Main Functions
 --====================================================================--
 
 
@@ -453,6 +453,7 @@ end
 local function buildFrame( params )
 	-- print( "buildFrame" )
 
+	local msg = params.msg
 	local data = params.data
 	local fin = params.fin
 	local opcode = params.opcode
@@ -528,23 +529,20 @@ end
 local function buildWSFrames( params )
 	-- print( "buildWSFrames" )
 
-	local data = params.data or ""
-	local opcode = params.opcode or FRAME_TYPE.text
-	local masked = params.masked == nil and true or params.masked
-	local onFrame = params.onFrame
+	local msg = params.message
+	local data_len = msg:getAvailable()
+
+	local opcode
+	if msg.start == 1 then
+		opcode = msg.opcode
+	else
+		opcode = FRAME_TYPE.continuation
+	end
 
 	local max_frame_size = params.max_frame_size
 	if max_frame_size and max_frame_size > LRG_FRAME_SIZE then
 		max_frame_size = LRG_FRAME_SIZE
 	end
-
-	local data_len, evt
-
-	if type( data ) ~= 'string' then
-		data = tostring( data )
-	end
-
-	data_len = #data
 
 	-- control frame check
 	if band( opcode, bit_4 ) ~= 0 then
@@ -556,52 +554,31 @@ local function buildWSFrames( params )
 		end
 	end
 
-	-- build frames from data
+	local divisor, chunk, fin
+	local frame
 
-	repeat
+	if max_frame_size then
+		divisor = max_frame_size
+	elseif data_len <= SML_FRAME_SIZE then
+		divisor = SML_FRAME_SIZE
+	elseif data_len <= MED_FRAME_SIZE then
+		divisor = MED_FRAME_SIZE
+	else
+		divisor = LRG_FRAME_SIZE
+	end
 
-		local divisor, chunk, fin
-		local frame
+	chunk = msg:read( divisor )
 
-		if max_frame_size then
-			divisor = max_frame_size
-		elseif data_len <= SML_FRAME_SIZE then
-			divisor = SML_FRAME_SIZE
-		elseif data_len <= MED_FRAME_SIZE then
-			divisor = MED_FRAME_SIZE
-		else
-			divisor = LRG_FRAME_SIZE
-		end
+	fin = ( msg:getAvailable() == 0 )
 
-		if data_len <= divisor then
-			chunk = data
-			data = ''
-		else
-			chunk = data:sub( 1, divisor )
-			data = data:sub( divisor+1 )
-		end
+	frame = buildFrame{
+		data=chunk,
+		fin=fin,
+		masked=msg.masked,
+		opcode=opcode
+	}
 
-		data_len = #data
-		fin = ( data_len == 0 )
-
-		frame = buildFrame{
-			data=chunk,
-			fin=fin,
-			masked=masked,
-			opcode=opcode
-		}
-
-		if onFrame and frame then
-			evt = { frame=frame }
-			onFrame( evt )
-		end
-
-		if not fin then
-			coroutine.yield()
-			opcode = FRAME_TYPE.continuation
-		end
-
-	until fin
+	return { frame=frame }
 
 end
 
@@ -636,7 +613,7 @@ end
 
 
 --====================================================================--
--- Module Facade
+--== Module Facade
 --====================================================================--
 
 

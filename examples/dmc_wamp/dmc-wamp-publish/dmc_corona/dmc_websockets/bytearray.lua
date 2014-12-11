@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- Byte Array
+--== Byte Array
 --====================================================================--
 
 
@@ -47,15 +47,20 @@ since pack isn't available. they will be merged later.
 local VERSION = "1.0.0"
 
 
+
 --====================================================================--
--- Imports
+--== Imports
+
 
 local Objects = require 'lua_objects'
-local Error = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
+local BufferError = ByteArrayError.BufferErrorFactory
+
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -64,7 +69,7 @@ local ObjectBase = Objects.ObjectBase
 
 
 --====================================================================--
--- Byte Array Class
+--== Byte Array Class
 --====================================================================--
 
 
@@ -72,8 +77,8 @@ local ByteArray = inheritsFrom( ObjectBase )
 ByteArray.NAME = "Byte Array"
 
 
---====================================================================--
---== Start: Setup Lua Objects
+--======================================================--
+-- Start: Setup Lua Objects
 
 function ByteArray:_init( params )
 	-- print( "Message:_init" )
@@ -86,12 +91,14 @@ function ByteArray:_init( params )
 
 end
 
---== END: Setup Lua Objects
---====================================================================--
+-- END: Setup Lua Objects
+--======================================================--
+
 
 
 --====================================================================--
 --== Static Methods
+
 
 function ByteArray.getBytes( buffer, idx_start, idx_end )
 	-- print( "ByteArray:getBytes", buffer, idx_start, idx_end )
@@ -135,8 +142,10 @@ function ByteArray.putBytes( buffer, bytes, index )
 end
 
 
+
 --====================================================================--
 --== Public Methods
+
 
 function ByteArray:getLen()
 	return #self._buf
@@ -208,13 +217,15 @@ function ByteArray:readFromArray( ba, offset, length )
 end
 
 
+
 --====================================================================--
 --== Private Methods
+
 
 function ByteArray:_checkAvailable( len )
 	-- print( "ByteArray:_checkAvailable", len )
 	if len > self:getAvailable() then
-		error( Error.BufferError("Read surpasses buffer size") )
+		error( BufferError( "Read surpasses buffer size" ) )
 	end
 end
 

@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC Websockets
+--== DMC Corona Library : DMC Websockets
 --====================================================================--
 
 --[[
@@ -52,7 +52,7 @@ local VERSION = "1.2.0"
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
@@ -107,7 +107,7 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC WebSockets
+--== DMC WebSockets
 --====================================================================--
 
 
@@ -130,7 +130,7 @@ local mime = require 'mime'
 local urllib = require 'socket.url'
 
 local ByteArray = require 'dmc_websockets.bytearray'
-local ByteArrayErrorFactory = require 'lua_bytearray.exceptions'
+local ByteArrayError = require 'lua_bytearray.exceptions'
 local Objects = require 'lua_objects'
 local Patch = require( 'lua_patch' )()
 local Sockets = require 'dmc_sockets'
@@ -156,7 +156,7 @@ local tconcat = table.concat
 local tremove = table.remove
 
 local ProtocolError = ws_error.ProtocolError
-local BufferError = ByteArrayErrorFactory.BufferError
+local BufferError = ByteArrayError.BufferError
 
 
 --== dmc_websocket Close Constants
@@ -179,7 +179,7 @@ local LOCAL_DEBUG = false
 
 
 --====================================================================--
--- WebSocket Class
+--== WebSocket Class
 --====================================================================--
 
 
@@ -231,8 +231,8 @@ WebSocket.ONERROR = 'onerror'
 WebSocket.ONCLOSE = 'onclose'
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
 function WebSocket:_init( params )
 	-- print( "WebSocket:_init" )
@@ -300,12 +300,13 @@ function WebSocket:_initComplete()
 	end
 end
 
---== END: Setup DMC Objects
---====================================================================--
+-- END: Setup DMC Objects
+--======================================================--
 
 
 --====================================================================--
 --== Public Methods
+
 
 function WebSocket:connect()
 	-- print( 'WebSocket:connect' )
@@ -344,6 +345,7 @@ function WebSocket:close()
 	local evt = Utils.extend( ws_frame.close.OK, {} )
 	self:_close( evt )
 end
+
 
 
 --====================================================================--
@@ -575,7 +577,7 @@ function WebSocket:_receiveFrame()
 	--== processing loop
 
 	-- TODO: hook this up to enterFrame so large
-	-- amount of frames will pause processing
+	-- amount of frames won't pause processing
 
 	local err = nil
 	repeat
@@ -600,9 +602,9 @@ function WebSocket:_receiveFrame()
 		-- pass, WebSocket.STATE_CLOSED
 
 	elseif not err.isa then
-		if LOCAL_DEBUG then
-			print( "dmc_websockets :: Unknown Error", err )
-		end
+		-- always print this out, most likely a regular Lua error
+		print( "\n\ndmc_websockets :: Unknown Error", err )
+		print( debug.traceback() )
 		self:_bailout{
 			code=CLOSE_CODES.INTERNAL.code,
 			reason=CLOSE_CODES.INTERNAL.reason
@@ -614,6 +616,7 @@ function WebSocket:_receiveFrame()
 	elseif err:isa( ws_error.ProtocolError ) then
 		if LOCAL_DEBUG then
 			print( "dmc_websockets :: Protocol Error:", err.message )
+			print( "dmc_websockets :: Protocol Error:", err.traceback )
 		end
 		self:_close{
 			code=err.code,
@@ -780,8 +783,8 @@ function WebSocket:_processMessageQueue()
 end
 
 
---====================================================================--
---== START: STATE MACHINE
+--======================================================--
+-- START: STATE MACHINE
 
 function WebSocket:state_create( next_state, params )
 	-- print( "WebSocket:state_create >>", next_state )
@@ -854,7 +857,7 @@ function WebSocket:state_init( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	elseif next_state == WebSocket.STATE_NOT_CONNECTED then
@@ -874,7 +877,7 @@ function WebSocket:do_state_not_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.NOT_ESTABLISHED
+	self._ready_state = WebSocket.NOT_ESTABLISHED
 
 	self:setState( WebSocket.STATE_NOT_CONNECTED )
 
@@ -946,7 +949,7 @@ function WebSocket:do_state_connected( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.ESTABLISHED
+	self._ready_state = WebSocket.ESTABLISHED
 	self:setState( WebSocket.STATE_CONNECTED )
 
 	if LOCAL_DEBUG then
@@ -988,7 +991,7 @@ function WebSocket:do_state_closing_connection( params )
 	params.from_server = params.from_server ~= nil and params.from_server or false
 	--==--
 
-	self._ready_state = self.CLOSING_HANDSHAKE
+	self._ready_state = WebSocket.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
 
 	-- send close code to server
@@ -1033,7 +1036,7 @@ function WebSocket:do_state_closed( params )
 	params = params or {}
 	--==--
 
-	self._ready_state = self.CLOSED
+	self._ready_state = WebSocket.CLOSED
 	self:setState( WebSocket.STATE_CLOSED )
 
 	if self._close_timer then
@@ -1061,7 +1064,7 @@ function WebSocket:state_closed( next_state, params )
 	params = params or {}
 	--==--
 
-	if next_state == self.CLOSED then
+	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
 	else
@@ -1070,12 +1073,13 @@ function WebSocket:state_closed( next_state, params )
 
 end
 
---== END: STATE MACHINE
---====================================================================--
+-- END: STATE MACHINE
+--======================================================--
 
 
 --====================================================================--
 --== Event Handlers
+
 
 function WebSocket:_socketEvent_handler( event )
 	-- print( "WebSocket:_socketEvent_handler", event.type, event.status )

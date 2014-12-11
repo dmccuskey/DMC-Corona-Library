@@ -38,7 +38,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.2.1"
 
 
 
@@ -119,7 +119,7 @@ local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS 
 --====================================================================--
 -- Imports
 
-local Utils = require 'dmc_utils'
+local Utils = require 'lua_utils'
 
 
 --====================================================================--

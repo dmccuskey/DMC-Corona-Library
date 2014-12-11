@@ -1,31 +1,32 @@
 --====================================================================--
 -- lua_promise.lua
 --
---
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/lua_promise.lua
 --====================================================================--
 
 --[[
 
+The MIT License (MIT)
+
 Copyright (C) 2014 David McCuskey. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
@@ -34,6 +35,7 @@ DEALINGS IN THE SOFTWARE.
 --====================================================================--
 -- DMC Lua Library: Promises
 --====================================================================--
+
 
 -- Semantic Versioning Specification: http://semver.org/
 
@@ -102,8 +104,11 @@ end
 -- Promise Class
 --====================================================================--
 
+
 Promise = inheritsFrom( ObjectBase )
 Promise.NAME = "Promise Instance"
+
+--== State Constants
 
 Promise.STATE_PENDING = 'pending'
 Promise.STATE_RESOLVED = 'resolved'
@@ -130,7 +135,6 @@ end
 --====================================================================--
 
 
-
 --====================================================================--
 --== Public Methods
 
@@ -145,6 +149,7 @@ function Promise:resolve( ... )
 	self._result = {...}
 	self:_execute( self._done_cbs, ... )
 end
+
 function Promise:reject( ... )
 	-- print("Promise:reject")
 	self._state = Promise.STATE_REJECTED
@@ -161,9 +166,11 @@ function Promise:done( callback )
 		self:_addCallback( self._done_cbs, callback )
 	end
 end
+
 function Promise:progress( ... )
 	error("Promise:progress: not yet implemented")
 end
+
 function Promise:fail( errback )
 	-- print("Promise:fail")
 	if self._state == Promise.STATE_REJECTED then
@@ -194,6 +201,7 @@ end
 -- Deferred Class
 --====================================================================--
 
+
 Deferred = inheritsFrom( ObjectBase )
 Deferred.NAME = "Deferred Instance"
 
@@ -209,7 +217,6 @@ end
 
 --== END: Setup Lua Objects
 --====================================================================--
-
 
 
 --====================================================================--
