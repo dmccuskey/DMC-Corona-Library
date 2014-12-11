@@ -215,6 +215,11 @@ end
 --====================================================================--
 --== Public Methods
 
+function Deferred.__getters:promise()
+	return self._promise
+end
+
+
 function Deferred:callback( ... )
 	self._promise:resolve( ... )
 end

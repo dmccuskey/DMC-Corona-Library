@@ -45,6 +45,11 @@ local VERSION = "0.1.0"
 --====================================================================--
 -- Setup, Constants
 
+local slower = string.lower
+
+local tconcat = table.concat
+local tinsert = table.insert
+
 local Utils = {}
 
 
@@ -592,9 +597,53 @@ end
 -- Web Functions
 --====================================================================--
 
+function Utils.createHttpRequest( params )
+	-- print( "Utils.createHttpRequest")
+	params = params or {}
+	--==--
+	local http_params = params.http_params
+	local req_t = {
+		"%s / HTTP/1.1" % params.method,
+		"Host: %s" % params.host,
+	}
+
+	if type( http_params.headers ) == 'table' then
+		for k,v in pairs( http_params.headers ) do
+			tinsert( req_t, #req_t+1, "%s:%s" % { k, v } )
+		end
+	end
+
+	if http_params.body ~= nil then
+		tinsert( req_t, #req_t+1, "" )
+		tinsert( req_t, #req_t+1, http_params.body )
+	end
+	tinsert( req_t, #req_t+1, "\r\n" )
+
+	return tconcat( req_t, "\r\n" )
+end
+
+
+function Utils.normalizeHeaders( headers, params )
+	params = params or {}
+	params.case = params.case or 'lower' -- camel, lower
+	--==--
+	local h = {}
+	local f
+	if false and params.case == 'camel' then
+		f = nil -- TODO
+	else
+		f = string.lower
+	end
+	for k,v in pairs( headers ) do
+		print(k,v)
+		h[ f(k) ] = v
+	end
+	return h
+end
+
 -- http://lua-users.org/wiki/StringRecipes
-function Utils.urlEncode( str )
-	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+function Utils.urlDecode( str )
+	assert( type(str)=='string', "Utils.urlDecode: input not a string" )
 
 	str = string.gsub (str, "+", " ")
 	str = string.gsub (str, "%%(%x%x)",
@@ -605,7 +654,7 @@ end
 
 -- http://lua-users.org/wiki/StringRecipes
 function Utils.urlEncode( str )
-	assert( type(str)=='string', "Utils.parseQuery: input not a string" )
+	assert( type(str)=='string', "Utils.urlEncode: input not a string" )
 
 	if (str) then
 		str = string.gsub (str, "\n", "\r\n")

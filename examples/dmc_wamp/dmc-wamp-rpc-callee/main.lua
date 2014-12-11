@@ -11,40 +11,41 @@
 --====================================================================--
 
 
+
 print( '\n\n##############################################\n\n' )
 
 
--- for i, dir in ipairs( { './libs/dmc_corona/?.lua', './dmc_library/?.lua', './libs/dmc_lua/?.lua' } ) do
--- 	local t = {
--- 		system.pathForFile( system.DocumentsDirectory ),
--- 		dir .. '/?.lua;'
--- 	}
--- 	local path =  table.concat( t, '/' )
--- 	package.path = path .. package.path
--- end
-
 
 --====================================================================--
--- Imports
+--== Imports
+
+
+-- read in app deployment configuration, global
+_G.gINFO = require 'app_config'
 
 local Wamp = require 'dmc_corona.dmc_wamp'
-local Utils = require 'dmc_utils'
+-- local Utils = require 'dmc_corona.dmc_utils'
+
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
 
-local WAMP_RPC_PROCEDURE = 'com.timeservice.now2'
 
---== Fill in the IP Address and Port for the WAMP Server (Broker/Dealer)
+-- WAMP server info in file 'app_config.lua'
 --
-local HOST, PORT, REALM = 'ws://192.168.0.102', 8080, 'realm1'
+local HOST = gINFO.server.host
+local PORT = gINFO.server.port
+local REALM = gINFO.server.realm
+local WAMP_RPC_PROCEDURE = gINFO.server.rpc_procedure
 
 local wamp -- ref to WAMP object
 
 
+
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local registerWampRPC = function()
 	print( ">> WAMP:registerWampRPC" )
@@ -76,8 +77,9 @@ end
 
 
 --====================================================================--
--- Main
+--== Main
 --====================================================================--
+
 
 local wampEvent_handler = function( event )
 	print( ">> wampEvent_handler", event.type )
@@ -92,11 +94,10 @@ local wampEvent_handler = function( event )
 
 end
 
-local params = {
+wamp = Wamp:new{
 	uri=HOST,
 	port=PORT,
 	protocols={ 'wamp.2.json' },
 	realm=REALM
 }
-wamp = Wamp:new( params )
 wamp:addEventListener( wamp.EVENT, wampEvent_handler )
