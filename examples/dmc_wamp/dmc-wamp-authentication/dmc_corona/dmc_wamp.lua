@@ -400,7 +400,7 @@ end
 --====================================================================--
 --== Private Methods
 
-function Wamp:_wamp_close( message, was_clean )
+function Wamp:_wamp_close( reason, message )
 	-- print( "Wamp:_wamp_close" )
 	local had_session = ( self._session ~= nil )
 
@@ -410,8 +410,9 @@ function Wamp:_wamp_close( message, was_clean )
 	end
 
 	if had_session then
-		self:dispatchEvent( Wamp.ONDISCONNECT )
+		self:dispatchEvent( Wamp.ONDISCONNECT, { reason=reason, message=message } )
 	end
+
 end
 
 
@@ -426,7 +427,7 @@ function Wamp:_onOpen()
 	-- TODO: match with protocol
 	-- capture errors (eg, one in Role.lua)
 
-	o = wprotocol.Session:new{ config=self._config }
+	o = wprotocol.Session{ config=self._config }
 	o:addEventListener( o.EVENT, self._session_handler )
 	self._session = o
 
@@ -471,9 +472,9 @@ function Wamp:_onMessage( message )
 end
 
 -- coming from websockets
-function Wamp:_onClose( message, was_clean )
+function Wamp:_onClose( params )
 	-- print( "Wamp:_onClose" )
-	self:_wamp_close( reason, message )
+	self:_wamp_close( params )
 end
 
 

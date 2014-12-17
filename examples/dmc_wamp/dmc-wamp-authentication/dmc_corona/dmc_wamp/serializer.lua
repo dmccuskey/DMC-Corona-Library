@@ -91,7 +91,7 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ISerializer.serialize`
 --
 function Serializer:serialize( msg )
-	-- print( "Serializer:serialize", msg.TYPE )
+	-- print( "Serializer:serialize", msg.MESSAGE_TYPE )
 	return msg:serialize( self._serializer ), self._serializer.BINARY
 end
 

@@ -69,13 +69,95 @@ local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
 
+-- strict URI check allowing empty URI components
+local _URI_PAT_STRICT_EMPTY = "^(([0-9a-z_]+\.)|\.)*([0-9a-z_]+)?$" -- original
+_URI_PAT_STRICT_EMPTY = "([0-9a-z_]+%.?)"
+
+-- loose URI check allowing empty URI components
+local _URI_PAT_LOOSE_EMPTY = "^(([^\s\.#]+\.)|\.)*([^\s\.#]+)?$" -- original
+_URI_PAT_LOOSE_EMPTY = "([^%s%.%#]+%.?)"
+
+-- strict URI check disallowing empty URI components
+local _URI_PAT_STRICT_NON_EMPTY = "^([0-9a-z_]+\.)*([0-9a-z_]+)$"
+_URI_PAT_STRICT_NON_EMPTY = "([0-9a-z_]+%.?)"
+
+-- loose URI check disallowing empty URI components
+
+local _URI_PAT_LOOSE_NON_EMPTY = "^([^%s\.#]+\.)*([^%s\.#]+)$" -- original
+_URI_PAT_LOOSE_NON_EMPTY = "([^%s%.%#]+%.?)"
+
+
 
 --====================================================================--
 --== Support Functions
 
 
+local function check_or_raise_uri( params )
+	-- print( "check_or_raise_uri" )
+	params = params or {}
+	params.message = params.message or "WAMP message invalid"
+	params.strict = params.strict ~= nil and params.strict or false
+	params.allowEmptyComponents = params.allowEmptyComponents ~= nil and params.allowEmptyComponents or false
+	--==--
+
+	if type( params.value ) ~= 'string' then
+		error( ProtocolError( "{0}: invalid type {1}" ) )
+	end
+
+	local pat, length
+
+	if params.strict then
+		if params.allowEmptyComponents then
+			pat = _URI_PAT_STRICT_EMPTY
+		else
+			pat = _URI_PAT_STRICT_NON_EMPTY
+		end
+	else
+		if params.allowEmptyComponents then
+			pat = _URI_PAT_LOOSE_EMPTY
+		else
+			pat = _URI_PAT_LOOSE_NON_EMPTY
+		end
+	end
+
+	-- TODO: this checking part needs work
+	-- right now a total hack, Lua doesn't have built in RegEx
+
+	-- print( pat, params.value, string.find( params.value, pat )  )
+	length = 0
+	for word in string.gmatch( params.value, pat ) do
+		length = length + #word
+	end
+
+	if length ~= #params.value then
+		error( ProtocolError( "{0}: invalid type {1}" ) )
+	end
+
+	return params.value
+end
+
+
+
+local function check_or_raise_id( params )
+	-- print( "check_or_raise_id" )
+	params = params or {}
+	params.message = params.message or "WAMP message invalid"
+	--==--
+
+	if type( params.value ) ~= 'number' then
+		error( ProtocolError( "{0}: invalid type {1}" ) )
+	end
+	if params.value < 0 or params.value > 9007199254740992 then -- 2**53
+		error( ProtocolError( "{0}: invalid type {1}" ) )
+	end
+
+	return params.value
+end
+
+
+
 local function check_or_raise_extra( params )
-	print( "check_or_raise_extra" )
+	-- print( "check_or_raise_extra" )
 	params = params or {}
 	params.message = params.message or "WAMP message invalid"
 	--==--
@@ -101,12 +183,12 @@ end
 
 
 local Message = inheritsFrom( ObjectBase )
-Message.NAME = "Message Base Class"
+Message.NAME = "Message Base"
 
 function Message:_init( params )
 	-- print( "Message:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
 	self.serialized = {}
@@ -128,19 +210,19 @@ end
 -- Format: `[ HELLO, Realm|uri, Details|dict ]`
 
 local Hello = inheritsFrom( Message )
-Hello.NAME = "Hello Message Class"
+Hello.NAME = "Hello Message"
 
-Hello.TYPE = 1  -- wamp message code
+Hello.MESSAGE_TYPE = 1  -- wamp message code
 
 function Hello:_init( params )
 	-- print( "Hello:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
-	assert( type( params.realm )=='string', "Hello Message: requires string parameter 'realm'" )
-	assert( type( params.roles )=='table', "Hello Message: requires table parameter 'roles'" )
+	assert( type( params.realm )=='string' )
+	assert( type( params.roles )=='table' )
 	-- TODO: check authmethods
-	assert( params.authid == nil or type( params.authid )=='string', "Hello Message: parameter 'authid' must be a string" )
+	assert( params.authid == nil or type( params.authid )=='string' )
 
 	self.realm = params.realm
 	self.roles = params.roles
@@ -161,9 +243,9 @@ function Hello:marshal()
 	-- print( "Hello:marshal" )
 	local details = { roles={} }
 
-	local ref -- reference to data
 	for i, role in ipairs( self.roles ) do
-		details.roles[ role.ROLE ] =  {}
+		local ref = {}  -- reference to data
+		details.roles[ role.ROLE ] = {}
 		-- print( 'role', i, role, role.ROLE )
 		ref = details.roles[ role.ROLE ]
 		for k, v in pairs( role:getFeatures() ) do
@@ -171,12 +253,8 @@ function Hello:marshal()
 			if not ref.features then ref.features = {} end
 			ref.features[k]=v
 		end
-		if ref.features == nil then
-			-- hack to fix JSON encoding when empty
-			details.roles[ role.ROLE ] = Utils.encodeLuaTable( {} )
-		end
+		details.roles[ role.ROLE ] = Utils.encodeLuaTable( ref )
 	end
-	details = Utils.encodeLuaTable( details )
 
 	if self.authmethods then
 		details.authmethods = self.authmethods
@@ -186,7 +264,10 @@ function Hello:marshal()
 		details.authid = self.authid
 	end
 
-	return { Hello.TYPE, self.realm, details }
+	-- hack values
+	details = Utils.encodeLuaTable( details )
+
+	return { Hello.MESSAGE_TYPE, self.realm, details }
 end
 
 
@@ -199,9 +280,9 @@ end
 -- Format: `[WELCOME, Session|id, Details|dict]`
 
 local Welcome = inheritsFrom( Message )
-Welcome.NAME = "Welcome Message Class"
+Welcome.NAME = "Welcome Message"
 
-Welcome.TYPE = 2  -- wamp message code
+Welcome.MESSAGE_TYPE = 2  -- wamp message code
 
 function Welcome:_init( params )
 	-- print( "Welcome:_init" )
@@ -210,7 +291,6 @@ function Welcome:_init( params )
 	--==--
 	assert( type(params.session)=='number' )
 	assert( type(params.roles)=='table' )
-
 	assert( params.authid==nil or type(params.authid)=='string' )
 	assert( params.authrole==nil or type(params.authrole)=='string' )
 	assert( params.authmethod==nil or type(params.authmethod)=='string' )
@@ -246,30 +326,88 @@ marshal() method not implemeneted because only necessary for routers
 
 
 --====================================================================--
--- Abort Message Class
+--== Abort Message Class
 --====================================================================--
 
 
+-- Format: ``[ABORT, Details|dict, Reason|uri]``
+
+local Abort = inheritsFrom( Message )
+Abort.NAME = "Abort Message"
+
+Abort.MESSAGE_TYPE = 3  -- wamp message code
+
+function Abort:_init( params )
+	-- print( "Abort:_init" )
+	params = params or {}
+	self:superCall( '_init', params )
+	--==--
+	assert( type( params.reason )=='string' )
+	assert( params.message == nil or type( params.message )=='string' )
+
+	self.reason = params.reason
+	self.message = params.message
+
+end
+
+
+-- Static function
+function Abort.parse( wmsg )
+	print( "Abort.parse", wmsg )
+
+	assert( #wmsg > 0 and wmsg[1] == Abort.MESSAGE_TYPE )
+
+	if #wmsg ~= 3 then
+		error( ProtocolError( "invalid message length {0} for ABORT" ) )
+	end
+
+	local details, reason, message
+
+	details = check_or_raise_extra{ value=wmsg[2], message="'details' in ABORT" }
+	reason = check_or_raise_uri{ value=wmsg[3], message="'reason' in ABORT" }
+
+	if details and details.message then
+		message = details.message
+		if type( message ) ~= 'string' then
+			error( ProtocolError( "invalid type {0} for 'message' detail in ABORT" ) )
+		end
+	end
+
+	return Abort{
+		reason=reason,
+		message=message
+	}
+
+end
+
+
+--[[
+marshal() method not implemeneted because only necessary for routers
+--]]
+-- function Challenge:marshal()
+-- end
+
+
 
 --====================================================================--
--- Challenge Message Class
+--== Challenge Message Class
 --====================================================================--
 
 
 -- Format: ``[CHALLENGE, Method|string, Extra|dict]``
 
 local Challenge = inheritsFrom( Message )
-Challenge.NAME = "Challenge Message Class"
+Challenge.NAME = "Challenge Message"
 
-Challenge.TYPE = 4  -- wamp message code
+Challenge.MESSAGE_TYPE = 4  -- wamp message code
 
 function Challenge:_init( params )
 	-- print( "Challenge:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
-	assert( type( params.method )=='string', "Challenge Message: requires string parameter 'method'" )
-	assert( params.extra == nil or type( params.extra )=='table', "Challenge Message: parameter 'extra' should be type 'table'" )
+	assert( type( params.method )=='string' )
+	assert( params.extra == nil or type( params.extra )=='table' )
 
 	self.method = params.method
 	self.extra = params.extra
@@ -281,7 +419,7 @@ end
 function Challenge.parse( wmsg )
 	print( "Challenge.parse", wmsg )
 
-	assert( #wmsg > 0 and wmsg[1] == Challenge.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Challenge.MESSAGE_TYPE )
 
 	if #wmsg ~= 3 then
 		error( ProtocolError( "invalid message length {0} for CHALLENGE" ) )
@@ -294,12 +432,7 @@ function Challenge.parse( wmsg )
 		error( ProtocolError( "invalid type {0} for 'method' in CHALLENGE" ) )
 	end
 
-	extra = check_or_raise_extra{
-		value = wmsg[3],
-		message="'extra' in CHALLENGE"
-	}
-
-	print( "VALUD JFKDJFKL", extra )
+	extra = check_or_raise_extra{ value=wmsg[3], message="'extra' in CHALLENGE" }
 
 	return Challenge{
 		method = method,
@@ -325,9 +458,9 @@ marshal() method not implemeneted because only necessary for routers
 -- Format: ``[AUTHENTICATE, Signature|string, Extra|dict]``
 
 local Authenticate = inheritsFrom( Message )
-Authenticate.NAME = "Authenticate Message Class"
+Authenticate.NAME = "Authenticate Message"
 
-Authenticate.TYPE = 5  -- wamp message code
+Authenticate.MESSAGE_TYPE = 5  -- wamp message code
 
 function Authenticate:_init( params )
 	-- print( "Authenticate:_init" )
@@ -335,8 +468,8 @@ function Authenticate:_init( params )
 	params.extra = params.extra or {}
 	self:superCall( '_init', params )
 	--==--
-	assert( type( params.signature )=='string', "Authenticate Message: requires string parameter 'signature'" )
-	assert( params.extra == nil or type( params.extra )=='table', "Authenticate Message: parameter 'extra' must be a table" )
+	assert( type( params.signature )=='string' )
+	assert( params.extra == nil or type( params.extra )=='table' )
 
 	self.signature = params.signature
 	self.extra = params.extra
@@ -353,13 +486,9 @@ parse() method not implemented because only necessary for routers
 
 function Authenticate:marshal()
 	-- print( "Authenticate:marshal" )
+	local extra = Utils.encodeLuaTable( self.extra )
 
-	local extra = self.extra
-	if Utils.tableLength( extra ) == 0 then
-		extra = Utils.encodeLuaTable( extra )
-	end
-
-	return { Authenticate.TYPE, self.signature, extra }
+	return { Authenticate.MESSAGE_TYPE, self.signature, extra }
 end
 
 
@@ -372,16 +501,19 @@ end
 -- Format: `[GOODBYE, Details|dict, Reason|uri]`
 
 local Goodbye = inheritsFrom( Message )
-Goodbye.NAME = "Goodbye Message Class"
+Goodbye.NAME = "Goodbye Message"
 
-Goodbye.TYPE = 6  -- wamp message code
+Goodbye.MESSAGE_TYPE = 6  -- wamp message code
 Goodbye.DEFAULT_REASON = 'wamp.goodbye.normal'
 
 function Goodbye:_init( params )
 	-- print( "Goodbye:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
+
+	assert( type( params.reason )=='string' )
+	assert( params.message == nil or type( params.message )=='string' )
 
 	self.reason = params.reason or Goodbye.DEFAULT_REASON
 	self.message = params.message
@@ -392,16 +524,27 @@ end
 function Goodbye.parse( wmsg )
 	-- print( "Goodbye.parse", wmsg )
 
-	assert( #wmsg > 0 and wmsg[1] == Goodbye.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Goodbye.MESSAGE_TYPE )
 	if #wmsg ~= 3 then
-		error("wrong length, error")
+		error( ProtocolError( "invalid message length {0} for ERROR" ) )
 	end
 
-	local p = {
-		details = wmsg[2],
-		reason = wmsg[3],
+	local details, reason, message
+
+	details = check_or_raise_extra{ value=wmsg[2], message="'details' in GOODBYE" }
+	reason = check_or_raise_uri{ value=wmsg[3], message="'reason' in GOODBYE" }
+
+	if details and details.message then
+		message = details.message
+		if type( message) ~= 'string' then
+			error( ProtocolError( "invalid type {0} for 'message' detail in ABORT" ) )
+		end
+	end
+
+	return Goodbye{
+		reason=reason,
+		message=message
 	}
-	return Goodbye:new( p )
 end
 
 function Goodbye:marshal()
@@ -410,21 +553,110 @@ function Goodbye:marshal()
 	local details = {
 		message = self.message
 	}
+
+	-- hack before sending
 	details = Utils.encodeLuaTable( details )
 
-	return { Goodbye.TYPE, details, self.reason }
+	return { Goodbye.MESSAGE_TYPE, details, self.reason }
 end
 
 
 
 --====================================================================--
--- Heartbeat Message Class
+--== Heartbeat Message Class
 --====================================================================--
 
 
+-- Formats:
+-- ``[HEARTBEAT, Incoming|integer, Outgoing|integer]``
+-- ``[HEARTBEAT, Incoming|integer, Outgoing|integer, Discard|string]``
+
+
+local Heartbeat = inheritsFrom( Message )
+Heartbeat.NAME = "Heartbeat Message"
+
+Heartbeat.MESSAGE_TYPE = 7  -- wamp message code
+
+function Heartbeat:_init( params )
+	-- print( "Heartbeat:_init" )
+	params = params or {}
+	self:superCall( '_init', params )
+	--==--
+	assert( type( params.incoming ) == 'number' )
+	assert( type( params.outgoing ) == 'number' )
+	assert( params.discard == nil or type( params.discard ) == 'string' )
+
+	self.incoming = params.incoming
+	self.outgoing = params.outgoing
+	self.discard = params.discard
+
+end
+
+-- Static function
+function Heartbeat.parse( wmsg )
+	-- print( "Heartbeat.parse", wmsg )
+
+	assert( #wmsg > 0 and wmsg[1] == Heartbeat.MESSAGE_TYPE )
+
+	if not Utils.propertyIn( { 3, 4 }, #wmsg ) then
+		error( ProtocolError( "invalid message length HEARTBEAT" ) )
+	end
+
+	local incoming, outgoing, discard
+
+	incoming = wmsg[2]
+
+	if type( incoming ) ~= 'number' then
+		error( ProtocolError( "invalid type 'incoming' HEARTBEAT" ) )
+	end
+
+	if incoming < 0 then
+		error( ProtocolError( "non negative 'incoming' HEARTBEAT" ) )
+	end
+
+	outgoing = wmsg[3]
+
+	if type( outgoing ) ~= 'number' then
+		error( ProtocolError( "invalid type 'outgoing' HEARTBEAT" ) )
+	end
+
+	if outgoing <= 0 then
+		error( ProtocolError( "non negative 'outgoing' HEARTBEAT" ) )
+	end
+
+	discard = nil
+	if #wmsg > 3 then
+		discard = wmsg[4]
+
+		if type( discard ) ~= 'string' then
+			error( ProtocolError( "invalid type 'discard' HEARTBEAT" ) )
+		end
+	end
+
+	return Heartbeat{
+		incoming=incoming,
+		outgoing=outgoing,
+		discard=discard
+	}
+
+end
+
+
+function Heartbeat:marshal()
+	-- print( "Heartbeat:marshal" )
+
+	if self.discard then
+		return { Heartbeat.MESSAGE_TYPE, self.incoming, self.outgoing, self.discard }
+	else
+		return { Heartbeat.MESSAGE_TYPE, self.incoming, self.outgoing }
+	end
+
+end
+
+
 
 --====================================================================--
--- Error Message Class
+--== Error Message Class
 --====================================================================--
 
 
@@ -436,29 +668,21 @@ Formats:
 --]]
 
 local Error = inheritsFrom( Message )
-Error.NAME = "Error Message Class"
+Error.NAME = "Error Message"
 
-Error.TYPE = 8  -- wamp message code
-
---====================================================================--
---== Start: Setup DMC Objects
+Error.MESSAGE_TYPE = 8  -- wamp message code
 
 function Error:_init( params )
 	-- print( "Error:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type( params.request_type )=='number' )
+	assert( type( params.request )=='number' )
+	assert( type( params.error )=='string' )
+	assert( params.args == nil or type( params.args )=='table' )
+	assert( params.kwargs == nil or type( params.kwargs )=='table' )
 
 	self.request_type = params.request_type
 	self.request = params.request
@@ -469,32 +693,65 @@ function Error:_init( params )
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
-
 
 -- Static function
 function Error.parse( wmsg )
 	-- print( "Error.parse", wmsg )
 
-	--== Sanity Check ==--
-
-	assert( #wmsg > 0 and wmsg[1] == Error.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Error.MESSAGE_TYPE )
 
 	if not Utils.propertyIn( { 5, 6, 7 }, #wmsg ) then
-		error("wrong length, error")
+		error( ProtocolError( "invalid message length ERROR" ) )
 	end
 
-	--== Processing ==--
+	local request_type, request, error, args, kwargs, _
 
-	local p = {
-		request_type = wmsg[2],
-		details = wmsg[3],
-		error = wmsg[4],
-		args = wmsg[5],
-		kwargs = wmsg[6]
+	request_type = wmsg[2]
+	if type(request_type) ~= 'number' then
+		error( ProtocolError( "invalid 'request_type' in ERROR" ) )
+	end
+
+	local REQUEST_TYPES = {
+		Subscribe.MESSAGE_TYPE,
+		Unsubscribe.MESSAGE_TYPE,
+		Publish.MESSAGE_TYPE,
+		Register.MESSAGE_TYPE,
+		Unregister.MESSAGE_TYPE,
+		Call.MESSAGE_TYPE,
+		Invocation.MESSAGE_TYPE
 	}
-	return Error:new( p )
+
+	if not Utils.propertyIn( REQUEST_TYPES, request_type ) then
+		error( ProtocolError( "invalid value for 'request_type' in ERROR" ) )
+	end
+
+	request = check_or_raise_id{ value=wmsg[3], message="'request' in ERROR" }
+	_ = check_or_raise_extra{ value=wmsg[4], message="'details' in ERROR" }
+	error = check_or_raise_uri{ value=wmsg[5], message="'error' in ERROR" }
+
+	if #wmsg > 4 then
+		args = wmsg[4]
+		if type(args) ~= 'table' then
+			error( ProtocolError( "invalid type 'args' in EVENT" ) )
+		end
+	end
+
+	if #wmsg > 5 then
+		kwargs = wmsg[5]
+		if type(kwargs) ~= 'table' then
+			error( ProtocolError( "invalid type 'kwargs' in EVENT" ) )
+		end
+	end
+
+
+	return Error{
+		request_type=request_type,
+		details=details,
+		error=error,
+		args=args,
+		kwargs=kwargs
+	}
+
 end
 
 
@@ -504,25 +761,25 @@ function Error:marshal()
 	-- local options = {
 	-- 	timeout = self.timeout,
 	-- 	receive_progress = self.receive_progress,
-	-- 	disclose_me = self.discloseMe
+	-- 	discloseMe = self.discloseMe
 	-- }
 
 	-- options = Utils.encodeLuaTable( options )
 	-- self.kwargs = Utils.encodeLuaTable( self._kwargs )
 
 	-- if self._kwargs then
-	-- 	return { Error.TYPE, self.request, options, self.procedure, self.args, self._kwargs }
+	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure, self.args, self._kwargs }
 	-- elseif self._args then
-	-- 	return { Error.TYPE, self.request, options, self.procedure, self.args }
+	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure, self.args }
 	-- else
-	-- 	return { Error.TYPE, self.request, options, self.procedure }
+	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure }
 	-- end
 end
 
 
 
 --====================================================================--
--- Publish Message Class
+--== Publish Message Class
 --====================================================================--
 
 
@@ -534,13 +791,9 @@ Format:
 --]]
 
 local Publish = inheritsFrom( Message )
-Publish.NAME = "Publish Message Class"
+Publish.NAME = "Publish Message"
 
-Publish.TYPE = 16  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Publish.MESSAGE_TYPE = 16  -- wamp message code
 
 function Publish:_init( params )
 	-- print( "Publish:_init" )
@@ -548,37 +801,27 @@ function Publish:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type( params.request ) == 'number' )
+	assert( type( params.topic ) == 'string' )
+	assert( params.args == nil or type( params.args ) == 'table' )
+	assert( params.kwargs == nil or type( params.kwargs ) == 'table' )
+	assert( params.acknowledge == nil or type( params.acknowledge ) == 'boolean' )
+	assert( params.excludeMe == nil or type( params.excludeMe ) == 'boolean' )
+	assert( params.exclude == nil or type( params.exclude ) == 'boolean' )
+	assert( params.eligible == nil or type( params.eligible ) == 'boolean' )
+	assert( params.discloseMe == nil or type( params.discloseMe ) == 'boolean' )
 
 	self.request = params.request
 	self.topic = params.topic
 	self.args = params.args
 	self.kwargs = params.kwargs
-
-	-- clean up args
-	local opts = params.options or {}
-	self.options = {
-		acknowledge=opts.acknowledge,
-		exclude_me=opts.exclude_me,
-		exclude=opts.exclude,
-		eligible=opts.eligible,
-		disclose_me=opts.disclose_me
-	}
+	self.acknowledge = params.acknowledge
+	self.excludeMe = params.excludeMe
+	self.exclude = params.exclude
+	self.eligible = params.eligible
+	self.discloseMe = params.discloseMe
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
-
 
 -- -- Static function
 -- function Publish.parse( wmsg )
@@ -597,16 +840,28 @@ end
 function Publish:marshal()
 	-- print( "Publish:marshal" )
 
-	local pub_id = Utils.encodeLuaInteger( self.request )
-	local options = Utils.encodeLuaTable( self.options )
-	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+	local pub_id = self.request
+	local options = {
+		acknowledge = self.acknowledge,
+		excludeMe = self.excludeMe,
+		exclude = self.exclude,
+		eligible = self.eligible,
+		discloseMe = self.discloseMe
+	}
+	local args = self.args or {}
+	local kwargs = self.kwargs or {}
+
+	-- hack before sending
+	pub_id = Utils.encodeLuaInteger( pub_id )
+	options = Utils.encodeLuaTable( options )
+	kwargs = Utils.encodeLuaTable( kwargs )
 
 	if self.kwargs then
-		return { Publish.TYPE, pub_id, options, self.topic, self.args, self.kwargs }
+		return { Publish.MESSAGE_TYPE, pub_id, options, self.topic, args, kwargs }
 	elseif self.args then
-		return { Publish.TYPE, pub_id, options, self.topic, self.args }
+		return { Publish.MESSAGE_TYPE, pub_id, options, self.topic, args }
 	else
-		return { Publish.TYPE, pub_id, options, self.topic }
+		return { Publish.MESSAGE_TYPE, pub_id, options, self.topic }
 	end
 
 end
@@ -614,7 +869,7 @@ end
 
 
 --====================================================================--
--- Published Message Class
+--== Published Message Class
 --====================================================================--
 
 
@@ -626,16 +881,16 @@ Format:
 local Published = inheritsFrom( Message )
 Published.NAME = "Published Message"
 
-Published.TYPE = 17  -- wamp message code
+Published.MESSAGE_TYPE = 17  -- wamp message code
 
 function Published:_init( params )
 	-- print( "Published:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	assert( params.request, "Published Message: missing request" )
-	assert( params.publication, "Published Message: missing publication" )
+	assert( type( params.request )=='number' )
+	assert( type( params.publication )=='number' )
 
 	self.request = params.request
 	self.publication = params.publication
@@ -645,17 +900,16 @@ end
 function Published.parse( wmsg )
 	-- print( "Published.parse", wmsg )
 
-	assert( #wmsg > 0 and wmsg[1] == Published.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Published.MESSAGE_TYPE )
 
 	if #wmsg ~= 3 then
-		error("wrong length, Published")
+		error( ProtocolError( "invalid length {0} for PUBLISHED" ) )
 	end
 
-	-- TODO: check these
-	local request = wmsg[2]
-	local publication = wmsg[3]
+	local request = check_or_raise_id{ value=wmsg[2], message="'request' in PUBLISHED" }
+	local publication = check_or_raise_id{ value=wmsg[3], message="'publication' in PUBLISHED" }
 
-	return Published:new{
+	return Published{
 		request=request,
 		publication=publication
 	}
@@ -664,13 +918,16 @@ end
 
 function Published:marshal()
 	-- print( "Published:marshal" )
-	return { Published.TYPE, self.request, self.publication }
+	local request = Utils.encodeLuaInteger( self.request )
+	local publication = Utils.encodeLuaInteger( self.publication )
+
+	return { Published.MESSAGE_TYPE, request, publication }
 end
 
 
 
 --====================================================================--
--- Subscribe Message Class
+--== Subscribe Message Class
 --====================================================================--
 
 
@@ -679,31 +936,24 @@ Format: `[SUBSCRIBE, Request|id, Options|dict, Topic|uri]`
 --]]
 
 local Subscribe = inheritsFrom( Message )
-Subscribe.NAME = "Subscribe Message Class"
+Subscribe.NAME = "Subscribe Message"
 
-Subscribe.TYPE = 32  -- wamp message code
+Subscribe.MESSAGE_TYPE = 32  -- wamp message code
 
 Subscribe.MATCH_EXACT = 'exact'
 Subscribe.MATCH_PREFIX = 'prefix'
 Subscribe.MATCH_WILDCARD = 'wildcard'
 
-
 function Subscribe:_init( params )
 	-- print( "Subscribe:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.topic)=='string' )
+	assert( params.match==nil or type(params.match)=='string' )
+	assert( params.match==nil or Utils.propertyIn( { self.MATCH_EXACT, self.MATCH_PREFIX, self.MATCH_WILDCARD }, params.match ) )
 
 	self.request = params.request
 	self.topic = params.topic
@@ -715,44 +965,46 @@ end
 function Subscribe.parse( wmsg )
 	-- print( "Subscribe.parse", wmsg )
 
-	-- Sanity Check
+	assert( #wmsg > 0 and wmsg[1] == Subscribe.MESSAGE_TYPE )
 
-	assert( #wmsg > 0 and wmsg[1] == Subscribe.TYPE )
-
-	if not Utils.propertyIn( { 3, 4, 5 }, #wmsg ) then
-		error("wrong length, Subscribe")
+	if #wmsg ~= 4 then
+		error( ProtocolError( "wrong length, Subscribe" ) )
 	end
 
-	-- Processing
+	local request, options, topic
 
-	local p = {
-		request = wmsg[2],
-		details = wmsg[3],
-		args = wmsg[4],
-		kwargs = wmsg[5]
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in SUBSCRIBE" }
+	options = check_or_raise_id{ value=wmsg[3], message="'options' in SUBSCRIBE" }
+	topic = check_or_raise_id{ value=wmsg[4], message="'topic' in SUBSCRIBE" }
+
+	return Subscribe{
+		request=request,
+		topic=topic,
+		match=match,
 	}
-	return Subscribe:new( p )
+
 end
 
 
 function Subscribe:marshal()
 	-- print( "Subscribe:marshal" )
 
-	local options = {}
+	local request = self.request
+	local options = {
+		match=self.match
+	}
 
-	if self.match and self.match ~= Subscribe.MATCH_EXACT then
-		options.match = self.match
-	end
-
+	-- hack before sending
+	request = Utils.encodeLuaInteger( request )
 	options = Utils.encodeLuaTable( options )
 
-	return { Subscribe.TYPE, self.request, options, self.topic }
+	return { Subscribe.MESSAGE_TYPE, request, options, self.topic }
 end
 
 
 
 --====================================================================--
--- Subscribed Message Class
+--== Subscribed Message Class
 --====================================================================--
 
 
@@ -761,27 +1013,18 @@ Format: `[SUBSCRIBE, Request|id, Options|dict, Topic|uri]`
 --]]
 
 local Subscribed = inheritsFrom( Message )
-Subscribed.NAME = "Subscribed Message Class"
+Subscribed.NAME = "Subscribed Message"
 
-Subscribed.TYPE = 33  -- wamp message code
-
+Subscribed.MESSAGE_TYPE = 33  -- wamp message code
 
 function Subscribed:_init( params )
 	-- print( "Subscribed:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.subscription)=='number' )
 
 	self.request = params.request
 	self.subscription = params.subscription
@@ -792,31 +1035,36 @@ end
 function Subscribed.parse( wmsg )
 	-- print( "Subscribed.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Subscribed.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Subscribed.MESSAGE_TYPE )
 
 	if #wmsg ~= 3 then
-		error("wrong length, Subscribed")
+		error( ProtocolError( "wrong length, Subscribed" ) )
 	end
 
-	-- Processing
-	local p = {
-		request = wmsg[2],
-		subscription = wmsg[3],
+	local request, subscription
+
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in SUBSCRIBED" }
+	subscription = check_or_raise_id{ value=wmsg[3], message="'subscription' in SUBSCRIBED" }
+
+	return Subscribed{
+		request=request,
+		subscription=subscription,
 	}
-	return Subscribed:new( p )
 end
 
 
 function Subscribed:marshal()
 	-- print( "Subscribed:marshal" )
-	return { Subscribed.TYPE, self.request, self.subscription }
+	local request = Utils.encodeLuaInteger( self.request )
+	local subscription = Utils.encodeLuaInteger( self.subscription )
+
+	return { Subscribed.MESSAGE_TYPE, request, subscription }
 end
 
 
 
 --====================================================================--
--- Unsubscribe Message Class
+--== Unsubscribe Message Class
 --====================================================================--
 
 
@@ -825,30 +1073,21 @@ Format: `[UNSUBSCRIBE, Request|id, SUBSCRIBED.Subscription|id]`
 --]]
 
 local Unsubscribe = inheritsFrom( Message )
-Unsubscribe.NAME = "Unsubscribe Message Class"
+Unsubscribe.NAME = "Unsubscribe Message"
 
-Unsubscribe.TYPE = 34  -- wamp message code
-
+Unsubscribe.MESSAGE_TYPE = 34  -- wamp message code
 
 function Unsubscribe:_init( params )
 	-- print( "Unsubscribe:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.subscription)=='number' )
 
 	self.request = params.request
-	self.subscription_id = params.subscription_id
+	self.subscription = params.subscription
 
 end
 
@@ -856,58 +1095,52 @@ end
 function Unsubscribe.parse( wmsg )
 	-- print( "Unsubscribe.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Unsubscribe.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Unsubscribe.MESSAGE_TYPE )
 
 	if #wmsg ~= 3 then
-		error("wrong length, Unsubscribe")
+		error( ProtocolError( "wrong length, Unsubscribe" ) )
 	end
 
-	-- Processing
-	local p = {
-		request = wmsg[2],
-		subscription = wmsg[3],
+	local request, subscription
+
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in SUBSCRIBE" }
+	subscription = check_or_raise_id{ value=wmsg[3], message="'subscription' in SUBSCRIBE" }
+
+	return Unsubscribe{
+		request=request,
+		subscription=subscription,
 	}
-	return Unsubscribe:new( p )
+
 end
 
 
 function Unsubscribe:marshal()
 	-- print( "Unsubscribe:marshal" )
-	local id = Utils.encodeLuaInteger( self.subscription_id )
+	local request = Utils.encodeLuaInteger( self.request )
+	local subscription = Utils.encodeLuaInteger( self.subscription )
 
-	return { Unsubscribe.TYPE, self.request, id }
+	return { Unsubscribe.MESSAGE_TYPE, request, subscription }
 end
 
 
 
 --====================================================================--
--- Unsubscribed Message Class
+--== Unsubscribed Message Class
 --====================================================================--
 
 
 local Unsubscribed = inheritsFrom( Message )
-Unsubscribed.NAME = "Unsubscribed Message Class"
+Unsubscribed.NAME = "Unsubscribed Message"
 
-Unsubscribed.TYPE = 35  -- wamp message code
-
+Unsubscribed.MESSAGE_TYPE = 35  -- wamp message code
 
 function Unsubscribed:_init( params )
 	-- print( "Unsubscribed:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
 
 	self.request = params.request
 
@@ -917,30 +1150,32 @@ end
 function Unsubscribed.parse( wmsg )
 	-- print( "Unsubscribed.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Unsubscribed.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Unsubscribed.MESSAGE_TYPE )
 
 	if #wmsg ~= 2 then
-		error("wrong length, Unsubscribed")
+		error( ProtocolError( "wrong length, Unsubscribed" ) )
 	end
 
-	-- Processing
-	local p = {
-		request = wmsg[2],
+	local request = check_or_raise_id{ value=wmsg[2], message="'request' in UNSUBSCRIBED" }
+
+	return Unsubscribed{
+		request=request
 	}
-	return Unsubscribed:new( p )
+
 end
 
 
 function Unsubscribed:marshal()
 	-- print( "Unsubscribed:marshal" )
-	return { Unsubscribed.TYPE, self.request, self.subscription }
+	local request = Utils.encodeLuaInteger( self.request )
+
+	return { Unsubscribed.MESSAGE_TYPE, request }
 end
 
 
 
 --====================================================================--
--- Event Message Class
+--== Event Message Class
 --====================================================================--
 
 
@@ -952,27 +1187,21 @@ Formats:
 --]]
 
 local Event = inheritsFrom( Message )
-Event.NAME = "Event Message Class"
+Event.NAME = "Event Message"
 
-Event.TYPE = 36  -- wamp message code
-
+Event.MESSAGE_TYPE = 36  -- wamp message code
 
 function Event:_init( params )
 	-- print( "Event:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.subscription)=='number' )
+	assert( type(params.publication)=='number' )
+	assert( params.args==nil or type(params.args)=='table' )
+	assert( params.kwargs==nil or type(params.kwargs)=='table' )
+	assert( params.publisher==nil or type(params.publisher)=='number' )
 
 	self.subscription = params.subscription
 	self.publication = params.publication
@@ -987,34 +1216,80 @@ end
 function Event.parse( wmsg )
 	-- print( "Event.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Event.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Event.MESSAGE_TYPE )
 
 	if not Utils.propertyIn( { 4, 5, 6 }, #wmsg ) then
-		error("wrong length, result")
+		error( ProtocolError( "wrong length, EVENT" ) )
 	end
 
-	-- Processing
-	local p = {
-		subscription = wmsg[2],
-		publication = wmsg[3],
+	local subscription, publication, details
+	local args, kwargs, publisher
+
+	subscription = check_or_raise_id{ value=wmsg[2], message="'subscription' in SUBSCRIBE" }
+	publication = check_or_raise_id{ value=wmsg[3], message="'publication' in SUBSCRIBE" }
+	details = check_or_raise_extra{ value=wmsg[4], message="'details' in SUBSCRIBE" }
+
+
+	if #wmsg > 4 then
+		args = wmsg[4]
+		if type(args) ~= 'table' then
+			error( ProtocolError( "invalid type 'args' in EVENT" ) )
+		end
+	end
+
+	if #wmsg > 5 then
+		kwargs = wmsg[5]
+		if type(kwargs) ~= 'table' then
+			error( ProtocolError( "invalid type 'kwargs' in EVENT" ) )
+		end
+	end
+
+	if details and details.publisher then
+		publisher = details.publisher
+		if type(publisher) ~= 'number' then
+			error( ProtocolError( "invalid type 'publisher' in EVENT" ) )
+		end
+	end
+
+
+	return Event{
+		subscription=subscription,
+		publication=publication,
 		-- details = wmsg[4],
-		args = wmsg[5],
-		kwargs = wmsg[6],
+		args=args,
+		kwargs=kwargs,
+		publisher=publisher,
 	}
-	return Event:new( p )
+
 end
 
 
 function Event:marshal()
 	-- print( "Event:marshal" )
-	return { Event.TYPE, self.request, self.subscription }
+	local details = {
+		publisher = self.publisher
+	}
+	local args = self.args or {}
+	local kwargs = self.kwargs or {}
+
+	-- hack before sending
+	details = Utils.encodeLuaTable( details )
+	kwargs = Utils.encodeLuaTable( kwargs )
+
+	if self.kwargs then
+		return { Event.MESSAGE_TYPE, self.subscription, self.self.publication, details, args, kwargs }
+	elseif self.args then
+		return { Event.MESSAGE_TYPE, self.subscription, self.self.publication, details, args }
+	else
+		return { Event.MESSAGE_TYPE, self.subscription, self.self.publication, details }
+	end
+
 end
 
 
 
 --====================================================================--
--- Call Message Class
+--== Call Message Class
 --====================================================================--
 
 
@@ -1026,30 +1301,23 @@ Formats:
 --]]
 
 local Call = inheritsFrom( Message )
-Call.NAME = "Call Message Class"
+Call.NAME = "Call Message"
 
-Call.TYPE = 48  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Call.MESSAGE_TYPE = 48  -- wamp message code
 
 function Call:_init( params )
 	-- print( "Call:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.procedure)=='string' )
+	assert( params.args==nil or type(params.args)=='table' )
+	assert( params.kwargs==nil or type(params.kwargs)=='table' )
+	assert( params.timeout==nil or type(params.timeout)=='number' )
+	assert( params.receive_progress==nil or type(params.receive_progress)=='boolean' )
+	assert( params.discloseMe==nil or type(params.discloseMe)=='boolean' )
 
 	self.request = params.request
 	self.procedure = params.procedure
@@ -1060,9 +1328,6 @@ function Call:_init( params )
 	self.discloseMe = params.discloseMe
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
 
 
 -- -- Static function
@@ -1082,34 +1347,88 @@ end
 function Call:marshal()
 	-- print( "Call:marshal" )
 
+	local req_id = self.request
+	local args = self.args or {}
+	local kwargs = self.kwargs or {}
 	local options = {
 		timeout = self.timeout,
 		receive_progress = self.receive_progress,
-		disclose_me = self.discloseMe
+		discloseMe = self.discloseMe
 	}
 
+	-- hack before sending
+	req_id = Utils.encodeLuaInteger( req_id )
 	options = Utils.encodeLuaTable( options )
-	self.kwargs = Utils.encodeLuaTable( self.kwargs )
+	kwargs = Utils.encodeLuaTable( kwargs )
 
 	if self.kwargs then
-		return { Call.TYPE, self.request, options, self.procedure, self.args, self.kwargs }
+		return { Call.MESSAGE_TYPE, req_id, options, self.procedure, args, kwargs }
 	elseif self.args then
-		return { Call.TYPE, self.request, options, self.procedure, self.args }
+		return { Call.MESSAGE_TYPE, req_id, options, self.procedure, args }
 	else
-		return { Call.TYPE, self.request, options, self.procedure }
+		return { Call.MESSAGE_TYPE, req_id, options, self.procedure }
 	end
+
 end
 
 
 
 --====================================================================--
--- Cancel Message Class
+--== Cancel Message Class
 --====================================================================--
 
 
+-- Format: ``[CANCEL, CALL.Request|id, Options|dict]``
+
+local Cancel = inheritsFrom( Message )
+Cancel.NAME = "Cancel Message"
+
+Cancel.MESSAGE_TYPE = 49  -- wamp message code
+
+Cancel.SKIP = 'skip'
+Cancel.ABORT = 'abort'
+Cancel.KILL = 'kill'
+
+
+function Cancel:_init( params )
+	-- print( "Cancel:_init" )
+	params = params or {}
+	self:superCall( '_init', params )
+	--==--
+	assert( type( params.request )=='number' )
+	assert( params.mode==nil or type(params.mode)=='string' )
+	assert( Utils.propertyIn( { self.SKIP, self.ABORT, self.KILL }, params.mode ) )
+
+	self.request = params.request
+	self.mode = params.mode
+
+end
+
+
+--[[
+parse() method not implemeneted because only necessary for routers
+--]]
+-- function Cancel:parse()
+-- end
+
+
+function Cancel:marshal()
+	-- print( "Cancel:marshal" )
+
+	local options = {
+		mode = self.mode
+	}
+
+	-- hack before sending
+	options = Utils.encodeLuaTable( options )
+
+	return { Cancel.MESSAGE_TYPE, self.request, options }
+end
+
+
 
 --====================================================================--
--- Result Message Class
+--== Result Message Class
 --====================================================================--
 
 
@@ -1121,26 +1440,20 @@ Formats:
 --]]
 
 local Result = inheritsFrom( Message )
-Result.NAME = "Result Message Class"
+Result.NAME = "Result Message"
 
-Result.TYPE = 50  -- wamp message code
+Result.MESSAGE_TYPE = 50  -- wamp message code
 
 function Result:_init( params )
 	-- print( "Result:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( params.args==nil or type(params.args)=='table' )
+	assert( params.kwargs==nil or type(params.kwargs)=='table' )
+	assert( params.progress==nil or type(params.progress)=='boolean' )
 
 	self.request = params.request
 	self.args = params.args
@@ -1150,23 +1463,49 @@ function Result:_init( params )
 end
 
 function Result.parse( wmsg )
-	-- print( "Result.parse", wmsg )
+	print( "Result.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Result.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Result.MESSAGE_TYPE )
 
 	if not Utils.propertyIn( { 3, 4, 5 }, #wmsg ) then
-		error("wrong length, result")
+		error( ProtocolError( "wrong length in RESULT" ) )
 	end
 
-	-- Processing
-	local p = {
-		request = wmsg[2],
-		details = wmsg[3],
-		args = wmsg[4],
+	local request, details
+	local args, kwargs, progress
+
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in SUBSCRIBE" }
+	details = check_or_raise_extra{ value=wmsg[3], message="'details' in SUBSCRIBE" }
+
+	if #wmsg > 3 then
+		args = wmsg[4]
+		if type(args) ~= 'table' then
+			error( ProtocolError( "invalid type 'args' in EVENT" ) )
+		end
+	end
+
+	if #wmsg > 4 then
 		kwargs = wmsg[5]
+		if type(kwargs) ~= 'table' then
+			error( ProtocolError( "invalid type 'kwargs' in EVENT" ) )
+		end
+	end
+
+	if details and details.progress then
+		progress = details.progress
+		if type(progress) ~= 'boolean' then
+			error( ProtocolError( "invalid type 'progress' in EVENT" ) )
+		end
+	end
+
+
+	return Result{
+		request=request,
+		details=details,
+		args=args,
+		kwargs=kwargs,
+		progress=progress
 	}
-	return Result:new( p )
 
 end
 
@@ -1176,25 +1515,25 @@ function Result:marshal()
 	-- local options = {
 	-- 	timeout = self._timeout,
 	-- 	receive_progress = self._receive_progress,
-	-- 	disclose_me = self._discloseMe
+	-- 	discloseMe = self._discloseMe
 	-- }
 
 	-- options = Utils.encodeLuaTable( options )
 	-- self._kwargs = Utils.encodeLuaTable( self._kwargs )
 
 	-- if self._kwargs then
-	-- 	return { Result.TYPE, self._request, options, self._procedure, self._args, self._kwargs }
+	-- 	return { Result.MESSAGE_TYPE, self._request, options, self._procedure, self._args, self._kwargs }
 	-- elseif self._args then
-	-- 	return { Result.TYPE, self._request, options, self._procedure, self._args }
+	-- 	return { Result.MESSAGE_TYPE, self._request, options, self._procedure, self._args }
 	-- else
-	-- 	return { Result.TYPE, self._request, options, self._procedure }
+	-- 	return { Result.MESSAGE_TYPE, self._request, options, self._procedure }
 	-- end
 end
 
 
 
 --====================================================================--
--- Register Message Class
+--== Register Message Class
 --====================================================================--
 
 
@@ -1204,40 +1543,34 @@ Format:
 --]]
 
 local Register = inheritsFrom( Message )
-Register.NAME = "Register Message Class"
+Register.NAME = "Register Message"
 
-Register.TYPE = 64  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Register.MESSAGE_TYPE = 64  -- wamp message code
 
 function Register:_init( params )
 	-- print( "Register:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.procedure)=='string' )
+	assert( params.pkeys==nil or type(params.pkeys)=='table' )
+	if params.pkeys then
+		for _,v in ipairs( params.pkeys ) do
+			assert( type(v)=='number' )
+		end
+	end
+	assert( params.discloseCaller==nil or type(params.discloseCaller)=='boolean' )
+	assert( params.discloseCallerTransport==nil or type(params.discloseCallerTransport)=='boolean' )
 
 	self.request = params.request
 	self.procedure = params.procedure
 	self.pkeys = params.pkeys
-	self.disclose_caller = params.disclose_caller
+	self.discloseCaller = params.discloseCaller
+	self.discloseCallerTransport = params.discloseCallerTransport
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
 
 
 -- -- Static function
@@ -1255,23 +1588,26 @@ end
 
 
 function Register:marshal()
-	print( "Register:marshal" )
+	-- print( "Register:marshal" )
 
 	local options = {
 		pkeys = self.pkeys,
-		discloseCaller = self.disclose_caller,
+		discloseCaller = self.discloseCaller,
+		discloseCallerTransport = self.discloseCallerTransport,
 	}
+	local req_id = self.request
 
+	-- hack before sending
+	req_id = Utils.encodeLuaInteger( req_id )
 	options = Utils.encodeLuaTable( options )
-	self.kwargs = Utils.encodeLuaTable( self.kwargs )
 
-	return { Register.TYPE, self.request, options, self.procedure }
+	return { Register.MESSAGE_TYPE, req_id, options, self.procedure }
 end
 
 
 
 --====================================================================--
--- Registered Message Class
+--== Registered Message Class
 --====================================================================--
 
 
@@ -1281,56 +1617,44 @@ Format:
 --]]
 
 local Registered = inheritsFrom( Message )
-Registered.NAME = "Registered Message Class"
+Registered.NAME = "Registered Message"
 
-Registered.TYPE = 65  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Registered.MESSAGE_TYPE = 65  -- wamp message code
 
 function Registered:_init( params )
 	-- print( "Registered:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.registration)=='number' )
 
 	self.request = params.request
 	self.registration = params.registration
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
-
 
 -- Static function
 function Registered.parse( wmsg )
-	print( "Registered.parse", wmsg )
+	-- print( "Registered.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Registered.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Registered.MESSAGE_TYPE )
 
 	if #wmsg ~= 3 then
-		error("wrong length, result")
+		error( ProtocolError( "wrong length in REGISTERED" ) )
 	end
 
-	local p = {
-		request = wmsg[2],
-		registration = wmsg[3]
+	local request, registration
+
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in REGISTERED" }
+	registration = check_or_raise_id{ value=wmsg[3], message="'registration' in REGISTERED" }
+
+	return Registered{
+		request=request,
+		registration=registration
 	}
-	return Registered:new( p )
 
 end
 
@@ -1340,19 +1664,19 @@ end
 
 -- 	local options = {
 -- 		pkeys = self.pkeys,
--- 		discloseCaller = self.disclose_caller,
+-- 		discloseCaller = self.discloseCaller,
 -- 	}
 
 -- 	options = Utils.encodeLuaTable( options )
 -- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
 
--- 	return { Registered.TYPE, self.request, options, self.procedure }
+-- 	return { Registered.MESSAGE_TYPE, self.request, options, self.procedure }
 -- end
 
 
 
 --====================================================================--
--- Unregister Message Class
+--== Unregister Message Class
 --====================================================================--
 
 
@@ -1362,38 +1686,23 @@ Format:
 --]]
 
 local Unregister = inheritsFrom( Message )
-Unregister.NAME = "Unregister Message Class"
+Unregister.NAME = "Unregister Message"
 
-Unregister.TYPE = 66  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Unregister.MESSAGE_TYPE = 66  -- wamp message code
 
 function Unregister:_init( params )
 	-- print( "Unregister:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.registration)=='number' )
 
 	self.request = params.request
 	self.registration = params.registration -- id
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
 
 
 -- -- Static function
@@ -1411,53 +1720,37 @@ end
 
 
 function Unregister:marshal()
-	print( "Unregister:marshal" )
+	-- print( "Unregister:marshal" )
 
 	local req_id = Utils.encodeLuaInteger( self.request )
 	local reg_id = Utils.encodeLuaInteger( self.registration )
 
-	return { Unregister.TYPE, req_id, reg_id }
+	return { Unregister.MESSAGE_TYPE, req_id, reg_id }
 end
 
 
 
 --====================================================================--
--- Unregistered Message Class
+--== Unregistered Message Class
 --====================================================================--
 
 
 local Unregistered = inheritsFrom( Message )
 Unregistered.NAME = "Unregistered Message Class"
 
-Unregistered.TYPE = 67  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Unregistered.MESSAGE_TYPE = 67  -- wamp message code
 
 function Unregistered:_init( params )
 	-- print( "Unregistered:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
 
 	self.request = params.request
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
 
 
 -- Static function
@@ -1465,15 +1758,15 @@ function Unregistered.parse( wmsg )
 	print( "Unregistered.parse", wmsg )
 
 	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Unregistered.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Unregistered.MESSAGE_TYPE )
 
 	if #wmsg ~= 2 then
-		error("wrong length, Unregistered")
+		error( ProtocolError( "wrong length in UNREGISTERED" ) )
 	end
 
-	local request = wmsg[2]
+	local request = check_or_raise_id{ value=wmsg[2], message="'request' in REGISTERED" }
 
-	return Unregistered:new{
+	return Unregistered{
 		request=request
 	}
 
@@ -1485,20 +1778,19 @@ end
 
 -- 	local options = {
 -- 		pkeys = self.pkeys,
--- 		discloseCaller = self.disclose_caller,
+-- 		discloseCaller = self.discloseCaller,
 -- 	}
 
 -- 	options = Utils.encodeLuaTable( options )
 -- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
 
--- 	return { Unregistered.TYPE, self.request, options, self.procedure }
+-- 	return { Unregistered.MESSAGE_TYPE, self.request, options, self.procedure }
 -- end
 
 
 
-
 --====================================================================--
--- Invocation Message Class
+--== Invocation Message Class
 --====================================================================--
 
 
@@ -1510,30 +1802,27 @@ Formats:
 --]]
 
 local Invocation = inheritsFrom( Message )
-Invocation.NAME = "Invocation Message Class"
+Invocation.NAME = "Invocation Message"
 
-Invocation.TYPE = 68  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Invocation.MESSAGE_TYPE = 68  -- wamp message code
 
 function Invocation:_init( params )
 	-- print( "Invocation:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( type(params.registration)=='number' )
+	assert( params.args==nil or type(params.args)=='table' )
+	assert( params.kwargs==nil or type(params.kwargs)=='table' )
+	assert( params.timeout==nil or type(params.timeout)=='number' )
+	assert( params.receive_progress==nil or type(params.receive_progress)=='boolean' )
+	assert( params.caller==nil or type(params.caller)=='number' )
+	assert( params.caller_transport==nil or type(params.caller_transport)=='table' )
+	assert( params.authid==nil or type(params.authid)=='string' )
+	assert( params.authrole==nil or type(params.authrole)=='string' )
+	assert( params.authmethod==nil or type(params.authmethod)=='string' )
 
 	self.request = params.request
 	self.registration = params.registration
@@ -1542,44 +1831,110 @@ function Invocation:_init( params )
 	self.timeout = params.timeout
 	self.receive_progress = params.receive_progress
 	self.caller = params.caller
+	self.caller_transport = params.caller_transport
 	self.authid = params.authid
 	self.authrole = params.authrole
 	self.authmethod = params.authmethod
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
-
 
 -- Static function
 function Invocation.parse( wmsg )
 	print( "Invocation.parse", wmsg )
 
-	-- Sanity Check
-	assert( #wmsg > 0 and wmsg[1] == Invocation.TYPE )
+	assert( #wmsg > 0 and wmsg[1] == Invocation.MESSAGE_TYPE )
 
 	if not Utils.propertyIn( { 4, 5, 6 }, #wmsg ) then
-		error("wrong length, Invocation")
+		error( ProtocolError( "wrong length in INVOCATION" ) )
 	end
 
-	local p, details
+	local request, registration, details
+	local args, kwargs
+	local timeout, receive_progress, caller, caller_transport
+	local authid, authrole, authmethod
 
-	p = {
-		request = wmsg[2],
-		registration = wmsg[3],
-		args = wmsg[5],
-		kwargs = wmsg[6],
+	request = check_or_raise_id{ value=wmsg[2], message="'request' in INVOCATION" }
+	registration = check_or_raise_id{ value=wmsg[3], message="'registration' in INVOCATION" }
+	details = check_or_raise_extra{ value=wmsg[4], message="'details' in INVOCATION" }
+
+	if #wmsg > 4 then
+		args = wmsg[5]
+		if type(args) ~= 'table' then
+			error( ProtocolError( "invalid type 'args' in INVOCATION" ) )
+		end
+	end
+
+	if #wmsg > 5 then
+		kwargs = wmsg[6]
+		if type(kwargs) ~= 'table' then
+			error( ProtocolError( "invalid type 'kwargs' in INVOCATION" ) )
+		end
+	end
+
+
+	if details and details.timeout then
+		timeout = details.timeout
+		if type(timeout) ~= 'boolean' then
+			error( ProtocolError( "invalid type 'timeout' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.receive_progress then
+		receive_progress = details.receive_progress
+		if type(receive_progress) ~= 'boolean' then
+			error( ProtocolError( "invalid type 'receive_progress' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.caller then
+		caller = details.caller
+		if type(caller) ~= 'number' then
+			error( ProtocolError( "invalid type 'caller' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.caller_transport then
+		caller_transport = details.caller_transport
+		if type(caller_transport) ~= 'number' then
+			error( ProtocolError( "invalid type 'caller_transport' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.authid then
+		authid = details.authid
+		if type(authid) ~= 'string' then
+			error( ProtocolError( "invalid type 'authid' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.authrole then
+		authrole = details.authrole
+		if type(authrole) ~= 'string' then
+			error( ProtocolError( "invalid type 'authrole' in INVOCATION" ) )
+		end
+	end
+
+	if details and details.authmethod then
+		authmethod = details.authmethod
+		if type(authmethod) ~= 'string' then
+			error( ProtocolError( "invalid type 'authmethod' in INVOCATION" ) )
+		end
+	end
+
+
+	return Invocation{
+		request=request,
+		registration=registration,
+		args=args,
+		kwargs=kwargs,
+		timeout=timeout,
+		caller=caller,
+		caller_transport=caller_transport,
+		authid=authid,
+		authrole=authrole,
+		authmethod=authmethod
 	}
-
-	details = wmsg[4] or {}
-	p.timeout = details.timeout
-	p.receive_progress = details.receive_progress
-	p.authid = details.authid
-	p.authrole = details.authrole
-	p.authmethod = details.authmethod
-
-	return Invocation:new( p )
 
 end
 
@@ -1589,24 +1944,75 @@ end
 
 -- 	local options = {
 -- 		pkeys = self.pkeys,
--- 		discloseCaller = self.disclose_caller,
+-- 		discloseCaller = self.discloseCaller,
 -- 	}
 
 -- 	options = Utils.encodeLuaTable( options )
 -- 	self.kwargs = Utils.encodeLuaTable( self.kwargs )
 
--- 	return { Invocation.TYPE, self.request, options, self.procedure }
+-- 	return { Invocation.MESSAGE_TYPE, self.request, options, self.procedure }
 -- end
 
 
 
 --====================================================================--
--- Interrupt Message Class
+--== Interrupt Message Class
 --====================================================================--
 
 
+
+-- Format: ``[INTERRUPT, CALL.Request|id, Options|dict]``
+
+local Interrupt = inheritsFrom( Message )
+Interrupt.NAME = "Interrupt Message"
+
+Interrupt.MESSAGE_TYPE = 69  -- wamp message code
+
+Interrupt.ABORT = 'abort'
+Interrupt.KILL = 'kill'
+
+
+function Interrupt:_init( params )
+	-- print( "Interrupt:_init" )
+	params = params or {}
+	self:superCall( '_init', params )
+	--==--
+	assert( type( params.request )=='number' )
+	assert( params.mode==nil or type(params.mode)=='string' )
+	assert( Utils.propertyIn( { self.ABORT, self.KILL }, params.mode ) )
+
+	self.request = params.request
+	self.mode = params.mode
+
+end
+
+
+--[[
+parse() method not implemeneted because only necessary for routers
+--]]
+-- function Interrupt:parse()
+-- end
+
+
+function Interrupt:marshal()
+	-- print( "Interrupt:marshal" )
+
+	local req_id = self.request
+	local options = {
+		mode=self.mode
+	}
+
+	-- hack before sending
+	req_id = Utils.encodeLuaInteger( req_id )
+	options = Utils.encodeLuaTable( options )
+
+	return { Interrupt.MESSAGE_TYPE, req_id, options }
+end
+
+
+
 --====================================================================--
--- Yield Message Class
+--== Yield Message Class
 --====================================================================--
 
 
@@ -1618,13 +2024,9 @@ Format:
 --]]
 
 local Yield = inheritsFrom( Message )
-Yield.NAME = "Yield Message Class"
+Yield.NAME = "Yield Message"
 
-Yield.TYPE = 70  -- wamp message code
-
-
---====================================================================--
---== Start: Setup DMC Objects
+Yield.MESSAGE_TYPE = 70  -- wamp message code
 
 function Yield:_init( params )
 	-- print( "Yield:_init" )
@@ -1632,16 +2034,10 @@ function Yield:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
-	--== Sanity Check ==--
-
-	-- if not self.is_intermediate and not ( params.session or type(params.realm)~='string' ) then
-	-- 	error( "Welcome Message: requires parameter 'realm'" )
-	-- end
-	-- if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-	-- 	error( "Welcome Message: requires parameter 'roles'" )
-	-- end
-
-	--== Create Properties ==--
+	assert( type(params.request)=='number' )
+	assert( params.args==nil or type(params.args)=='table' )
+	assert( params.kwargs==nil or type(params.kwargs)=='table' )
+	assert( params.progress==nil or type(params.progress)=='boolean' )
 
 	self.request = params.request
 	self.args = params.args
@@ -1649,9 +2045,6 @@ function Yield:_init( params )
 	self.progress = params.progress
 
 end
-
---== END: Setup DMC Objects
---====================================================================--
 
 
 -- -- Static function
@@ -1669,83 +2062,95 @@ end
 
 
 function Yield:marshal()
-	print( "Yield:marshal" )
+	-- print( "Yield:marshal" )
 
-	local id = Utils.encodeLuaInteger( self.request )
+	local req_id = self.request
+	local args = self.args or {}
+	local kwargs = self.kwargs or {}
 	local options = {
 		progress = self.progress,
 	}
-	options = Utils.encodeLuaTable( options )
 
+	-- hack before sending
+	req_id = Utils.encodeLuaInteger( req_id )
+	options = Utils.encodeLuaTable( options )
+	kwargs = Utils.encodeLuaTable( kwargs )
 
 	if self.kwargs then
-		self.kwargs = Utils.encodeLuaTable( self.kwargs )
-		return { Yield.TYPE, id, options, self.args, self.kwargs }
+		return { Yield.MESSAGE_TYPE, req_id, options, args, kwargs }
 	elseif self.args then
-		return { Yield.TYPE, id, options, self.args }
+		return { Yield.MESSAGE_TYPE, req_id, options, args }
 	else
-		return { Yield.TYPE, id, options }
+		return { Yield.MESSAGE_TYPE, req_id, options }
 	end
 end
 
 
 
 --====================================================================--
--- Message Factory
+--== Message Export
 --====================================================================--
 
 
-local MessageFactory = {}
+local MessageExport = {}
 
 --== Class References
 
-MessageFactory.Hello = Hello
-MessageFactory.Welcome = Welcome
-MessageFactory.Challenge = Challenge
-MessageFactory.Authenticate = Authenticate
-MessageFactory.Goodbye = Goodbye
-MessageFactory.Error = Error
-MessageFactory.Publish = Publish
-MessageFactory.Published = Published
-MessageFactory.Subscribe = Subscribe
-MessageFactory.Subscribed = Subscribed
-MessageFactory.Unsubscribe = Unsubscribe
-MessageFactory.Unsubscribed = Unsubscribed
-MessageFactory.Event = Event
-MessageFactory.Call = Call
-MessageFactory.Result = Result
-MessageFactory.Register = Register
-MessageFactory.Registered = Registered
-MessageFactory.Unregister = Unregister
-MessageFactory.Unregistered = Unregistered
-MessageFactory.Invocation = Invocation
-MessageFactory.Yield = Yield
+MessageExport.Hello = Hello
+MessageExport.Welcome = Welcome
+MessageExport.Abort = Abort
+MessageExport.Challenge = Challenge
+MessageExport.Authenticate = Authenticate
+MessageExport.Goodbye = Goodbye
+MessageExport.Heartbeat = Heartbeat
+MessageExport.Error = Error
+MessageExport.Publish = Publish
+MessageExport.Published = Published
+MessageExport.Subscribe = Subscribe
+MessageExport.Subscribed = Subscribed
+MessageExport.Unsubscribe = Unsubscribe
+MessageExport.Unsubscribed = Unsubscribed
+MessageExport.Event = Event
+MessageExport.Call = Call
+MessageExport.Cancel = Cancel
+MessageExport.Result = Result
+MessageExport.Register = Register
+MessageExport.Registered = Registered
+MessageExport.Unregister = Unregister
+MessageExport.Unregistered = Unregistered
+MessageExport.Invocation = Invocation
+MessageExport.Interrupt = Interrupt
+MessageExport.Yield = Yield
 
 --== Type-Class Mapping
 
-MessageFactory.map = {
-	[Hello.TYPE] = Hello,
-	[Welcome.TYPE] = Welcome,
-	[Challenge.TYPE] = Challenge,
-	[Authenticate.TYPE] = Authenticate,
-	[Goodbye.TYPE] = Goodbye,
-	[Error.TYPE] = Error,
-	[Publish.TYPE] = Publish,
-	[Published.TYPE] = Published,
-	[Subscribe.TYPE] = Subscribe,
-	[Subscribed.TYPE] = Subscribed,
-	[Unsubscribe.TYPE] = Unsubscribe,
-	[Unsubscribed.TYPE] = Unsubscribed,
-	[Event.TYPE] = Event,
-	[Call.TYPE] = Call,
-	[Result.TYPE] = Result,
-	[Register.TYPE] = Register,
-	[Registered.TYPE] = Registered,
-	[Unregister.TYPE] = Unregister,
-	[Unregistered.TYPE] = Unregistered,
-	[Invocation.TYPE] = Invocation,
-	[Yield.TYPE] = Yield,
+MessageExport.map = {
+	[Hello.MESSAGE_TYPE] = Hello,
+	[Welcome.MESSAGE_TYPE] = Welcome,
+	[Abort.MESSAGE_TYPE] = Abort,
+	[Challenge.MESSAGE_TYPE] = Challenge,
+	[Authenticate.MESSAGE_TYPE] = Authenticate,
+	[Goodbye.MESSAGE_TYPE] = Goodbye,
+	[Heartbeat.MESSAGE_TYPE] = Heartbeat,
+	[Error.MESSAGE_TYPE] = Error,
+	[Publish.MESSAGE_TYPE] = Publish,
+	[Published.MESSAGE_TYPE] = Published,
+	[Subscribe.MESSAGE_TYPE] = Subscribe,
+	[Subscribed.MESSAGE_TYPE] = Subscribed,
+	[Unsubscribe.MESSAGE_TYPE] = Unsubscribe,
+	[Unsubscribed.MESSAGE_TYPE] = Unsubscribed,
+	[Event.MESSAGE_TYPE] = Event,
+	[Call.MESSAGE_TYPE] = Call,
+	[Cancel.MESSAGE_TYPE] = Cancel,
+	[Result.MESSAGE_TYPE] = Result,
+	[Register.MESSAGE_TYPE] = Register,
+	[Registered.MESSAGE_TYPE] = Registered,
+	[Unregister.MESSAGE_TYPE] = Unregister,
+	[Unregistered.MESSAGE_TYPE] = Unregistered,
+	[Invocation.MESSAGE_TYPE] = Invocation,
+	[Interrupt.MESSAGE_TYPE] = Interrupt,
+	[Yield.MESSAGE_TYPE] = Yield,
 }
 
 
-return MessageFactory
+return MessageExport

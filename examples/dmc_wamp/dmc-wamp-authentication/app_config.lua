@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc-wamp-subscribe: App Config
+-- dmc-wamp-authentication: App Config
 --
 -- for specific application configurations
 --
@@ -16,20 +16,43 @@ However, those changes are typically NOT checked in.
 --]]
 
 
-local Config = {}
 
-Config.user = {
+--====================================================================--
+--== Setup, Constants
+
+
+local user_1 = {
 	id = 'joe',
 	secret = 'secret2',
-	authmethods={ 'ticket', 'wampcra' }
+	ticket = 'secret!!!',
 }
 
+local user_2 = {
+	id = 'peter',
+	secret = 'prq7+YkJ1/KlW1X0YczMHw==',
+	ticket = 'secret',
+}
+
+
+--====================================================================--
+--== Config Exports
+--====================================================================--
+
+
+local Config = {}
+
+Config.user = user_1
+-- Config.user = user_2
+
 Config.server = {
-	host = 'ws://192.168.3.92',
-	port = 8082,
+	host = 'ws://192.168.3.92/ws',
+	port = 8080,
 	realm = 'realm1',
 
-	sub_topic = 'com.myapp.topic1'
+	-- authmethods={ 'wampcra' },
+	authmethods={ 'ticket', 'wampcra' },
+
+	remote_procedure = 'com.example.add2'
 }
 
 

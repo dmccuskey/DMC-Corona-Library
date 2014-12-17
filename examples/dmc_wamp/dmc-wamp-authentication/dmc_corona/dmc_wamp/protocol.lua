@@ -42,6 +42,7 @@ local VERSION = "0.1.0"
 --====================================================================--
 --== Imports
 
+
 local json = require 'json'
 
 local Objects = require 'lua_objects'
@@ -460,10 +461,10 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.disconnect`
 --
-function Session:disconnect()
+function Session:disconnect( details )
 	-- print( "Session:disconnect" )
 	if self._transport then
-		self._transport:close()
+		self._transport:close( details.reason, details.message )
 	else
 		-- transport not available
 		error( "Session:disconnect :: transport not available" )
@@ -824,10 +825,10 @@ end
 
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onLeave`
---
+-- @param details type.SessionDetails
 function Session:onLeave( details )
 	-- print( "Session:onLeave" )
-	self:disconnect()
+	self:disconnect( details )
 end
 
 
@@ -840,7 +841,7 @@ function Session:leave( params )
 	--==--
 
 	if not self._session_id then
-		error("no joined"); return
+		error( "not joined" ); return
 	end
 
 	if self._goodbye_sent then
