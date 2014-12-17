@@ -172,8 +172,8 @@ Wamp.ONDISCONNECT = 'wamp_on_disconnect_event'
 -- Wamp.ONCLOSE = 'onclose'
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
 function Wamp:_init( params )
 	-- print( "Wamp:_init" )
@@ -227,8 +227,8 @@ function Wamp:_initComplete()
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
+-- END: Setup DMC Objects
+--======================================================--
 
 
 --====================================================================--
@@ -371,7 +371,7 @@ end
 
 
 function Wamp:send( msg )
-	-- print( "Wamp:send", msg.TYPE )
+	-- print( "Wamp:send", msg.MESSAGE_TYPE )
 	-- params = params or {}
 	--==--
 	local bytes, is_binary = self._serializer:serialize( msg )
@@ -391,7 +391,7 @@ function Wamp:leave( reason, message )
 end
 
 function Wamp:close( reason, message )
-	-- print( "Wamp:close" )
+	-- print( "Wamp:close", reason, message )
 	self:_wamp_close( reason, message )
 	self:superCall( 'close' )
 end
@@ -420,7 +420,7 @@ end
 
 -- coming from websockets
 function Wamp:_onOpen()
-	print( "Wamp:_onOpen" )
+	-- print( "Wamp:_onOpen" )
 
 	local o
 
@@ -440,7 +440,7 @@ end
 -- we get message, and pass to the session
 --
 function Wamp:_onMessage( message )
-	print( "Wamp:_onMessage", message )
+	-- print( "Wamp:_onMessage", message )
 
 	try{
 		function()
@@ -482,10 +482,9 @@ end
 --== Event Handlers
 
 function Wamp:_wampSessionEvent_handler( event )
-	print( "Wamp:_wampSessionEvent_handler: ", event.type )
+	-- print( "Wamp:_wampSessionEvent_handler: ", event.type )
 	local e_type = event.type
 	local session = event.target
-	Utils.print( event )
 
 	if e_type == session.ONCONNECT then
 		self:dispatchEvent( Wamp.ONCONNECT )
