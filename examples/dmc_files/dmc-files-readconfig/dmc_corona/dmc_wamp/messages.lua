@@ -105,23 +105,25 @@ function Hello:_init( params )
 	params = params or {}
 	self:superCall( "_init", params )
 	--==--
-
-	--== Sanity Check ==--
-
-	if not self.is_intermediate and not ( params.realm or type(params.realm)~='string' ) then
-		error( "Hello Message: requires parameter 'realm'" )
-	end
-	if not self.is_intermediate and not ( params.roles or type(params.realm)~='table' )  then
-		error( "Hello Message: requires parameter 'roles'" )
-	end
-
-	--== Create Properties ==--
+	assert( type( params.realm )~='string', "Hello Message: requires string parameter 'realm'" )
+	assert( type( params.roles )~='table', "Hello Message: requires table parameter 'roles'" )
+	-- TODO: check authmethods
+	assert( params.authid == nil or type( params.authid )~='string', "Hello Message: parameter 'authid' must be a string" )
 
 	self.realm = params.realm
 	self.roles = params.roles
-	-- self.authmethods = authmethods
+	self.authmethods = params.authmethods
+	self.authid = params.authid
 
 end
+
+
+--[[
+parse not implemeneted because only necessary for routers
+--]]
+-- function Hello:parse()
+-- end
+
 
 function Hello:marshal()
 	-- print( "Hello:marshal" )
@@ -130,7 +132,7 @@ function Hello:marshal()
 	local ref -- reference to data
 	for i, role in ipairs( self.roles ) do
 		details.roles[ role.ROLE ] = Utils.encodeLuaTable( {} )
-		-- print( 'role', i, role, role.ROLE )
+		print( 'role', i, role, role.ROLE )
 		ref = details.roles[ role.ROLE ]
 		for i, feature in ipairs( role.features ) do
 			-- print( 'feature', i, feature)

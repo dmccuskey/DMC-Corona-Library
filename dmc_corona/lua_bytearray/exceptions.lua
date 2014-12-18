@@ -75,7 +75,7 @@ BufferError.NAME = "Buffer Error"
 --====================================================================--
 
 local function BufferErrorFactory( message )
-	print( "BufferErrorFactory", message )
+	-- print( "BufferErrorFactory", message )
 	return BufferError:new{ message=message }
 end
 

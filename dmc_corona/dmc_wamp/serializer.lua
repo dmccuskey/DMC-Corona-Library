@@ -37,22 +37,28 @@ Wamp support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
+
 
 
 --====================================================================--
--- Imports
+--== Imports
+
+
 
 local json = require 'json'
-
 local Objects = require 'lua_objects'
 local Utils = require 'lua_utils'
 
-local MessageFactory = require 'dmc_wamp.messages'
+--== Components ==--
+
+local MessageFactory = require 'dmc_wamp.message'
+
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -61,8 +67,9 @@ local ObjectBase = Objects.ObjectBase
 
 
 --====================================================================--
--- Serializer Class
+--== Serializer Class
 --====================================================================--
+
 
 local Serializer = inheritsFrom( ObjectBase )
 Serializer.NAME = "Serializer Class"
@@ -86,7 +93,7 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ISerializer.serialize`
 --
 function Serializer:serialize( msg )
-	-- print( "Serializer:serialize", msg.TYPE )
+	-- print( "Serializer:serialize", msg.MESSAGE_TYPE )
 	return msg:serialize( self._serializer ), self._serializer.BINARY
 end
 

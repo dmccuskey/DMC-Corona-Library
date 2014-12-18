@@ -42,29 +42,34 @@ SOFTWARE.
 local VERSION = "0.1.0"
 
 
+
 --====================================================================--
--- Imports
+--== Imports
 
 local Objects = require 'lua_objects'
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
 
--- local control of development functionality
-local LOCAL_DEBUG = false
-
 local tinsert = table.insert
 
 local Promise, Deferred, Failure -- forward declaration
 
+-- local control of development functionality
+local LOCAL_DEBUG = false
+
+
 
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 -- implemented from Twisted defer.py
 -- https://twistedmatrix.com/documents/13.1.0/api/twisted.internet.defer.html

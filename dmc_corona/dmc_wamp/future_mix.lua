@@ -37,7 +37,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
 
 
 --====================================================================--
@@ -70,6 +70,7 @@ function FutureMixin.create_future( self )
 	return Deferred:new()
 end
 function FutureMixin.as_future( self, func, args, kwargs )
+	-- print( "FutureMixin.as_future", self, func, args, kwargs )
 	return maybeDeferred( func, args, kwargs )
 end
 function FutureMixin.resolve_future( self, future, value )
@@ -79,7 +80,7 @@ function FutureMixin.reject_future( self, future, value )
 	return future:errback( value )
 end
 function FutureMixin.add_future_callbacks( self, future, callback, errback )
-	print( self, future, callback, errback )
+	-- print( "FutureMixin.add_future_callbacks", self, future, callback, errback )
 	return future:addCallbacks( callback, errback )
 end
 function FutureMixin.gather_futures( self, futures, consume_exceptions )
