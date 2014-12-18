@@ -73,12 +73,12 @@ RoleFeatures.NAME = "Role Features Base"
 RoleFeatures.ROLE = nil
 
 function RoleFeatures:_filterAttributes()
-	print( "RoleFeatures:_filterAttributes" )
+	-- print( "RoleFeatures:_filterAttributes" )
 	local attrs = {}
 
 	for k,v in pairs( self ) do
 		if k:sub(1,1) ~= '_' and not Utils.propertyIn( { 'is_intermediate' }, k ) then
-			print(k,v)
+			-- print(k,v)
 			local attr = rawget( self, k )
 			if attr ~= nil then
 				attrs[k]=v
@@ -94,8 +94,8 @@ function RoleFeatures:_check_all_bool()
 
 	local attrs = self:_filterAttributes()
 	for k,v in pairs( attrs ) do
+		-- print("checking", k, v )
 		if type(v) ~= 'boolean' then
-			print("error")
 			error( ProtocolError( "invalid type '%s' for feature '%s' for role '%s'" % {type(v), k, self.ROLE } ) )
 		end
 	end
@@ -103,13 +103,13 @@ function RoleFeatures:_check_all_bool()
 end
 
 function RoleFeatures:getFeatures()
-	print( "RoleFeatures:getFeatures" )
+	-- print( "RoleFeatures:getFeatures" )
 	local features = {}
 	local attrs = self:_filterAttributes()
 
-	for k,v in pairs( attrs ) do
-		print(k,v)
-	end
+	-- for k,v in pairs( attrs ) do
+	-- 	print(k,v)
+	-- end
 
 	return attrs
 end
@@ -188,7 +188,7 @@ RolePublisherFeatures.ROLE = 'publisher'
 
 
 function RolePublisherFeatures:_init( params )
-	print( "RolePublisherFeatures:_init" )
+	-- print( "RolePublisherFeatures:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -197,7 +197,7 @@ function RolePublisherFeatures:_init( params )
 end
 
 function RolePublisherFeatures:_initComplete()
-	print( "RolePublisherFeatures:_initComplete" )
+	-- print( "RolePublisherFeatures:_initComplete" )
 	--==--
 	self:_check_all_bool()
 end
@@ -214,7 +214,7 @@ RoleCommonRpcFeatures.NAME = "Common RPC-Role Feature"
 
 
 function RoleCommonRpcFeatures:_init( params )
-	print( "RoleCommonRpcFeatures:_init" )
+	-- print( "RoleCommonRpcFeatures:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -247,7 +247,7 @@ RoleCallerFeatures.ROLE = 'caller'
 
 
 function RoleCallerFeatures:_init( params )
-	print( "RoleCallerFeatures:_init" )
+	-- print( "RoleCallerFeatures:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -256,7 +256,7 @@ function RoleCallerFeatures:_init( params )
 end
 
 function RoleCallerFeatures:_initComplete()
-	print( "RoleCallerFeatures:_initComplete" )
+	-- print( "RoleCallerFeatures:_initComplete" )
 	--==--
 	self:_check_all_bool()
 end
@@ -275,7 +275,7 @@ RoleCalleeFeatures.ROLE = 'callee'
 
 
 function RoleCalleeFeatures:_init( params )
-	print( "RoleCalleeFeatures:_init" )
+	-- print( "RoleCalleeFeatures:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -284,7 +284,7 @@ function RoleCalleeFeatures:_init( params )
 end
 
 function RoleCalleeFeatures:_initComplete()
-	print( "RoleCalleeFeatures:_initComplete" )
+	-- print( "RoleCalleeFeatures:_initComplete" )
 	--==--
 	self:_check_all_bool()
 end

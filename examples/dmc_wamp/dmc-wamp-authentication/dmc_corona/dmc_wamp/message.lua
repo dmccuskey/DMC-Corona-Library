@@ -353,7 +353,7 @@ end
 
 -- Static function
 function Abort.parse( wmsg )
-	print( "Abort.parse", wmsg )
+	-- print( "Abort.parse", wmsg )
 
 	assert( #wmsg > 0 and wmsg[1] == Abort.MESSAGE_TYPE )
 
@@ -417,7 +417,7 @@ end
 
 -- Static function
 function Challenge.parse( wmsg )
-	print( "Challenge.parse", wmsg )
+	-- print( "Challenge.parse", wmsg )
 
 	assert( #wmsg > 0 and wmsg[1] == Challenge.MESSAGE_TYPE )
 
@@ -1463,7 +1463,7 @@ function Result:_init( params )
 end
 
 function Result.parse( wmsg )
-	print( "Result.parse", wmsg )
+	-- print( "Result.parse", wmsg )
 
 	assert( #wmsg > 0 and wmsg[1] == Result.MESSAGE_TYPE )
 
@@ -1755,7 +1755,7 @@ end
 
 -- Static function
 function Unregistered.parse( wmsg )
-	print( "Unregistered.parse", wmsg )
+	-- print( "Unregistered.parse", wmsg )
 
 	-- Sanity Check
 	assert( #wmsg > 0 and wmsg[1] == Unregistered.MESSAGE_TYPE )
@@ -1841,7 +1841,7 @@ end
 
 -- Static function
 function Invocation.parse( wmsg )
-	print( "Invocation.parse", wmsg )
+	-- print( "Invocation.parse", wmsg )
 
 	assert( #wmsg > 0 and wmsg[1] == Invocation.MESSAGE_TYPE )
 

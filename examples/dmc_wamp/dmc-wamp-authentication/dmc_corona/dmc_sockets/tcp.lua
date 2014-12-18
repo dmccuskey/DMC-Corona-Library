@@ -105,9 +105,7 @@ function TCPSocket:_init( params )
 	self:superCall( "_init", params )
 	--==--
 
-	if not self.is_intermediate then
-		assert( params.master, "TCP Socket requires Master")
-	end
+	if self.is_intermediate then return end
 
 	--== Create Properties ==--
 

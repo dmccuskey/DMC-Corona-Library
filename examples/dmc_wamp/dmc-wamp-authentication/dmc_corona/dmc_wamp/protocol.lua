@@ -416,6 +416,7 @@ end
 --
 function Session:onConnect()
 	-- print( "Session:onConnect" )
+
 	self:join{ realm=self.config.realm, authid=self.config.authid, authmethods=self.config.authmethods }
 end
 
@@ -427,7 +428,7 @@ end
 -- authid
 --
 function Session:join( params )
-	print( "Session:join", params, params.authid )
+	-- print( "Session:join", params, params.authid )
 	params = params or {}
 	--==--
 
@@ -475,7 +476,7 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onMessage`
 --
 function Session:onMessage( msg )
-	print( "Session:onMessage", self )
+	-- print( "Session:onMessage", self )
 
 	if self._session_id == nil then
 
@@ -819,7 +820,7 @@ from there as a function
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onJoin`
 --
 function Session:onJoin( details )
-	print( "Session:onJoin", details )
+	-- print( "Session:onJoin", details )
 	self:dispatchEvent( self.ONJOIN, {details=details} )
 end
 
