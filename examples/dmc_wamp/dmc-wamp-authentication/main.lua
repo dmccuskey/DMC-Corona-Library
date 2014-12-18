@@ -112,7 +112,7 @@ end
 
 
 local wampEvent_handler = function( event )
-	print( ">> wampEvent_handler", event.type )
+	-- print( ">> wampEvent_handler", event.type )
 
 	if event.type == wamp.ONJOIN then
 		print( ">> We have WAMP Join" )

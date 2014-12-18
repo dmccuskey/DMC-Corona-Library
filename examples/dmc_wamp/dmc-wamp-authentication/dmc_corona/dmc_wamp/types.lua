@@ -114,7 +114,7 @@ Accept.NAME = "Accept"
 
 
 function Accept:_init( params )
-	print( "Accept:_init" )
+	-- print( "Accept:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -141,7 +141,7 @@ Deny.NAME = "Deny Class"
 
 
 function Deny:_init( params )
-	print( "Deny:_init" )
+	-- print( "Deny:_init" )
 	params = params or {}
 	params.reason = params.reason or "wamp.error.not_authorized"
 	self:superCall( '_init', params )
@@ -165,7 +165,7 @@ Challenge.NAME = "Challenge Class"
 
 
 function Challenge:_init( params )
-	print( "Challenge:_init" )
+	-- print( "Challenge:_init" )
 	params = params or {}
 	params.extra = params.extra or {}
 	self:superCall( '_init', params )
@@ -186,7 +186,7 @@ HelloDetails.NAME = "Hello Details Class"
 
 
 function HelloDetails:_init( params )
-	print( "HelloDetails:_init" )
+	-- print( "HelloDetails:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -208,7 +208,7 @@ SessionDetails.NAME = "Session Details Class"
 
 
 function SessionDetails:_init( params )
-	print( "SessionDetails:_init" )
+	-- print( "SessionDetails:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -282,7 +282,7 @@ RegisterOptions.NAME = "Register Options"
 
 
 function RegisterOptions:_init( params )
-	print( "RegisterOptions:_init" )
+	-- print( "RegisterOptions:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
@@ -303,7 +303,7 @@ end
 local CallDetails = inheritsFrom( ObjectBase )
 
 function CallDetails:_init( params )
-	print( "CallDetails:_init" )
+	-- print( "CallDetails:_init" )
 	params = params or {}
 	self:superCall( '_init', params )
 	--==--
