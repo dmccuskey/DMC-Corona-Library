@@ -68,7 +68,6 @@ local ObjectBase = Objects.ObjectBase
 local ComponentConfig = inheritsFrom( ObjectBase )
 ComponentConfig.NAME = "Component Configuration"
 
-
 function ComponentConfig:_init( params )
 	-- print( "ComponentConfig:_init" )
 	params = params or {}
@@ -112,7 +111,6 @@ HelloReturn.NAME = "Hello Return Base"
 local Accept = inheritsFrom( ObjectBase )
 Accept.NAME = "Accept"
 
-
 function Accept:_init( params )
 	-- print( "Accept:_init" )
 	params = params or {}
@@ -137,8 +135,7 @@ end
 
 
 local Deny = inheritsFrom( HelloReturn )
-Deny.NAME = "Deny Class"
-
+Deny.NAME = "Deny"
 
 function Deny:_init( params )
 	-- print( "Deny:_init" )
@@ -161,7 +158,7 @@ end
 
 
 local Challenge = inheritsFrom( HelloReturn )
-Challenge.NAME = "Challenge Class"
+Challenge.NAME = "Challenge"
 
 
 function Challenge:_init( params )
@@ -182,8 +179,7 @@ end
 
 
 local HelloDetails = inheritsFrom( HelloReturn )
-HelloDetails.NAME = "Hello Details Class"
-
+HelloDetails.NAME = "Hello Details"
 
 function HelloDetails:_init( params )
 	-- print( "HelloDetails:_init" )
@@ -205,7 +201,6 @@ end
 
 local SessionDetails = inheritsFrom( HelloReturn )
 SessionDetails.NAME = "Session Details Class"
-
 
 function SessionDetails:_init( params )
 	-- print( "SessionDetails:_init" )
@@ -230,7 +225,6 @@ end
 local CloseDetails = inheritsFrom( ObjectBase )
 CloseDetails.NAME = "Close Details"
 
-
 function CloseDetails:_init( params )
 	-- print( "CloseDetails:_init" )
 	params = params or {}
@@ -250,7 +244,6 @@ end
 local SubscribeOptions = inheritsFrom( ObjectBase )
 SubscribeOptions.NAME = "Subscribe Options"
 
-
 function SubscribeOptions:_init( params )
 	-- print( "SubscribeOptions:_init" )
 	params = params or {}
@@ -258,7 +251,6 @@ function SubscribeOptions:_init( params )
 	--==--
 	assert( params.match==nil or ( type( params.match ) == 'string' and Utils.propertyIn( { 'exact', 'prefix', 'wildcard' }, params.match ) ) )
 	assert( params.details_arg == nil or type( params.details_arg ) == 'string' )
-
 
 	self.match = params.match
 	self.details_arg = params.details_arg
@@ -269,17 +261,13 @@ end
 
 
 
-
-
-
 --====================================================================--
--- Register Options Class
+--== Register Options Class
 --====================================================================--
 
 
 local RegisterOptions = inheritsFrom( ObjectBase )
 RegisterOptions.NAME = "Register Options"
-
 
 function RegisterOptions:_init( params )
 	-- print( "RegisterOptions:_init" )
@@ -296,11 +284,12 @@ end
 
 
 --====================================================================--
--- Call Details Class
+--== Call Details Class
 --====================================================================--
 
 
 local CallDetails = inheritsFrom( ObjectBase )
+CallDetails.NAME = "Call Details"
 
 function CallDetails:_init( params )
 	-- print( "CallDetails:_init" )
@@ -317,16 +306,9 @@ end
 
 
 
-
--- --====================================================================--
--- -- Close Details Constructor
--- --====================================================================--
-
-
--- local function CloseDetails( params )
--- 	return CloseDetailsObj:new( params )
--- end
-
+--====================================================================--
+--== Types Facade
+--====================================================================--
 
 return {
 	ComponentConfig=ComponentConfig,
