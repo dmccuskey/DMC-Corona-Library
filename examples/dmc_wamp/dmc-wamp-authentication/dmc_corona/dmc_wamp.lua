@@ -431,7 +431,33 @@ function Wamp:_onOpen()
 	o:addEventListener( o.EVENT, self._session_handler )
 	self._session = o
 
-	self._session:onOpen( { transport=self } )
+	try{
+		function()
+			self._session:onOpen( { transport=self } )
+		end,
+
+		catch{
+			function(e)
+				if type(e)=='string' then
+					error( e )
+				elseif e:isa( Error.ProtocolError ) then
+					print( e.traceback )
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR,
+						reason="WAMP Protocol Error"
+					}
+				else
+					print( e.traceback )
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_INTERNAL_ERROR,
+						reason="WAMP Internal Error ({})"
+					}
+				end
+			end
+		}
+	}
+
+
 end
 
 
