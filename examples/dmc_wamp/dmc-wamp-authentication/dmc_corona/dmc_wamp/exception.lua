@@ -74,12 +74,10 @@ WAMPError.NAME = "WAMP Error Base"
 
 function WAMPError:_init( reason )
 	-- print( "WAMPError:_init" )
-	local p = {
-		reason or "unknown reason"
-	}
-	self:superCall( '_init', p )
+	reason = reason or "unknown reason"
+	self:superCall( '_init', reason )
 	--==--
-	self.reason = p.reason
+	self.reason = reason
 end
 
 
@@ -127,7 +125,7 @@ the WAMP session was lost or is not connected
 --]]
 
 local TransportLost = inheritsFrom( WAMPError )
-TransportLost.NAME = "Protocol Error"
+TransportLost.NAME = "Transport Lost Error"
 
 
 function TransportLost:_init( reason )
@@ -288,7 +286,7 @@ end
 return {
 	SessionNotReady=SessionNotReady,
 	ProtocolError=ProtocolError,
-	ProtocolErrorFactory=ProtocolErrorFactory,
+	ProtocolErrorFactory=ProtocolError,
 	TransportLost=TransportLost,
 	ApplicationError=ApplicationError
 }

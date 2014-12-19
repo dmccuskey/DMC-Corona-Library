@@ -231,7 +231,7 @@ local function inheritsFrom( baseClass, options, constructor )
 	-- flag to indicate this is a subclass object
 	-- will be set in the regular constructor
 	options = options or {}
-	options.__set_intermediate = true
+	options.__set_isClass = true
 
 	-- get default constructor
 	if baseClass and constructor == nil then
@@ -435,21 +435,33 @@ end
 -- this method drives the initialization flow for DMC-style objects
 -- typically you won't override this
 --
-function ObjectBase:new( params )
-	params = params or {}
-	params.__set_intermediate = params.__set_intermediate == true and params.__set_intermediate or false
+function ObjectBase:new( ... )
+	-- print( "ObjectBase:new" )
+	local args = {...}
+	params = args[1] or {}
 	--==--
+
+	-- figure object type, Class or Instance
+	local is_class = false
+	if #args==1 and type(args[1]) == 'table' then
+		local p = args[1]
+		if p.__set_isClass ~= nil then
+			is_class = p.__set_isClass
+			p.__set_isClass = nil
+		end
+	end
 
 	local o = self:_bless()
 
-	-- set flag if this is an Intermediate class
-	o.is_intermediate = params.__set_intermediate
-	params.__set_intermediate = nil
+	-- set flag if this object is a Class (ie, Class or Instance)
+	o.__is_class = is_class
 
-	o:_init( params )
+	--== Start setup sequence
 
-	-- skip these if we're an intermediate class (eg, subclass)
-	if rawget( o, 'is_intermediate' ) == false then
+	o:_init( ... )
+
+	-- skip these if a Class object (ie, NOT an instance)
+	if rawget( o, '__is_class' ) == false then
 		o:_initComplete()
 	end
 
@@ -463,7 +475,7 @@ end
 -- _init()
 -- initialize the object - setting the view
 --
-function ObjectBase:_init( options )
+function ObjectBase:__init( options )
 	-- OVERRIDE THIS
 	--== Create Properties ==--
 	self.__event_listeners = {} -- holds event listeners
@@ -480,34 +492,59 @@ function ObjectBase:_init( options )
 	--]]
 	--== Object References ==--
 end
+ObjectBase._init = ObjectBase.__init
+
 -- _undoInit()
 -- remove items added during _init()
 --
-function ObjectBase:_undoInit( options )
+function ObjectBase:__undoInit( options )
 	-- OVERRIDE THIS
 	self.__event_listeners = nil
 end
+ObjectBase._undoInit = ObjectBase.__undoInit
 
 
 -- _initComplete()
 -- any setup after object is done being created
 --
-function ObjectBase:_initComplete()
+function ObjectBase:__initComplete()
 	-- OVERRIDE THIS
 end
+ObjectBase._initComplete = ObjectBase.__initComplete
+
 -- _undoInitComplete()
 -- remove any items added during _initComplete()
 --
-function ObjectBase:_undoInitComplete()
+function ObjectBase:__undoInitComplete()
 	-- OVERRIDE THIS
 end
+ObjectBase._undoInitComplete = ObjectBase.__undoInitComplete
 
 -- END: Setup Lua Objects
 --======================================================--
 
 
+
 --====================================================================--
 --== Public Methods
+
+
+function ObjectBase.__getters:is_class()
+	-- print( "ObjectBase.__getters:is_class" )
+	return self.__is_class
+end
+
+-- deprecated
+function ObjectBase.__getters:is_intermediate()
+	-- print( "ObjectBase.__getters:is_intermediate" )
+	return self.__is_class
+end
+
+function ObjectBase.__getters:is_instance()
+	-- print( "ObjectBase.__getters:is_instance" )
+	return not self.__is_class
+end
+
 
 -- dispatchEvent( event, data, params )
 --
@@ -579,8 +616,8 @@ end
 function ObjectBase:removeSelf()
 	-- print( "ObjectBase:removeSelf" );
 
-	-- skip these if we're an intermediate class (eg, subclass class)
-	if rawget( self, 'is_intermediate' ) == false then
+	-- skip these if a Class object (ie, NOT an instance)
+	if rawget( self, '__is_class' ) == false then
 		self:_undoInitComplete()
 	end
 

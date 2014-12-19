@@ -77,7 +77,8 @@ function RoleFeatures:_filterAttributes()
 	local attrs = {}
 
 	for k,v in pairs( self ) do
-		if k:sub(1,1) ~= '_' and not Utils.propertyIn( { 'is_intermediate' }, k ) then
+		-- print(k,v)
+		if k:sub(1,1) ~= '_' then
 			-- print(k,v)
 			local attr = rawget( self, k )
 			if attr ~= nil then
