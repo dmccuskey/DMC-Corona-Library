@@ -641,6 +641,7 @@ end
 function Utils.normalizeHeaders( headers, params )
 	params = params or {}
 	params.case = params.case or 'lower' -- camel, lower
+	params.debug = params.debug ~= nil and params.debug or false
 	--==--
 	local h = {}
 	local f
@@ -649,10 +650,12 @@ function Utils.normalizeHeaders( headers, params )
 	else
 		f = string.lower
 	end
+
 	for k,v in pairs( headers ) do
-		print(k,v)
+		if params.debug then print(k,v) end
 		h[ f(k) ] = v
 	end
+
 	return h
 end
 
