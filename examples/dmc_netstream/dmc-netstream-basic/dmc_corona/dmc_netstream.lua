@@ -1,8 +1,6 @@
 --====================================================================--
 -- dmc_netstream.lua
 --
---
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_netstream.lua
 --====================================================================--
 
@@ -10,7 +8,7 @@
 
 The MIT License (MIT)
 
-Copyright (c) 2014 David McCuskey
+Copyright (c) 2014-2015 David McCuskey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,28 +33,107 @@ SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : Net Stream
+--== DMC Corona Library : Net Stream
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
+
 
 
 --====================================================================--
--- Imports
+--== DMC Corona Library Config
+--====================================================================--
+
+
+--====================================================================--
+--== Support Functions
+
+local Utils = {} -- make copying from dmc_utils easier
+
+function Utils.extend( fromTable, toTable )
+
+	function _extend( fT, tT )
+
+		for k,v in pairs( fT ) do
+
+			if type( fT[ k ] ) == "table" and
+				type( tT[ k ] ) == "table" then
+
+				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == "table" then
+				tT[ k ] = _extend( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+			end
+		end
+
+		return tT
+	end
+
+	return _extend( fromTable, toTable )
+end
+
+
+--====================================================================--
+--== Configuration
+
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_library with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
+
+dmc_lib_data = _G.__dmc_corona
+dmc_lib_info = dmc_lib_data.dmc_library
+
+
+
+--====================================================================--
+--== DMC NetStream
+--====================================================================--
+
+
+--====================================================================--
+--== Configuration
+
+
+dmc_lib_data.dmc_netstream = dmc_lib_data.dmc_netstream or {}
+
+local DMC_NETSTREAM_DEFAULTS = {
+	debug_active=false,
+}
+
+local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTREAM_DEFAULTS )
+
+
+
+--====================================================================--
+--== Imports
+
 
 local UrlLib = require 'socket.url'
 
 local Objects = require 'lua_objects'
 local Patch = require('lua_patch')('string-format')
 local Sockets = require 'dmc_corona.dmc_sockets'
+local States = require 'lua_states'
 local Utils = require 'lua_utils'
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 local inheritsFrom = Objects.inheritsFrom
 local ObjectBase = Objects.ObjectBase
@@ -67,9 +144,14 @@ local tinsert = table.insert
 local NetStream -- forward
 local netstream_table = {}
 
+local DEFAULT_PORT = 80
+local DEFAULT_SPORT = 443
+
+
 
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 -- make up a generic request for the web server
 --
@@ -128,25 +210,40 @@ end
 
 
 --====================================================================--
--- Net Stream Class
+--== Net Stream Class
 --====================================================================--
 
 
 NetStream = inheritsFrom( ObjectBase )
 NetStream.NAME = "HTTP Streamer"
 
+States.mixin( NetStream )
+
+
+--== Class Constants
+
 NetStream.VERSION = VERSION
 
+--== State Constants
+
+NetStream.STATE_CREATE = 'state_create'
+NetStream.STATE_NOT_CONNECTED = 'state_not_connected'
+NetStream.STATE_CONNECTING = 'state_connecting'
+NetStream.STATE_CONNECTED = 'state_connected'
+
+--== Event Constants
 
 NetStream.EVENT = 'dmc_netstream_event'
-NetStream.DATA = 'netstream_data_event'
+
+NetStream.CONNECTING = 'netstream_connecting_event'
 NetStream.CONNECTED = 'netstream_connected_event'
+NetStream.DATA = 'netstream_data_event'
 NetStream.DISCONNECTED = 'netstream_disconnected_event'
 NetStream.ERROR = 'netstream_error_event'
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
 function NetStream:_init( params )
 	-- print( "NetStream:_init", params )
@@ -162,6 +259,14 @@ function NetStream:_init( params )
 	self._method = params.method or 'GET'
 	self._listener = params.listener
 	self._http_params = params.http_params or {}
+
+	self._auto_connect = params.auto_connect ~= nil and params.auto_connect or true
+
+	self._header_wait = false
+
+	-- event listeners
+	self._onConnect_f = nil
+	self._onData_f = nil
 
 	-- from URL
 	self._host = ""
@@ -183,21 +288,26 @@ function NetStream:_initComplete()
 	self._path = url_parts.path
 
 	if self._port == nil or self._port == 0 then
-		self._port = url_parts.scheme == 'https' and 443 or 80
+		self._port = url_parts.scheme == 'https' and DEFAULT_SPORT or DEFAULT_PORT
 	end
 	if self._path == nil then
 		self._path = '/'
 	end
 
-	local params = {
-		onConnect=self:createCallback( self._onConnect_handler ),
-		onData=self:createCallback( self._onData_handler )
-	}
+	self._onConnect_f=self:createCallback( self._onConnect_handler )
+	self._onData_f=self:createCallback( self._onData_handler )
+
 	self._sock = Sockets:create( Sockets.ATCP )
 	-- SSL secure socket
 	self._sock.secure = url_parts.scheme == 'https' and true or false
 
-	self._sock:connect( self._host, self._port, params )
+
+	-- set first state and transition
+	self:setState( self.STATE_CREATE )
+
+	-- delay so that event listeners can be setup by user
+	-- in time to get events
+	timer.performWithDelay( 1, function() self:gotoState( self.STATE_NOT_CONNECTED ) end )
 
 end
 
@@ -214,21 +324,144 @@ function NetStream:_undoInitComplete()
 	self:superCall( '_undoInitComplete' )
 end
 
---== END: Setup DMC Objects
---====================================================================--
+-- END: Setup DMC Objects
+--======================================================--
+
 
 
 --====================================================================--
 --== Public Methods
 
--- none
+
+function NetStream:connect()
+	-- print( "NetStream:connect" )
+	if self:getState() == self.NOT_CONNECTED then
+		self:gotoState( self.STATE_CONNECTING )
+	end
+end
+
+
+
+--====================================================================--
+--== State Machine
+
+
+--== CREATE ==--
+
+function NetStream:state_create( next_state, params )
+	-- print( "NetStream:state_create: >> ", next_state )
+
+	if next_state == NetStream.STATE_NOT_CONNECTED then
+		self:do_state_not_connected( params )
+
+	else
+		print( "WARNING :: NetStream:state_create " .. tostring( next_state ) )
+	end
+end
+
+--== NOT CONNECTED ==--
+
+function NetStream:do_state_not_connected( params )
+	-- print( "NetStream:do_state_not_connected" )
+	params = params or {}
+	--==--
+	local event = params.event or nil -- might get event here
+
+	-- set state first so we can go to another
+	self:setState( self.STATE_NOT_CONNECTED )
+
+	if event then
+		-- we're coming from being connected
+		self:_send( nil, event.emsg )
+
+		self:dispatchEvent( self.DISCONNECTED, { emsg=event.emsg } )
+
+	else
+		-- haven't connected yet
+		if self._auto_connect == true then
+			self:gotoState( self.STATE_CONNECTING )
+		end
+	end
+
+end
+
+function NetStream:state_not_connected( next_state, params )
+	-- print( "NetStream:state_not_connected: >> ", next_state )
+
+	if next_state == NetStream.STATE_CONNECTING then
+		self:do_state_connecting( params )
+
+	else
+		print( "WARNING :: NetStream:state_not_connected " .. tostring( next_state ) )
+	end
+end
+
+--== CONNECTING ==--
+
+function NetStream:do_state_connecting( params )
+	-- print( "NetStream:do_state_connecting" )
+	params = params or {}
+	--==--
+	params.onConnect = self._onConnect_f
+	params.onData = self._onData_f
+	self._header_wait = false
+
+	-- set state first so we can go to another
+	self:setState( self.STATE_CONNECTING )
+
+	self:dispatchEvent( self.CONNECTING )
+
+	self._sock:connect( self._host, self._port, params )
+
+end
+
+function NetStream:state_connecting( next_state, params )
+	-- print( "NetStream:state_connecting: >> ", next_state )
+
+	if next_state == NetStream.STATE_CONNECTED then
+		self:do_state_connected( params )
+
+	else
+		print( "WARNING :: NetStream:state_connecting " .. tostring( next_state ) )
+	end
+end
+
+--== CONNECTED ==--
+
+function NetStream:do_state_connected( params )
+	-- print( "NetStream:do_state_connected" )
+	params = params or {}
+	--==--
+
+	-- set state first so we can go to another
+	self:setState( self.STATE_CONNECTED )
+
+	self:dispatchEvent( self.CONNECTED )
+
+end
+
+function NetStream:state_connected( next_state, params )
+	-- print( "NetStream:state_connected: >> ", next_state )
+
+	if next_state == NetStream.STATE_NOT_CONNECTED then
+		self:do_state_not_connected( params )
+
+	else
+		print( "WARNING :: NetStream:state_connected " .. tostring( next_state ) )
+	end
+end
+
 
 
 --====================================================================--
 --== Private Methods
 
+
 --[[
-Chunk contains the current chunk of data. When the transmission is over, the function is called with an empty string (i.e. "") as the chunk. If an error occurs, the function receives nil as chunk and an error message as err
+Chunk contains the current chunk of data. When the transmission is over,
+the function is called with an empty string (i.e. "") as the chunk.
+If an error occurs, the function receives 'nil' as chunk and an error
+message as 'err'
 --]]
 function NetStream:_send( data, emsg )
 	-- print("NetStream:_send", #data )
@@ -236,8 +469,20 @@ function NetStream:_send( data, emsg )
 end
 
 
+function NetStream:_handleErrorEvent( event )
+	-- print("NetStream:_handleErrorEvent", event )
+
+	self:_send( nil, event.emsg )
+	self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
+
+	self:gotoState( self.STATE_NOT_CONNECTED )
+
+end
+
+
 --====================================================================--
 --== Event Handlers
+
 
 function NetStream:_onConnect_handler( event )
 	-- print("NetStream:_onConnect_handler", event.status )
@@ -264,47 +509,22 @@ function NetStream:_onConnect_handler( event )
 
 		local bytes, err = sock:send( createHttpRequest( p ) )
 
-		local newlineCallback = function(e)
-			-- print("== Newline Handler ==")
-
-			if not e.data then
-				-- print( 'err>>', event.emsg )
-				self:_send( nil, event.emsg )
-				self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
-				removeNetStream( self )
-
-			else
-				-- print("Received Data:\n")
-				-- for i,v in ipairs( e.data ) do
-				-- 	print(i,v)
-				-- end
-				-- print("\n")
-
-			end
-			if sock.buffer_size > 0 then
-				self:_onData_handler()
-			end
-		end
-		sock:receiveUntilNewline( newlineCallback )
-
-		self:dispatchEvent( self.CONNECTED )
-
 	elseif event.status == sock.CLOSED then
 		-- print("=== Connection Closed ===\n\n")
 		-- print( event.emsg )
-		self:_send( nil, event.emsg )
-		self:dispatchEvent( self.DISCONNECTED, { emsg=event.emsg } )
+
+		self:gotoState( self.STATE_NOT_CONNECTED, { event=event } )
 		removeNetStream( self )
 
 	else
 		-- print("=== Connection Error ===")
-		self:_send( nil, event.emsg )
-		self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
+		self:_handleErrorEvent( event )
 		removeNetStream( self, event )
 
 	end
 
 end
+
 
 function NetStream:_onData_handler( event )
 	-- print("NetStream:_onData_handler", event.status )
@@ -312,15 +532,47 @@ function NetStream:_onData_handler( event )
 	-- print( '>>', event.type, event.status, event.bytes )
 	--==--
 
-	local cb = function( e )
+	local curr_state = self:getState()
+
+	local connecting_handler = function( e )
+		-- print("== Newline Handler ==")
+
+		if not e.data then
+			-- print( 'err>>', event.emsg )
+			self:_handleErrorEvent( event )
+			removeNetStream( self )
+
+		else
+			-- print("Received Data:\n")
+			-- for i,v in ipairs( e.data ) do print(i,v) end
+			-- print("\n")
+			self._header_wait = false
+			self:gotoState( self.STATE_CONNECTED )
+
+		end
+	end
+
+	local connected_handler = function( e )
 		-- print("=== Data Event ===\n\n")
 		-- print( 'data re>> ', e.data, e.emsg )
 		-- Utils.hexDump( e.data )
-		self:_send( e.data, e.emsg )
-		self:dispatchEvent( self.DATA, { data=e.data, emsg=event.emsg } )
+		if e.data ~= nil then
+			self:_send( e.data, e.emsg )
+			self:dispatchEvent( self.DATA, { data=e.data, emsg=event.emsg } )
+		end
 	end
-	self._sock:receive( '*a', cb  )
+
+	if curr_state == self.STATE_CONNECTING and not self._header_wait then
+		self._sock:receiveUntilNewline( connecting_handler )
+		self._header_wait = true
+
+	elseif curr_state == self.STATE_CONNECTED then
+		self._sock:receive( '*a', connected_handler  )
+
+	end
+
 end
+
 
 
 
@@ -330,7 +582,7 @@ end
 
 
 return {
-	newStream = createNetStream
+	newStream = createNetStream,
 }
 
 
