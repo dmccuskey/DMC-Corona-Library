@@ -421,6 +421,9 @@ function NetStream:state_connecting( next_state, params )
 	if next_state == NetStream.STATE_CONNECTED then
 		self:do_state_connected( params )
 
+	elseif next_state == NetStream.STATE_NOT_CONNECTED then
+		self:do_state_not_connected( params )
+
 	else
 		print( "WARNING :: NetStream:state_connecting " .. tostring( next_state ) )
 	end
