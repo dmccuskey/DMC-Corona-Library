@@ -311,14 +311,15 @@ end
 
 function ATCPSocket:receiveUntilNewline( callback )
 	-- print( 'ATCPSocket:receiveUntilNewline' )
-
-	if not callback or type( callback ) ~= 'function' then return end
+	assert( type(callback)=='function', "receiveUntilNewline: expected function callback" )
+	--==--
 
 	local data_list = {}
 	local evt = {}
 
 	-- create coroutine function
 	local doDataCall = function( not_coroutine )
+		-- print( "do data call", not_coroutine )
 
 		local beg_time = system.getTimer()
 		local timeout, time_diff = self._timeout, 0
