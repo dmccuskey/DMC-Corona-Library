@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_wamp.roles
+-- dmc_wamp.utils
 --
 --
 -- by David McCuskey
@@ -41,44 +41,25 @@ local VERSION = "0.1.0"
 
 
 --====================================================================--
--- Imports
+-- Setup, Constants
 
-local Objects = require 'lua_objects'
-local Utils = require 'lua_utils'
+math.randomseed( os.time() )
+
+
+--====================================================================--
+-- Support Functions
+
+local function id()
+	return math.random(0, 10^14)
+end
 
 
 
 --====================================================================--
--- Subscriber Role Features
+-- Utils Facade
 --====================================================================--
 
-
-local roleSubscriberFeatures = {
-	ROLE = 'subscriber',
-
-	features = {}
-}
-
-
-
---====================================================================--
--- Subscriber Caller Features
---====================================================================--
-
-local roleCallerFeatures = {
-	ROLE = 'caller',
-
-	features = {}
-}
-
-
-
-
---====================================================================--
--- Roles Facade
---====================================================================--
 
 return {
-	subscriberFeatures=roleSubscriberFeatures,
-	callerFeatures=roleCallerFeatures
+	id = id
 }

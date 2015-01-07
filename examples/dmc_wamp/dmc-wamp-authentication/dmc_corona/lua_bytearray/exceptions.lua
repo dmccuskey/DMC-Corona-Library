@@ -1,9 +1,7 @@
 --====================================================================--
--- dmc_wamp.roles
+-- dmc_lua/lua_bytearray/exceptions.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/lua_bytearray.lua
 --====================================================================--
 
 --[[
@@ -29,10 +27,11 @@ DEALINGS IN THE SOFTWARE.
 
 --]]
 
---[[
-Wamp support adapted from:
-* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
---]]
+
+
+--====================================================================--
+--== DMC Lua Library : Byte Array Errors
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -44,41 +43,43 @@ local VERSION = "0.1.0"
 -- Imports
 
 local Objects = require 'lua_objects'
-local Utils = require 'lua_utils'
+local Error = require 'lua_error'
+
+
+--====================================================================--
+-- Setup, Constants
+
+-- setup some aliases to make code cleaner
+local inheritsFrom = Objects.inheritsFrom
 
 
 
 --====================================================================--
--- Subscriber Role Features
+--== Buffer Error Class
 --====================================================================--
 
 
-local roleSubscriberFeatures = {
-	ROLE = 'subscriber',
+--[[
+	This exception is triggered when there isn't enough data available
+	for a read, eg, 2 bytes available and requesting 10 bytes.
+--]]
 
-	features = {}
-}
-
-
-
---====================================================================--
--- Subscriber Caller Features
---====================================================================--
-
-local roleCallerFeatures = {
-	ROLE = 'caller',
-
-	features = {}
-}
+local BufferError = inheritsFrom( Error )
+BufferError.NAME = "Buffer Error"
 
 
 
 
 --====================================================================--
--- Roles Facade
+--== Error Facade
 --====================================================================--
+
+local function BufferErrorFactory( message )
+	-- print( "BufferErrorFactory", message )
+	return BufferError:new{ message=message }
+end
 
 return {
-	subscriberFeatures=roleSubscriberFeatures,
-	callerFeatures=roleCallerFeatures
+	BufferError=BufferError,
+	BufferErrorFactory=BufferErrorFactory
 }
