@@ -1,9 +1,9 @@
 --====================================================================--
--- dmc_wamp/future_mix.lua
+-- dmc_websockets/exception.lua
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
 --====================================================================--
 
 --[[
@@ -31,98 +31,67 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : Future Mix
+-- DMC Corona Library : Exception
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "0.1.0"
 
 
 --====================================================================--
 -- Imports
 
-local Promise = require 'lua_promise'
+local Error = require 'lua_error'
+local Objects = require 'lua_objects'
 
 
 --====================================================================--
 -- Setup, Constants
 
-local Deferred, maybeDeferred = Promise.Deferred, Promise.maybeDeferred
+-- setup some aliases to make code cleaner
+local inheritsFrom = Objects.inheritsFrom
 
 
 
 --====================================================================--
--- Future Mix Container
+--== Protocol Error Class
 --====================================================================--
 
 
-local FutureMixin = {}
+local ProtocolError = inheritsFrom( Error )
+ProtocolError.NAME = "Protocol Error"
 
-FutureMixin._DEBUG = false
 
+function ProtocolError:_init( params )
+	-- print( "ProtocolError:_init" )
+	params = params or {}
+	self:superCall( "_init", params )
+	--==--
 
---====================================================================--
--- Public Functions
-
-function FutureMixin.create_future( self )
-	return Deferred:new()
-end
-function FutureMixin.as_future( self, func, args, kwargs )
-	-- print( "FutureMixin.as_future", self, func, args, kwargs )
-	return maybeDeferred( func, args, kwargs )
-end
-function FutureMixin.resolve_future( self, future, value )
-	return future:callback( value )
-end
-function FutureMixin.reject_future( self, future, value )
-	return future:errback( value )
-end
-function FutureMixin.add_future_callbacks( self, future, callback, errback )
-	-- print( "FutureMixin.add_future_callbacks", self, future, callback, errback )
-	return future:addCallbacks( callback, errback )
-end
-function FutureMixin.gather_futures( self, futures, consume_exceptions )
-	consume_exceptions = consume_exceptions or true
-
-	return DeferredList( {futures}, {consume_errors=consume_exceptions} )
-end
-
---== Facade API Methods ==--
-
-function FutureMixin._setDebug( value )
-	States._DEBUG = value
-end
-
-function FutureMixin._mixin( obj )
-	if FutureMixin._DEBUG then
-		print( "WAMP FutureMixin::mixin: ", obj.NAME )
+	if not self.is_intermediate then
+		assert( params.code, "missing protocol code")
 	end
 
-	obj = obj or {}
+	self.code = params.code
+	self.reason = params.reason or ""
 
-	-- add methods
-	obj._create_future = FutureMixin.create_future
-	obj._as_future = FutureMixin.as_future
-	obj._resolve_future = FutureMixin.resolve_future
-	obj._reject_future = FutureMixin.reject_future
-	obj._add_future_callbacks = FutureMixin.add_future_callbacks
-	obj._gather_futures = FutureMixin.gather_futures
-
-	return obj
 end
 
 
 
 
 --====================================================================--
--- Future Facade
+--== Exception Facade
 --====================================================================--
 
+local function ProtocolErrorFactory( message )
+	-- print( "ProtocolErrorFactory", message )
+	return ProtocolError:new{ message=message }
+end
 
 return {
-	setDebug = FutureMixin._setDebug,
-	mixin = FutureMixin._mixin
+	ProtocolError=ProtocolError,
+	ProtocolErrorFactory=ProtocolErrorFactory,
 }
-

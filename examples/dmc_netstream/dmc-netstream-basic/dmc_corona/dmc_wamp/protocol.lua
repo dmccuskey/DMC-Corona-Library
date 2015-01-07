@@ -1,8 +1,6 @@
 --====================================================================--
 -- dmc_wamp.protocol
 --
---
--- by David McCuskey
 -- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
 --====================================================================--
 
@@ -37,17 +35,22 @@ Wamp support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
+
 
 
 --====================================================================--
--- Imports
+--== Imports
+
+
+local json = require 'json'
 
 local Objects = require 'lua_objects'
+local Patch = require('lua_patch')('table-pop')
 local Utils = require 'lua_utils'
 
-local MessageFactory = require 'dmc_wamp.messages'
-local Role = require 'dmc_wamp.roles'
+local MessageFactory = require 'dmc_wamp.message'
+local Role = require 'dmc_wamp.role'
 local FutureMixin = require 'dmc_wamp.future_mix'
 
 local wamp_utils = require 'dmc_wamp.utils'
@@ -57,8 +60,10 @@ local Errors = require 'dmc_wamp.exception'
 local ProtocolError = Errors.ProtocolErrorFactory
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -69,15 +74,20 @@ local tpop = table.pop
 
 
 --====================================================================--
--- Endpoint Class
+--== Endpoint Class
 --====================================================================--
 
 
 local Endpoint = inheritsFrom( ObjectBase )
 
 function Endpoint:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
+	assert( params.obj )
+	assert( params.fn )
+	assert( params.procedure )
+
 	self.obj = params.obj
 	self.fn = params.fn
 	self.procedure = params.procedure
@@ -87,14 +97,20 @@ end
 
 
 --====================================================================--
--- Handler Class
+--== Handler Class
 --====================================================================--
+
 
 local Handler = inheritsFrom( ObjectBase )
 
 function Handler:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
+	assert( params.obj )
+	assert( params.fn )
+	assert( params.topic )
+
 	self.obj = params.obj
 	self.fn = params.fn
 	self.topic = params.topic
@@ -104,77 +120,151 @@ end
 
 
 --====================================================================--
--- Publication Class
+--== Publication Class
 --====================================================================--
+
+
+--[[
+Object representing a publication.
+This class implements :class:`autobahn.wamp.interfaces.IPublication`.
+--]]
 
 local Publication = inheritsFrom( ObjectBase )
 
 function Publication:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
+	assert( params.publication_id )
+
 	self.id = params.publication_id
 end
 
 
+
 --====================================================================--
--- Subscription Class
+--== Subscription Class
 --====================================================================--
+
+
+--[[
+Object representing a subscription.
+This class implements :class:`autobahn.wamp.interfaces.ISubscription`.
+--]]
 
 local Subscription = inheritsFrom( ObjectBase )
 
 function Subscription:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
-	self.session = params.session
-	self.id = params.id
+	assert( params.session )
+	assert( params.subscription_id )
+	assert( params.topic )
+
+	self._session = params.session
+	self.id = params.subscription_id
 	self.active = true
 
+	-- this is a shortcut i put in the code
+	-- autobahn handles it another way
 	self.handler = params.handler
 end
 
+-- Implements :func:`autobahn.wamp.interfaces.ISubscription.unsubscribe`
+--
 function Subscription:unsubscribe()
 	-- print( "Subscription:unsubscribe" )
-	return self.session:_unsubscribe( self )
+	return self._session:_unsubscribe( self )
 end
 
 
 
 --====================================================================--
--- Registration Class
+--== Registration Class
 --====================================================================--
+
+
+--[[
+Object representing a registration.
+This class implements :class:`autobahn.wamp.interfaces.IRegistration`.
+--]]
 
 local Registration = inheritsFrom( ObjectBase )
 
 function Registration:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
-	self.session = params.session
+	assert( params.session )
+	assert( params.registration_id )
+
+	self._session = params.session
 	self.id = params.registration_id
 	self.active = true
 
+	-- this is a shortcut i put in the code
+	-- autobahn handles it another way
 	self.endpoint = params.endpoint
 end
 
-function Registration:unsubscribe()
-	-- print( "Registration:unsubscribe" )
-	return self.session:_unregister( self )
+-- Implements :func:`autobahn.wamp.interfaces.IRegistration.unregister`
+--
+function Registration:unregister()
+	-- print( "Registration:unregister" )
+	return self._session:_unregister( self )
 end
 
 
 
 --====================================================================--
--- Base Session Class
+--== Base Session Class
 --====================================================================--
+
+--[[
+WAMP session base class.
+
+This class implements:
+
+:class:`autobahn.wamp.interfaces.ISession`
+--]]
 
 local BaseSession = inheritsFrom( ObjectBase )
 
 function BaseSession:_init( params )
-	self:superCall( "_init", params )
+	params = params or {}
+	self:superCall( '_init', params )
 	--==--
-	self.debug = params.debug
+
+	--== Create Properties ==--
+
+	-- for library-level debugging
+	self.debug = false
+
+	-- this is for app level debugging. exceptions raised in user code
+	-- will get logged (that is, when invoking remoted procedures or
+	-- when invoking event handlers)
+	self.debug_app = false
+
+	-- this is for marshalling traceback from exceptions thrown in user
+	-- code within WAMP error messages (that is, when invoking remoted
+	-- procedures)
+	self.traceback_app = false
+
+	-- mapping of exception classes to WAMP error URIs
 	self._ecls_to_uri_pat = {}
+
+	-- mapping of WAMP error URIs to exception classes
 	self._uri_to_ecls = {}
+
+	-- session authentication information
+	self._authid = None
+	self._authrole = None
+	self._authmethod = None
+	self._authprovider = None
+
 end
+
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onConnect`
 --
@@ -185,14 +275,14 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onJoin`
 --
-function BaseSession:onJoin()
+function BaseSession:onJoin( params )
 	-- print( "BaseSession:onJoin" )
 	--==--
 end
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onLeave`
 --
-function BaseSession:onLeave()
+function BaseSession:onLeave( params )
 	-- print( "BaseSession:onLeave" )
 	--==--
 end
@@ -206,60 +296,76 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.define`
 --
-function BaseSession:define()
+function BaseSession:define( params )
 	-- print( "BaseSession:define" )
 	--==--
+	-- TODO: fill this out
 end
 
 -- Create a WAMP error message from an exception
 --
-function BaseSession:_message_from_exception()
+function BaseSession:_message_from_exception( params )
 	-- print( "BaseSession:_message_from_exception" )
 	--==--
+	-- TODO: fill this out
 end
 
 -- Create a user (or generic) exception from a WAMP error message
 --
-function BaseSession:_exception_from_message()
+function BaseSession:_exception_from_message( params )
 	-- print( "BaseSession:_exception_from_message" )
 	--==--
+	-- TODO: fill this out
 end
 
 
 
 --====================================================================--
--- Application Session Class
+--== Application Session Class
 --====================================================================--
 
+
 --[[
-Implements
-* ISubscriber
-* ICaller
+WAMP endpoint session.
+
+This class implements:
+* :class:`autobahn.wamp.interfaces.IPublisher`
+* :class:`autobahn.wamp.interfaces.ISubscriber`
+* :class:`autobahn.wamp.interfaces.ICaller`
+* :class:`autobahn.wamp.interfaces.ICallee`
+
+?? * :class:`autobahn.wamp.interfaces.ITransportHandler`
 --]]
 
 local Session = inheritsFrom( BaseSession )
 Session.NAME = "WAMP Session"
-
-Session.EVENT = "wamp_session_event"
-Session.ONJOIN = "on_join_wamp_event"
-
 FutureMixin.mixin( Session )
 
+--== Event Constants ==--
 
---====================================================================--
---== Start: Setup DMC Objects
+Session.EVENT = 'wamp_session_event'
+
+Session.ONJOIN = 'on_join_wamp_event'
+Session.ONCHALLENGE = 'on_challenge_wamp_event'
+
+
+--======================================================--
+-- Start: Setup Lua Objects
 
 function Session:_init( params )
 	-- print( "Session:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
 	--== Create Properties ==--
 
+	-- realm, authid, authmethods
+	self.config = params.config or wtypes.ComponentConfig{ realm='default' }
+
 	self._transport = nil
 	self._session_id = nil
-	self._realm = params.realm or 'anonymous'
+	self._realm = nil
 
 	self._session_id = nil
 	self._goodbye_sent = nil
@@ -284,13 +390,14 @@ function Session:_init( params )
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
+-- END: Setup Lua Objects
+--======================================================--
 
 
 
 --====================================================================--
 --== Public Methods
+
 
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onOpen`
 --
@@ -298,6 +405,8 @@ function Session:onOpen( params )
 	-- print( "Session:onOpen" )
 	params = params or {}
 	--==--
+	assert( params.transport )
+
 	self._transport = params.transport
 	self:onConnect()
 end
@@ -307,14 +416,25 @@ end
 --
 function Session:onConnect()
 	-- print( "Session:onConnect" )
-	self:join()
+
+	self:join{ realm=self.config.realm, authid=self.config.authid, authmethods=self.config.authmethods }
 end
 
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.join`
+-- :params:
+-- realm
+-- authmethods
+-- authid
 --
-function Session:join( realm )
-	-- print( "Session:join", realm )
+function Session:join( params )
+	-- print( "Session:join", params, params.authid )
+	params = params or {}
+	--==--
+
+	assert( type( params.realm ) == 'string' )
+	assert( params.authid == nil or type( params.authid ) == 'string' )
+	assert( params.authmethods == nil or type( params.authmethods ) == 'table' )
 
 	if self._session_id then error( "Session:join :: already joined" ) end
 
@@ -323,27 +443,32 @@ function Session:join( realm )
 	self._goodbye_sent = false
 
 	roles = {
-		Role.callerFeatures,
-		Role.subscriberFeatures,
+		Role.RolePublisherFeatures(),
+		Role.RoleSubscriberFeatures({publication_trustlevels=true}),
+		Role.RoleCallerFeatures(),
+		Role.RoleCalleeFeatures()
 	}
 
-	msg = MessageFactory.Hello:new{
-		realm=self._realm,
-		roles=roles
+	msg = MessageFactory.Hello{
+		realm=params.realm,
+		roles=roles,
+		authmethods=params.authmethods,
+		authid=params.authid
 	}
+	self._realm = params.realm
 	self._transport:send( msg )
 end
 
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.disconnect`
 --
-function Session:disconnect()
+function Session:disconnect( details )
 	-- print( "Session:disconnect" )
 	if self._transport then
-		self._transport:close()
+		self._transport:close( details.reason, details.message )
 	else
 		-- transport not available
-		error("Session:disconnect :: transport not available")
+		error( "Session:disconnect :: transport not available" )
 	end
 end
 
@@ -351,16 +476,68 @@ end
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onMessage`
 --
 function Session:onMessage( msg )
-	-- print( "Session:onMessage" )
+	-- print( "Session:onMessage", self )
 
 	if self._session_id == nil then
 
-		-- the first message MUST be Welcome
+		-- the first message must be WELCOME, ABORT or CHALLENGE ..
+		--
 		if msg:isa( MessageFactory.Welcome ) then
 			self._session_id = msg.session
 
-			-- TODO: create session details
-			self:onJoin()
+			local details
+
+			details = wtypes.SessionDetails{
+				realm=self._realm,
+				session=self._session_id,
+				authid=msg.authid,
+				authrole=msg.authrole,
+				authmethod=msg.authmethod,
+				authprovider=msg.authprovider -- this is missing from autobahn
+			}
+
+			-- don't know why Autobahn has this as a future
+			-- self:_as_future( self.onJoin, { details } )
+			-- changing to regular method call (like was in earlier release)
+
+			self:onJoin( details )
+
+
+		elseif msg:isa( MessageFactory.Abort ) then
+
+			self:onLeave( wtypes.CloseDetails{ reason=msg.reason, message=msg.message } )
+
+
+		elseif msg:isa( MessageFactory.Challenge ) then
+
+			local challenge, def
+			local success_f, failure_f
+			local onChallenge_f = self.config.onchallenge
+
+			if type( onChallenge_f ) ~= 'function' then
+				error( ProtocolError( "Received %s incorrect onChallenge" % 'fdsf' ) )
+			end
+
+			challenge = wtypes.Challenge{
+				method=msg.method,
+				extra=msg.extra
+			}
+
+			def = self:_as_future( onChallenge_f, { challenge } )
+
+			success_f = function( signature )
+				-- print( "Challenge: success callback", signature )
+				local reply = MessageFactory.Authenticate{
+					signature = signature,
+				}
+				self._transport:send( reply )
+			end
+			failure_f = function( err )
+				-- print( "Challenge: failure callback" )
+			end
+
+			self:_add_future_callbacks( def, success_f, failure_f )
+
 
 		else
 			error( ProtocolError( "Received %s message, and session is not yet established" % msg.NAME ) )
@@ -610,6 +787,8 @@ function Session:onMessage( msg )
 end
 
 
+-- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onClose`
+--
 function Session:onClose( msg, onError )
 	-- print( "Session:onClose" )
 
@@ -625,19 +804,32 @@ function Session:onClose( msg, onError )
 end
 
 
+-- Implements :func:`autobahn.wamp.interfaces.ISession.onChallenge`
+--[[
+https://github.com/crossbario/crossbar/wiki/WAMP%20CRA%20Authentication
+this page has a totally different way of dealing with onChallenge
+the JavaScript frontend example shows onChallenge being passed in
+from there as a function
+--]]
+--
+-- function Session:onChallenge( challenge )
+-- 	print( "Session:onChallenge", challenge, self )
+-- end
+
+
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onJoin`
 --
-function Session:onJoin()
-	-- print( "Session:onJoin" )
-	self:dispatchEvent( self.ONJOIN )
+function Session:onJoin( details )
+	-- print( "Session:onJoin", details )
+	self:dispatchEvent( self.ONJOIN, {details=details} )
 end
 
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.onLeave`
---
+-- @param details type.SessionDetails
 function Session:onLeave( details )
 	-- print( "Session:onLeave" )
-	self:disconnect()
+	self:disconnect( details )
 end
 
 
@@ -650,7 +842,7 @@ function Session:leave( params )
 	--==--
 
 	if not self._session_id then
-		error("no joined"); return
+		error( "not joined" ); return
 	end
 
 	if self._goodbye_sent then

@@ -43,7 +43,7 @@ Wamp support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "1.0.0"
 
 
 
@@ -119,8 +119,10 @@ local DMC_WAMP_DEFAULTS = {
 local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 
 
+
 --====================================================================--
--- Imports
+--== Imports
+
 
 local Objects = require 'lua_objects'
 local States = require 'lua_states'
@@ -131,11 +133,13 @@ local WebSocket = require 'dmc_websockets'
 local Error = require 'dmc_wamp.exception'
 local SerializerFactory = require 'dmc_wamp.serializer'
 local wprotocol = require 'dmc_wamp.protocol'
+local wtypes = require 'dmc_wamp.types'
 
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = Objects.inheritsFrom
@@ -146,52 +150,85 @@ local LOCAL_DEBUG = false
 
 
 --====================================================================--
--- Wamp Class
+--== Wamp Class
 --====================================================================--
 
 
 local Wamp = inheritsFrom( WebSocket )
-Wamp.NAME = "Wamp Class"
+Wamp.NAME = "Wamp Connector"
 
---== Event Constants
+--== Class Constants ==--
+
+Wamp.DEFAULT_PROTOCOL = { 'wamp.2.json' }
+
+--== Event Constants ==--
 
 Wamp.EVENT = 'wamp_event'
 
-Wamp.ONOPEN = 'onopen'
-Wamp.ONCONNECT = 'onconnect'
-Wamp.ONDISCONNECT = 'ondisconnect'
+Wamp.ONJOIN = 'wamp_on_join_event'
+Wamp.ONCHALLENGE = 'wamp_on_challenge_event'
+Wamp.ONCONNECT = 'wamp_on_connect_event'
+Wamp.ONDISCONNECT = 'wamp_on_disconnect_event'
 -- Wamp.ONCLOSE = 'onclose'
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
 function Wamp:_init( params )
 	-- print( "Wamp:_init" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '_init', params )
 	--==--
 
 	--== Sanity Check ==--
 
-	if not self.is_intermediate then
-		assert( params.realm, "Wamp: requires parameter 'realm'" )
-	end
+	if self.is_intermediate then return end
 
+	assert( params.realm, "Wamp: requires parameter 'realm'" )
+	params.protocols = params.protocols or self.DEFAULT_PROTOCOL
+
+	if type(params.onChallenge)=='function' then
+		local f = params.onChallenge
+		params.onChallenge = function( args, kwargs )
+			local challenge = args[1]
+			return f( { session=self, method=challenge.method, extra=challenge.extra, challenge=challenge } )
+		end
+
+	end
 	--== Create Properties ==--
 
-	self._realm = params.realm
-	self._protocols = params.protocols or { 'wamp.2.json' }
+	self._config = wtypes.ComponentConfig{
+		realm=params.realm,
+		extra=params.extra,
+		authid=params.user_id,
+		authmethods=params.auth_methods,
+		onchallenge=params.onChallenge
+	}
+
+	self._protocols = params.protocols
 
 	--== Object References ==--
 
 	self._session = nil -- a WAMP session object
-	self._serializer = nil -- a WAMP session object
+	self._session_handler = nil -- ref to event handler function
+
+	self._serializer = nil -- a serializer object
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
+
+function Wamp:_initComplete()
+	-- print( "Wamp:_initComplete" )
+	self:superCall( '_initComplete' )
+
+	self._session_handler = self:createCallback( self._wampSessionEvent_handler )
+	self._serializer = SerializerFactory.create( 'json' )
+
+end
+
+-- END: Setup DMC Objects
+--======================================================--
 
 
 --====================================================================--
@@ -280,7 +317,6 @@ end
 -- args
 -- kwargs
 -- onSuccess callback
--- onError callback
 -- options table of options
 -- acknowledge boolean
 --
@@ -335,7 +371,7 @@ end
 
 
 function Wamp:send( msg )
-	-- print( "Wamp:send", msg.TYPE )
+	-- print( "Wamp:send", msg.MESSAGE_TYPE )
 	-- params = params or {}
 	--==--
 	local bytes, is_binary = self._serializer:serialize( msg )
@@ -355,7 +391,7 @@ function Wamp:leave( reason, message )
 end
 
 function Wamp:close( reason, message )
-	-- print( "Wamp:close" )
+	-- print( "Wamp:close", reason, message )
 	self:_wamp_close( reason, message )
 	self:superCall( 'close' )
 end
@@ -364,7 +400,7 @@ end
 --====================================================================--
 --== Private Methods
 
-function Wamp:_wamp_close( message, was_clean )
+function Wamp:_wamp_close( reason, message )
 	-- print( "Wamp:_wamp_close" )
 	local had_session = ( self._session ~= nil )
 
@@ -374,8 +410,9 @@ function Wamp:_wamp_close( message, was_clean )
 	end
 
 	if had_session then
-		self:_dispatchEvent( Wamp.ONDISCONNECT )
+		self:dispatchEvent( Wamp.ONDISCONNECT, { reason=reason, message=message } )
 	end
+
 end
 
 
@@ -385,25 +422,56 @@ end
 function Wamp:_onOpen()
 	-- print( "Wamp:_onOpen" )
 
+	local o
+
 	-- TODO: match with protocol
-	self._serializer = SerializerFactory.create( 'json' )
+	-- capture errors (eg, one in Role.lua)
 
-	self._session = wprotocol.Session:new( { realm=self._realm })
-	self._session_f = self:createCallback( self._wampSessionEvent_handler )
-	self._session:addEventListener( self._session.EVENT, self._session_f )
+	o = wprotocol.Session{ config=self._config }
+	o:addEventListener( o.EVENT, self._session_handler )
+	self._session = o
 
-	self._session:onOpen( { transport=self } )
+	try{
+		function()
+			self._session:onOpen( { transport=self } )
+		end,
+
+		catch{
+			function(e)
+				if type(e)=='string' then
+					error( e )
+				elseif e:isa( Error.ProtocolError ) then
+					print( e.traceback )
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_PROTOCOL_ERROR,
+						reason="WAMP Protocol Error"
+					}
+				else
+					print( e.traceback )
+					self:_bailout{
+						code=WebSocket.CLOSE_STATUS_CODE_INTERNAL_ERROR,
+						reason="WAMP Internal Error ({})"
+					}
+				end
+			end
+		}
+	}
+
+
 end
 
 
+-- Wamp:_onMessage
 -- coming from websockets
+-- we get message, and pass to the session
+--
 function Wamp:_onMessage( message )
 	-- print( "Wamp:_onMessage", message )
 
 	try{
 		function()
 			local msg = self._serializer:unserialize( message.data )
-			self._session:onMessage( msg, onError )
+			self._session:onMessage( msg )
 		end,
 
 		catch{
@@ -430,9 +498,9 @@ function Wamp:_onMessage( message )
 end
 
 -- coming from websockets
-function Wamp:_onClose( message, was_clean )
+function Wamp:_onClose( params )
 	-- print( "Wamp:_onClose" )
-	self:_wamp_close( reason, message )
+	self:_wamp_close( params )
 end
 
 
@@ -444,8 +512,16 @@ function Wamp:_wampSessionEvent_handler( event )
 	local e_type = event.type
 	local session = event.target
 
-	if e_type == session.ONJOIN then
-		self:_dispatchEvent( Wamp.ONCONNECT )
+	if e_type == session.ONCONNECT then
+		self:dispatchEvent( Wamp.ONCONNECT )
+
+	elseif e_type == session.ONJOIN then
+		self:dispatchEvent( Wamp.ONJOIN )
+
+	elseif e_type == session.ONCHALLENGE then
+		assert( event.challenge )
+		self:dispatchEvent( Wamp.ONCHALLENGE, { challenge=event.challenge } )
+
 	end
 
 end

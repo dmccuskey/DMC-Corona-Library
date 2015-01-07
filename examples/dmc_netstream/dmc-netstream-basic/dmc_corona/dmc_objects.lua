@@ -31,7 +31,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : DMC Objects
+--== DMC Corona Library : DMC Objects
 --====================================================================--
 
 
@@ -42,12 +42,12 @@ local VERSION = "1.1.0"
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -78,7 +78,7 @@ end
 
 
 --====================================================================--
--- Configuration
+--== Configuration
 
 local dmc_lib_data, dmc_lib_info
 
@@ -97,65 +97,91 @@ dmc_lib_info = dmc_lib_data.dmc_library
 
 
 --====================================================================--
--- DMC Objects
+--== DMC Objects
 --====================================================================--
 
 
 --====================================================================--
--- Configuration
+--== Configuration
 
 dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
 
 local DMC_OBJECTS_DEFAULTS = {
-	auto_touch_block=false,
 }
 
 local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEFAULTS )
 
 
 --====================================================================--
--- Imports
+--== Imports
 
 local LuaObject = require 'lua_objects'
 local Utils = require 'dmc_utils'
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
 
 -- setup some aliases to make code cleaner
 local inheritsFrom = LuaObject.inheritsFrom
 local ObjectBase = LuaObject.ObjectBase
 
 
+--====================================================================--
+--== Support Functions
+
+_G.getDMCObject = function( object )
+	return object.__dmc_ref
+end
+
+
 
 --====================================================================--
--- CoronaBase Class
+--== Corona Base Class
 --====================================================================--
+
 
 local CoronaBase = inheritsFrom( ObjectBase )
 CoronaBase.NAME = "Corona Base"
+
+--== Class Constants
+
+--references for setAnchor()
+CoronaBase.TopLeftReferencePoint = { 0, 0 }
+CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
+CoronaBase.TopRightReferencePoint = { 1, 0 }
+CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
+CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
+CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
+CoronaBase.BottomLeftReferencePoint = { 0, 1 }
+CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
+CoronaBase.BottomRightReferencePoint = { 1, 1 }
+
+-- style of event dispatch
+CoronaBase.DMC_EVENT_DISPATCH = 'dmc_event_style_dispatch'
+CoronaBase.CORONA_EVENT_DISPATCH = 'corona_event_style_dispatch'
+
 
 
 -- new()
 -- class constructor
 --
-function CoronaBase:new( options )
-
-	options = options or {}
+function CoronaBase:new( params )
+	params = params or {}
+	params.__set_intermediate = params.__set_intermediate == true and true or false
+	--==--
 
 	local o = self:_bless()
 
 	-- set flag if this is an Intermediate class
-	if options.__setIntermediate == true then
-		o.is_intermediate = true
-		options.__setIntermediate = nil
-	else
-		o.is_intermediate = false
-	end
+	o.is_intermediate = params.__set_intermediate
+	params.__set_intermediate = nil
 
-	o:_init( options )
+	-- configure the type of event dispatch
+	o._dispatch_type = params.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or params.dispatch_type
 
+	-- go through setup sequence
+	o:_init( params )
 	-- skip these if we're an intermediate class (eg, subclass)
 	if rawget( o, 'is_intermediate' ) == false then
 		o:_createView()
@@ -166,12 +192,15 @@ function CoronaBase:new( options )
 end
 
 
+--====================================================================--
+--== Start: Setup DMC Objects
+
 -- _init()
 -- initialize the object - setting the view
 --
 function CoronaBase:_init( options )
-	-- OVERRIDE THIS
-
+	self:superCall( "_init" )
+	--==--
 	--== Create Properties ==--
 	--== Display Groups ==--
 	--== Object References ==--
@@ -184,8 +213,9 @@ end
 -- remove items added during _init()
 --
 function CoronaBase:_undoInit( options )
-	-- OVERRIDE THIS
 	self:_unsetView()
+	--==--
+	self:superCall( "_undoInit" )
 end
 
 
@@ -193,31 +223,17 @@ end
 -- create any visual items specific to object
 --
 function CoronaBase:_createView()
-	-- OVERRIDE THIS
-
+	self:superCall( "_createView" )
 	-- Subclasses should call self:superCall( "_createView" )
-
-	local o = self.display
-
-	-- Used to block touches at the level of parent display
-	-- It can be moved to another subclass if the feature is not
-	-- generic for all Corona Base children
-	if dmc_objects_data.auto_touch_block then
-		o.touch = function(e) return true end
-		o:addEventListener( 'touch', o )
-	end
+	--==--
 end
 -- _undoCreateView()
 -- remove any items added during _createView()
 --
 function CoronaBase:_undoCreateView()
-	-- OVERRIDE THIS
-
-	if dmc_objects_data.auto_touch_block and o.touch then
-		o:removeEventListener( 'touch', o.touch )
-		o.touch = nil
-	end
-
+	--==--
+	-- Subclasses should call self:superCall( "_undoCreateView" )
+	self:superCall( "_undoCreateView" )
 end
 
 
@@ -225,15 +241,23 @@ end
 -- any setup after object is done being created
 --
 function CoronaBase:_initComplete()
-	-- OVERRIDE THIS
+	self:superCall( "_initComplete" )
+	--==--
 end
 -- _undoInitComplete()
 -- remove any items added during _initComplete()
 --
 function CoronaBase:_undoInitComplete()
-	-- OVERRIDE THIS
+	--==--
+	self:superCall( "_undoInitComplete" )
 end
 
+--== END: Setup DMC Objects
+--====================================================================--
+
+
+--====================================================================--
+--== Private Methods
 
 -- _setView( viewObject )
 -- set the view property to incoming view object
@@ -243,7 +267,7 @@ function CoronaBase:_setView( viewObject )
 	self:_unsetView()
 
 	self.view = viewObject
-	self.display = self.view
+	self.display = self.view -- deprecated
 	-- save ref of our Lua object on Corona element
 	-- in case we need to get back to the object
 	self.view.__dmc_ref = self
@@ -270,13 +294,36 @@ function CoronaBase:_unsetView()
 end
 
 
+--====================================================================--
+--== Public Methods / Corona API
+
+
+function CoronaBase:setTouchBlock( o )
+	assert( o, 'setTouchBlock: expected object' )
+	o.touch = function(e) return true end
+	o:addEventListener( 'touch', o )
+end
+function CoronaBase:unsetTouchBlock( o )
+	assert( o, 'unsetTouchBlock: expected object' )
+	if o and o.touch then
+		o:removeEventListener( 'touch', o )
+		o.touch = nil
+	end
+end
+
+
+
+function CoronaBase.__setters:dispatch_type( value )
+	self._dispatch_type = value
+end
+
+
 -- destroy()
 -- remove the view object from the stage
 --
 function CoronaBase:destroy()
 	self:removeSelf()
 end
-
 
 function CoronaBase:show()
 	self.view.isVisible = true
@@ -312,40 +359,6 @@ end
 function CoronaBase:remove( ... )
 	self.view:remove( ... )
 end
-
-
-
---= CORONA OBJECT =--
-
-
--- _dispatchEvent
---
-function CoronaBase:_dispatchEvent( e_type, data, params )
-	-- print( "Object:_dispatchEvent ", e_type, data )
-	params = params or {}
-	if params.merge == nil then params.merge = false end
-	--==--
-
-	-- setup custom event
-	local e = {
-		name = self.EVENT,
-		type = e_type,
-		target = self
-	}
-
-	if params.merge and type( data ) == 'table' then
-		e = data
-		e.name = self.EVENT
-		e.type = e_type
-		e.target = self
-
-	else
-		e.data = data
-	end
-
-	self:dispatchEvent( e )
-end
-
 
 
 --= CORONA OBJECT =--
@@ -540,10 +553,10 @@ function CoronaBase.__setters:yScale( value )
 end
 
 
-
 -- Methods --
 
--- addEventListener( eventName, listener )
+
+-- addEventListener( eventName, handler )
 --
 function CoronaBase:addEventListener( ... )
 	local args = { ... }
@@ -556,26 +569,38 @@ function CoronaBase:addEventListener( ... )
 
 	self.view:addEventListener( ... )
 end
+
 -- contentToLocal( x_content, y_content )
 --
 function CoronaBase:contentToLocal( ... )
 	self.view:contentToLocal( ... )
 end
--- dispatchEvent( event )
---
+
+CoronaBase._buildDmcEvent = ObjectBase._buildDmcEvent
+
+-- dispatchEvent( event info )
+-- can either be dmc style event
+-- or corona style event
 function CoronaBase:dispatchEvent( ... )
-	self.view:dispatchEvent( ... )
+	-- print( 'CoronaBase:dispatchEvent', self._dispatch_type)
+	if self._dispatch_type == CoronaBase.CORONA_EVENT_DISPATCH then
+		self.view:dispatchEvent( ... )
+	else
+		self.view:dispatchEvent( self:_buildDmcEvent( ... ) )
+	end
 end
 -- localToContent( x, y )
 --
 function CoronaBase:localToContent( ... )
 	self.view:localToContent( ... )
 end
--- removeEventListener( eventName, listener )
+
+-- removeEventListener( eventName, handler )
 --
 function CoronaBase:removeEventListener( ... )
 	self.view:removeEventListener( ... )
 end
+
 -- removeSelf()
 --
 function CoronaBase:removeSelf()
@@ -600,19 +625,7 @@ function CoronaBase:scale( ... )
 	self.view:scale( ... )
 end
 
-
-CoronaBase.TopLeftReferencePoint = { 0, 0 }
-CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
-CoronaBase.TopRightReferencePoint = { 1, 0 }
-CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
-CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
-CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
-CoronaBase.BottomLeftReferencePoint = { 0, 1 }
-CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
-CoronaBase.BottomRightReferencePoint = { 1, 1 }
-
-
---
+-- setAnchor
 --
 function CoronaBase:setAnchor( ... )
 	local args = {...}
@@ -791,13 +804,14 @@ end
 
 
 
-
 --====================================================================--
--- DMC Objects Exports
+--== DMC Objects Exports
 --====================================================================--
 
 
+-- simply add to current exports
 LuaObject.CoronaBase = CoronaBase
+
 
 return LuaObject
 
