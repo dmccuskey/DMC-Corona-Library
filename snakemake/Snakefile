@@ -1,0 +1,196 @@
+# global flag, if we've started
+gSTARTED = True
+DEBUG = False
+
+configfile: "../DMC-Corona-Library/snakemake/snakeconfig.json"
+
+# vars
+#
+MODBASE_DIR = config['module']['base_dir']
+MOD_LIBS = config['module']['libs']
+CONFIG = {}
+FILEMAP = {}
+
+assert MODBASE_DIR!=None, "module file directory not specified"
+assert MOD_LIBS!=None, "module libraries not specified"
+
+
+########
+## Support Functions
+
+
+def _includeSnakefile( module ):
+	if DEBUG: print( "importing ../%s/Snakefile" % module )
+	include: "../%s/Snakefile" % module
+
+
+def _loadModule( module ):
+	if DEBUG: print( "_loadModule: ", module )
+
+	if not module in CONFIG.keys():
+		_includeSnakefile( module )
+
+	for module in CONFIG[module]['module']['requires']:
+		if module in CONFIG.keys():
+			if DEBUG: print( "already imported: ", module )
+			pass
+		else:
+			_includeSnakefile( module )
+
+
+def _lookup( path ):
+	if DEBUG: print( "_lookup", path )
+	file = FILEMAP[ path ]
+	return file
+
+
+# either 'core' or 'test'
+#
+def _getModuleFiles( target, section='module', dst_dir=MODBASE_DIR ):
+	if DEBUG: print( "_getModuleFiles", target, section )
+	list = []
+
+	if not target in CONFIG.keys():
+		_loadModule( target )
+
+	mod_info = CONFIG[target][section]
+
+	if target in MOD_LIBS.keys():
+		dst_dir = "{0}/{1}".format( dst_dir, MOD_LIBS[target] )
+
+	for fname in mod_info['files']:
+		src_file = "../{0}/{1}/{2}".format( target, mod_info['dir'], fname )
+		dst_file = "./{0}/{1}".format( dst_dir, fname )
+		if DEBUG: print( "adding file: '{0}' >> '{1}'".format( dst_file, src_file ) )
+		FILEMAP[ dst_file ] = src_file
+		list.append( dst_file )
+
+	return list
+
+
+# collects all required modules, recursively
+# either 'core' or 'test'
+#
+def _getModuleModules( target, dict={}, section='module', type='requires' ):
+	if DEBUG: print( "_getModuleModules", target, section, type )
+
+	if target in MOD_LIBS.keys(): return [ target ]
+
+	requires = CONFIG[target][section][type]
+	for module in requires:
+		if DEBUG: print( "checking", module )
+		dict[ module ] = True
+		_getModuleModules( module, dict=dict, section=section, type=type )
+
+	if DEBUG: print( "Got module list: ", dict.keys() )
+	return list(dict)
+
+
+# loops through all required modules, gets their 'core' files
+#
+def _getBuildModuleFileList( target ):
+	if DEBUG: print( "_getBuildModuleFileList", target )
+	assert CONFIG[target], "config data missing for target"
+
+	list = []
+
+
+	requires = _getModuleModules( target, section='module', type='requires' )
+	for module in requires:
+		if DEBUG: print( "loading files for module: ", module )
+		list += _getModuleFiles( module )
+
+	if DEBUG: print( "Got file list: ", list )
+	return list
+
+
+# loops through all required modules, gets their 'core' files
+#
+def _getBuildExamplesFileList( target ):
+	if DEBUG: print( "_getBuildExamplesFileList", target )
+	assert CONFIG[target], "config data missing for target"
+
+	list = []
+
+	if not 'examples' in CONFIG[target].keys():
+		if DEBUG: print( "No examples for ", target )
+		return list
+
+	mod_dir = CONFIG[target]['module']['dir']
+	mod_exps = CONFIG[target]['examples']
+
+	Requires = _getModuleModules( target, section='module', type='requires' )
+	Requires.append(target)
+
+	for app in mod_exps['apps']:
+		exp_dir = "{0}/{1}".format(mod_exps['dir'],app['dir'])
+		dst_dir = "{0}/{1}".format(exp_dir,mod_dir)
+		if DEBUG: print( "Working on example app: ", exp_dir )
+
+		for module in Requires + app['requires']:
+			if DEBUG: print( "loading files for module: ", module )
+			list += _getModuleFiles( module, dst_dir=dst_dir )
+
+	if DEBUG: print( "Got file list: ", list )
+	return list
+
+
+# loops through all required modules, gets their 'core' files
+#
+def _getBuildTestsFileList( target ):
+	if DEBUG: print( "_getBuildExamplesFileList", target )
+	assert CONFIG[target], "config data missing for target"
+
+	list = []
+
+	return list
+
+
+
+
+#########
+## API
+
+
+# register a module config
+#
+def register( name, config ):
+	if DEBUG: print( "Registering: ", name )
+
+	# save config in our structure
+	CONFIG[name]=config
+
+	if name in MOD_LIBS.keys():
+		if DEBUG: print( 'Skipping requires check for: ', name )
+		return
+	else:
+		if DEBUG: print( 'Checking requires for: ', name )
+
+	_loadModule( name )
+
+
+
+REQUIRE_TO="./{base_dir}/{fname,[^/]+}.lua"
+
+
+rule build_all:
+	input:
+		lambda x: _getBuildModuleFileList( MODULE ),
+		lambda x: _getBuildExamplesFileList( MODULE ),
+		lambda x: _getBuildTestsFileList( MODULE )
+
+rule build_module:
+	input: lambda x: _getBuildModuleFileList( MODULE )
+
+rule build_examples:
+	input: lambda x: _getBuildExamplesFileList( MODULE )
+
+rule build_tests:
+	input: lambda x: _getBuildTestsFileList( MODULE )
+
+
+rule copy_requires:
+	output: REQUIRE_TO
+	input: lambda wildcards: _lookup( "./{0}/{1}.lua".format(wildcards.base_dir, wildcards.fname) )
+	shell: "cp {input} {output}"
+

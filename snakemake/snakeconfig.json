@@ -1,0 +1,8 @@
+{
+	"module": {
+		"base_dir": "dmc_corona",
+		"libs": {
+			"DMC-Lua-Library": "lib/dmc_lua"
+		}
+	}
+}
