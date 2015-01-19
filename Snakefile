@@ -20,7 +20,8 @@ module_config = {
 			"dmc-netstream",
 			"dmc-objects",
 			"dmc-sockets",
-			"dmc-utils"
+			"dmc-utils",
+			"dmc-websockets"
 		]
 	},
 	"tests": {
