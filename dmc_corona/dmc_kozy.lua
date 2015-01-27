@@ -1,33 +1,40 @@
 --====================================================================--
 -- dmc_kozy.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_kozy.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (C) 2013-2015 David McCuskey. All Rights Reserved.
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
+
+
+
+--====================================================================--
+--== DMC Corona Library : DMC Kozy
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -37,10 +44,16 @@ local VERSION = "1.0.1"
 
 
 --====================================================================--
--- Boot Support Methods
+--== DMC Corona Library Config
 --====================================================================--
 
-local Utils = {} -- make copying from dmc_utils easier
+
+
+--====================================================================--
+--== Support Functions
+
+
+local Utils = {} -- make copying from lua_utils easier
 
 function Utils.extend( fromTable, toTable )
 
@@ -70,44 +83,39 @@ end
 
 
 --====================================================================--
--- DMC Library Config
---====================================================================--
+--== Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
--- boot dmc_library with boot script or
+local dmc_lib_data, dmc_lib_info
+
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 	_G.__dmc_corona = {
 		dmc_corona={},
 	}
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_corona
-dmc_lib_location = dmc_lib_info.location
-
-
-
-
---====================================================================--
--- DMC Library : DMC Kolor
---====================================================================--
-
-
 
 
 
 --====================================================================--
--- DMC Kolor Config
+--== DMC Kozy
 --====================================================================--
+
+
+
+--====================================================================--
+--== Configuration
+
 
 dmc_lib_data.dmc_kozy = dmc_lib_data.dmc_kozy or {}
 
 local DMC_KOZY_DEFAULTS = {
 	make_global=false,
-	print_warnings= true,
+	print_warnings=true,
 
 	-- G1 deprecated methods
 	activate_zeroone_alpha=true,
@@ -119,13 +127,10 @@ local DMC_KOZY_DEFAULTS = {
 local dmc_kozy_data = Utils.extend( dmc_lib_data.dmc_kozy, DMC_KOZY_DEFAULTS )
 
 
---====================================================================--
---== Imports
-
-
 
 --====================================================================--
 --== Setup, Constants
+
 
 -- reference to the native object
 local _DISPLAY = _G.display
@@ -137,8 +142,10 @@ local dkd = dmc_kozy_data -- make shorter reference
 local Display, Native
 
 
+
 --====================================================================--
---== Support Methods
+--== Support Functions
+
 
 -- translateRGBToHDR()
 -- translates RGB color sequence to equivalent HDR values
@@ -318,11 +325,12 @@ end
 
 
 --====================================================================--
--- Display Class Setup
+--== Display Class Setup
 --====================================================================--
 
+
 Display = {}
-Display.NAME = "DMC_KOZY DISPLAY"
+Display.NAME = "DMC Kozy Display"
 
 Display.super = _DISPLAY
 setmetatable( Display, { __index=Display.super } )
@@ -344,7 +352,7 @@ Display.BottomRightReferencePoint = { 1, 1 }
 --== Corona Display API ==--
 
 function Display.newCircle( ... )
-	-- print( 'Kompatible.newCircle' )
+	-- print( 'dmc_kozy.newCircle' )
 
 	local o = Display.super.newCircle( ... )
 	local p
@@ -364,7 +372,7 @@ end
 
 
 function Display.newContainer( ... )
-	-- print( 'Kompatible.newContainer' )
+	-- print( 'dmc_kozy.newContainer' )
 
 	local o = Display.super.newContainer( ... )
 
@@ -377,7 +385,7 @@ end
 
 
 function Display.newGroup( ... )
-	-- print( 'Kompatible.newGroup' )
+	-- print( 'dmc_kozy.newGroup' )
 
 	local o = Display.super.newGroup( ... )
 
@@ -390,7 +398,7 @@ end
 
 
 function Display.newImage( ... )
-	-- print( 'Kompatible.newImage' )
+	-- print( 'dmc_kozy.newImage' )
 
 	local o = Display.super.newImage( ... )
 
@@ -406,7 +414,7 @@ end
 
 
 function Display.newImageRect( ... )
-	-- print( 'Kompatible.newImageRect' )
+	-- print( 'dmc_kozy.newImageRect' )
 
 	local o = Display.super.newImageRect( ... )
 
@@ -421,11 +429,8 @@ function Display.newImageRect( ... )
 end
 
 
-
-
-
 function Display.newLine( ... )
-	-- print( 'Kompatible.newLine' )
+	-- print( 'dmc_kozy.newLine' )
 
 	local o = Display.super.newLine( ... )
 
@@ -443,7 +448,7 @@ end
 
 
 function Display.newPolygon( ... )
-	-- print( 'Kompat.newPolygon' )
+	-- print( 'dmc_kozy.newPolygon' )
 
 	local o = Display.super.newPolygon( ... )
 
@@ -459,7 +464,7 @@ end
 
 
 function Display.newRect( ... )
-	-- print( 'Kompatible.newRect' )
+	-- print( 'dmc_kozy.newRect' )
 
 	local o = Display.super.newRect( ... )
 
@@ -478,7 +483,7 @@ end
 
 
 function Display.newRoundedRect( ... )
-	-- print( 'Kompatible.newRoundedRect' )
+	-- print( 'dmc_kozy.newRoundedRect' )
 
 	local o = Display.super.newRoundedRect( ... )
 
@@ -497,7 +502,7 @@ end
 
 
 function Display.newSprite( ... )
-	-- print( 'Kompatible.newSprite' )
+	-- print( 'dmc_kozy.newSprite' )
 
 	local o = Display.super.newSprite( ... )
 
@@ -510,7 +515,7 @@ end
 
 
 function Display.newText( ... )
-	-- print( 'Kompatible.newText' )
+	-- print( 'dmc_kozy.newText' )
 
 	local o = Display.super.newText( ... )
 
@@ -527,11 +532,12 @@ end
 
 
 --====================================================================--
--- Native Class Setup
+--== Native Class Setup
 --====================================================================--
 
+
 Native = {}
-Native.NAME = "DMC_KOZY NATIVE"
+Native.NAME = "DMC Kozy Native"
 
 Native.super = _NATIVE
 setmetatable( Native, { __index=Native.super } )
@@ -540,7 +546,7 @@ setmetatable( Native, { __index=Native.super } )
 --== Corona Native API ==--
 
 function Native.newText( ... )
-	-- print( 'Kompatible native.newText' )
+	-- print( 'dmc_kozy.newText' )
 
 	local o = Native.super.newText( ... )
 
@@ -556,7 +562,7 @@ end
 
 
 function Native.newTextBox( ... )
-	-- print( 'Kompatible native.newTextBox' )
+	-- print( 'dmc_kozy.newTextBox' )
 
 	local o = Native.super.newTextBox( ... )
 
@@ -572,7 +578,7 @@ end
 
 
 function Native.newTextField( ... )
-	-- print( 'Kompatible native.newTextField' )
+	-- print( 'dmc_kozy.newTextField' )
 
 	local o = Native.super.newTextField( ... )
 
@@ -588,7 +594,7 @@ end
 
 
 function Native.newWebView( ... )
-	-- print( 'Kompatible native.newWebView' )
+	-- print( 'dmc_kozy.newWebView' )
 
 	local o = Native.super.newWebView( ... )
 
@@ -605,7 +611,7 @@ end
 
 
 --====================================================================--
--- Final Setup
+--== Final Setup
 --====================================================================--
 
 

@@ -1,30 +1,32 @@
 --====================================================================--
 -- dmc_objects.lua
 --
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_objects.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
-Copyright (C) 2011-2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2011-2015 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
@@ -37,7 +39,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "2.1.0"
 
 
 
@@ -49,10 +51,25 @@ local VERSION = "1.1.0"
 --====================================================================--
 --== Support Functions
 
-local Utils = {} -- make copying from dmc_utils easier
 
+local Utils = {} -- make copying from Utils easier
+
+
+--== Start: copy from lua_utils ==--
+
+-- extend()
+-- Copy key/values from one table to another
+-- Will deep copy any value from first table which is itself a table.
+--
+-- @param fromTable the table (object) from which to take key/value pairs
+-- @param toTable the table (object) in which to copy key/value pairs
+-- @return table the table (object) that received the copied items
+--
 function Utils.extend( fromTable, toTable )
 
+	if not fromTable or not toTable then
+		error( "table can't be nil" )
+	end
 	function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
@@ -76,23 +93,26 @@ function Utils.extend( fromTable, toTable )
 	return _extend( fromTable, toTable )
 end
 
+--== End: copy from lua_utils ==--
+
+
 
 --====================================================================--
 --== Configuration
 
-local dmc_lib_data, dmc_lib_info
 
--- boot dmc_library with boot script or
+local dmc_lib_data
+
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 	_G.__dmc_corona = {
 		dmc_corona={},
 	}
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
 
 
 
@@ -104,6 +124,7 @@ dmc_lib_info = dmc_lib_data.dmc_library
 --====================================================================--
 --== Configuration
 
+
 dmc_lib_data.dmc_objects = dmc_lib_data.dmc_objects or {}
 
 local DMC_OBJECTS_DEFAULTS = {
@@ -112,27 +133,161 @@ local DMC_OBJECTS_DEFAULTS = {
 local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEFAULTS )
 
 
+
 --====================================================================--
 --== Imports
 
-local LuaObject = require 'lua_objects'
-local Utils = require 'dmc_utils'
+
+local LuaObject = require 'lib.dmc_lua.lua_objects'
+local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
+
 
 
 --====================================================================--
 --== Setup, Constants
 
+
 -- setup some aliases to make code cleaner
-local inheritsFrom = LuaObject.inheritsFrom
-local ObjectBase = LuaObject.ObjectBase
+local newClass = LuaObject.newClass
+local Class = LuaObject.Class
+local registerCtorName = LuaObject.registerCtorName
+local registerDtorName = LuaObject.registerDtorName
+
+local EventsMix = EventsMixModule.EventsMix
+
+
+-- Add new Dtor name (function references)
+registerDtorName( 'removeSelf', Class )
+
 
 
 --====================================================================--
 --== Support Functions
 
+
 _G.getDMCObject = function( object )
-	return object.__dmc_ref
+	local ref = object.__dmc_ref
+	assert( ref, "No reference to DMC Object" )
+	return ref
 end
+
+
+
+
+--====================================================================--
+--== Object Base Class
+--====================================================================--
+
+
+local ObjectBase = newClass( { Class, EventsMix }, { name="Object Class" } )
+
+
+
+--======================================================--
+--== Constructor / Destructor
+
+
+-- __new__()
+-- this method drives the construction flow for DMC-style objects
+-- typically, you won't override this
+--
+function ObjectBase:__new__( ... )
+
+	--== Do setup sequence ==--
+
+	self:__init__( ... )
+
+	-- skip these if a Class object (ie, NOT an instance)
+	if rawget( self, '__is_class' ) == false then
+		self:__initComplete__()
+	end
+
+	return self
+end
+
+
+-- __destroy__()
+-- this method drives the destruction flow for DMC-style objects
+-- typically, you won't override this
+--
+function ObjectBase:__destroy__()
+
+	--== Do teardown sequence ==--
+
+	-- skip these if a Class object (ie, NOT an instance)
+	if rawget( self, '__is_class' ) == false then
+		self:__undoInitComplete__()
+	end
+
+	self:__undoInit__()
+end
+
+
+
+--======================================================--
+-- Start: Setup Lua Objects
+
+-- __init__
+-- initialize the object
+--
+function ObjectBase:__init__( ... )
+	--[[
+	there is no __init__ on Class
+	-- self:superCall( Class, '__init__', ... )
+	--]]
+	self:superCall( EventsMix, '__init__', ... )
+	--==--
+end
+
+-- __undoInit__
+-- remove items added during __init__
+--
+function ObjectBase:__undoInit__()
+	self:superCall( EventsMix, '__undoInit__' )
+	--[[
+	there is no __undoInit__ on Class
+	-- self:superCall( Class, '__undoInit__' )
+	--]]
+end
+
+
+-- __initComplete__
+-- any setup after object is done with __init__
+--
+function ObjectBase:__initComplete__()
+end
+
+-- __undoInitComplete__()
+-- remove any items added during __initComplete__
+--
+function ObjectBase:__undoInitComplete__()
+end
+
+-- END: Setup Lua Objects
+--======================================================--
+
+
+
+--====================================================================--
+--== Public Methods
+
+
+-- none
+
+
+
+--====================================================================--
+--== Private Methods
+
+
+
+--====================================================================--
+--== Event Handlers
+
+-- none
+
+
+
 
 
 
@@ -141,129 +296,147 @@ end
 --====================================================================--
 
 
-local CoronaBase = inheritsFrom( ObjectBase )
-CoronaBase.NAME = "Corona Base"
+local ComponentBase = newClass( ObjectBase, { name="Component Class" } )
 
---== Class Constants
+
+--== Class Constants ==--
 
 --references for setAnchor()
-CoronaBase.TopLeftReferencePoint = { 0, 0 }
-CoronaBase.TopCenterReferencePoint = { 0.5, 0 }
-CoronaBase.TopRightReferencePoint = { 1, 0 }
-CoronaBase.CenterLeftReferencePoint = { 0, 0.5 }
-CoronaBase.CenterReferencePoint = { 0.5, 0.5 }
-CoronaBase.CenterRightReferencePoint = { 1, 0.5 }
-CoronaBase.BottomLeftReferencePoint = { 0, 1 }
-CoronaBase.BottomCenterReferencePoint = { 0.5, 1 }
-CoronaBase.BottomRightReferencePoint = { 1, 1 }
-
--- style of event dispatch
-CoronaBase.DMC_EVENT_DISPATCH = 'dmc_event_style_dispatch'
-CoronaBase.CORONA_EVENT_DISPATCH = 'corona_event_style_dispatch'
+ComponentBase.TopLeftReferencePoint = { 0, 0 }
+ComponentBase.TopCenterReferencePoint = { 0.5, 0 }
+ComponentBase.TopRightReferencePoint = { 1, 0 }
+ComponentBase.CenterLeftReferencePoint = { 0, 0.5 }
+ComponentBase.CenterReferencePoint = { 0.5, 0.5 }
+ComponentBase.CenterRightReferencePoint = { 1, 0.5 }
+ComponentBase.BottomLeftReferencePoint = { 0, 1 }
+ComponentBase.BottomCenterReferencePoint = { 0.5, 1 }
+ComponentBase.BottomRightReferencePoint = { 1, 1 }
 
 
 
--- new()
--- class constructor
+--======================================================--
+--== Constructor / Destructor
+
+
+-- __new__()
+-- this method drives the construction flow for DMC-style objects
+-- typically, you won't override this
 --
-function CoronaBase:new( params )
-	params = params or {}
-	params.__set_intermediate = params.__set_intermediate == true and true or false
-	--==--
+function ComponentBase:__new__( ... )
 
-	local o = self:_bless()
+	--== Do setup sequence ==--
 
-	-- set flag if this is an Intermediate class
-	o.is_intermediate = params.__set_intermediate
-	params.__set_intermediate = nil
+	self:__init__( ... )
 
-	-- configure the type of event dispatch
-	o._dispatch_type = params.dispatch_type == nil and CoronaBase.DMC_EVENT_DISPATCH or params.dispatch_type
-
-	-- go through setup sequence
-	o:_init( params )
-	-- skip these if we're an intermediate class (eg, subclass)
-	if rawget( o, 'is_intermediate' ) == false then
-		o:_createView()
-		o:_initComplete()
+	-- skip these if a Class object (ie, NOT an instance)
+	if rawget( self, '__is_class' ) == false then
+		self:__createView__()
+		self:__initComplete__()
 	end
 
-	return o
+	return self
 end
 
 
---====================================================================--
---== Start: Setup DMC Objects
-
--- _init()
--- initialize the object - setting the view
+-- __destroy__()
+-- this method drives the destruction flow for DMC-style objects
+-- typically, you won't override this
 --
-function CoronaBase:_init( options )
-	self:superCall( "_init" )
+function ComponentBase:__destroy__()
+
+	-- skip these if we're an intermediate class (eg, subclass)
+	if rawget( self, '__is_class' ) == false then
+		self:__undoInitComplete__()
+		self:__undoCreateView__()
+	end
+
+	self:__undoInit__()
+end
+
+
+--======================================================--
+-- Start: Setup DMC Objects
+
+-- __init__()
+-- initialize the object
+--
+function ComponentBase:__init__( ... )
+	self:superCall( '__init__', ... )
 	--==--
-	--== Create Properties ==--
-	--== Display Groups ==--
-	--== Object References ==--
-
-	-- create our class view container
 	self:_setView( display.newGroup() )
-
 end
--- _undoInit()
--- remove items added during _init()
+
+-- __undoInit__()
+-- de-initialize the object
 --
-function CoronaBase:_undoInit( options )
+function ComponentBase:__undoInit__()
 	self:_unsetView()
 	--==--
-	self:superCall( "_undoInit" )
+	self:superCall( '__undoInit__' )
 end
 
 
 -- _createView()
 -- create any visual items specific to object
 --
-function CoronaBase:_createView()
-	self:superCall( "_createView" )
-	-- Subclasses should call self:superCall( "_createView" )
+function ComponentBase:__createView__()
+	-- Subclasses should call:
+	-- self:superCall( '__createView__' )
 	--==--
 end
+
 -- _undoCreateView()
 -- remove any items added during _createView()
 --
-function CoronaBase:_undoCreateView()
+function ComponentBase:__undoCreateView__()
 	--==--
-	-- Subclasses should call self:superCall( "_undoCreateView" )
-	self:superCall( "_undoCreateView" )
+	-- Subclasses should call:
+	-- self:superCall( '__undoCreateView__' )
 end
 
 
--- _initComplete()
--- any setup after object is done being created
+--[[
+
+-- __initComplete__()
+-- do final setup after view creation
 --
-function CoronaBase:_initComplete()
-	self:superCall( "_initComplete" )
+function ComponentBase:__initComplete__()
+	self:superCall( '__initComplete__' )
 	--==--
-end
--- _undoInitComplete()
--- remove any items added during _initComplete()
---
-function CoronaBase:_undoInitComplete()
-	--==--
-	self:superCall( "_undoInitComplete" )
 end
 
---== END: Setup DMC Objects
+-- __undoInitComplete__()
+-- remove final setup before view destruction
+--
+function ComponentBase:__undoInitComplete__()
+	--==--
+	self:superCall( '__undoInitComplete__' )
+end
+
+--]]
+
+-- END: Setup DMC Objects
+--======================================================--
+
+
+
 --====================================================================--
+--== Public Methods
+
+
+-- none
+
 
 
 --====================================================================--
 --== Private Methods
 
+
 -- _setView( viewObject )
 -- set the view property to incoming view object
 -- remove current if already set, only check direct property, not hierarchy
 --
-function CoronaBase:_setView( viewObject )
+function ComponentBase:_setView( viewObject )
 	self:_unsetView()
 
 	self.view = viewObject
@@ -275,7 +448,7 @@ end
 -- _unsetView()
 -- remove the view property
 --
-function CoronaBase:_unsetView()
+function ComponentBase:_unsetView()
 	if rawget( self, 'view' ) ~= nil then
 		local view = self.view
 
@@ -294,17 +467,18 @@ function CoronaBase:_unsetView()
 end
 
 
+
 --====================================================================--
 --== Public Methods / Corona API
 
 
-function CoronaBase:setTouchBlock( o )
-	assert( o, 'setTouchBlock: expected object' )
+function ComponentBase:setTouchBlock( o )
+	assert( o, "setTouchBlock: expected object" )
 	o.touch = function(e) return true end
 	o:addEventListener( 'touch', o )
 end
-function CoronaBase:unsetTouchBlock( o )
-	assert( o, 'unsetTouchBlock: expected object' )
+function ComponentBase:unsetTouchBlock( o )
+	assert( o, "unsetTouchBlock: expected object" )
 	if o and o.touch then
 		o:removeEventListener( 'touch', o )
 		o.touch = nil
@@ -313,7 +487,7 @@ end
 
 
 
-function CoronaBase.__setters:dispatch_type( value )
+function ComponentBase.__setters:dispatch_type( value )
 	self._dispatch_type = value
 end
 
@@ -321,14 +495,14 @@ end
 -- destroy()
 -- remove the view object from the stage
 --
-function CoronaBase:destroy()
+function ComponentBase:destroy()
 	self:removeSelf()
 end
 
-function CoronaBase:show()
+function ComponentBase:show()
 	self.view.isVisible = true
 end
-function CoronaBase:hide()
+function ComponentBase:hide()
 	self.view.isVisible = false
 end
 
@@ -342,7 +516,7 @@ end
 
 -- numChildren
 --
-function CoronaBase.__getters:numChildren()
+function ComponentBase.__getters:numChildren()
 	return self.view.numChildren
 end
 
@@ -351,12 +525,12 @@ end
 
 -- insert( [index,] child, [, resetTransform]  )
 --
-function CoronaBase:insert( ... )
+function ComponentBase:insert( ... )
 	self.view:insert( ... )
 end
 -- remove( indexOrChild )
 --
-function CoronaBase:remove( ... )
+function ComponentBase:remove( ... )
 	self.view:remove( ... )
 end
 
@@ -367,267 +541,240 @@ end
 
 -- alpha
 --
-function CoronaBase.__getters:alpha()
+function ComponentBase.__getters:alpha()
 	return self.view.alpha
 end
-function CoronaBase.__setters:alpha( value )
+function ComponentBase.__setters:alpha( value )
 	self.view.alpha = value
 end
 -- contentBounds
 --
-function CoronaBase.__getters:contentBounds()
+function ComponentBase.__getters:contentBounds()
 	return self.view.contentBounds
 end
 -- contentHeight
 --
-function CoronaBase.__getters:contentHeight()
+function ComponentBase.__getters:contentHeight()
 	return self.view.contentHeight
 end
 -- contentWidth
 --
-function CoronaBase.__getters:contentWidth()
+function ComponentBase.__getters:contentWidth()
 	return self.view.contentWidth
 end
 -- height
 --
-function CoronaBase.__getters:height()
+function ComponentBase.__getters:height()
 	return self.view.height
 end
-function CoronaBase.__setters:height( value )
+function ComponentBase.__setters:height( value )
 	self.view.height = value
 end
 -- isHitTestMasked
 --
-function CoronaBase.__getters:isHitTestMasked()
+function ComponentBase.__getters:isHitTestMasked()
 	return self.view.isHitTestMasked
 end
-function CoronaBase.__setters:isHitTestMasked( value )
+function ComponentBase.__setters:isHitTestMasked( value )
 	self.view.isHitTestMasked = value
 end
 -- isHitTestable
 --
-function CoronaBase.__getters:isHitTestable()
+function ComponentBase.__getters:isHitTestable()
 	return self.view.isHitTestable
 end
-function CoronaBase.__setters:isHitTestable( value )
+function ComponentBase.__setters:isHitTestable( value )
 	self.view.isHitTestable = value
 end
 -- isVisible
 --
-function CoronaBase.__getters:isVisible()
+function ComponentBase.__getters:isVisible()
 	return self.view.isVisible
 end
-function CoronaBase.__setters:isVisible( value )
+function ComponentBase.__setters:isVisible( value )
 	self.view.isVisible = value
 end
 -- maskRotation
 --
-function CoronaBase.__getters:maskRotation()
+function ComponentBase.__getters:maskRotation()
 	return self.view.maskRotation
 end
-function CoronaBase.__setters:maskRotation( value )
+function ComponentBase.__setters:maskRotation( value )
 	self.view.maskRotation = value
 end
 -- maskScaleX
 --
-function CoronaBase.__getters:maskScaleX()
+function ComponentBase.__getters:maskScaleX()
 	return self.view.maskScaleX
 end
-function CoronaBase.__setters:maskScaleX( value )
+function ComponentBase.__setters:maskScaleX( value )
 	self.view.maskScaleX = value
 end
 -- maskScaleY
 --
-function CoronaBase.__getters:maskScaleY()
+function ComponentBase.__getters:maskScaleY()
 	return self.view.maskScaleY
 end
-function CoronaBase.__setters:maskScaleY( value )
+function ComponentBase.__setters:maskScaleY( value )
 	self.view.maskScaleY = value
 end
 -- maskX
 --
-function CoronaBase.__getters:maskX()
+function ComponentBase.__getters:maskX()
 	return self.view.maskX
 end
-function CoronaBase.__setters:maskX( value )
+function ComponentBase.__setters:maskX( value )
 	self.view.maskX = value
 end
 -- maskY
 --
-function CoronaBase.__getters:maskY()
+function ComponentBase.__getters:maskY()
 	return self.view.maskY
 end
-function CoronaBase.__setters:maskY( value )
+function ComponentBase.__setters:maskY( value )
 	self.view.maskY = value
 end
 -- parent
 --
-function CoronaBase.__getters:parent()
+function ComponentBase.__getters:parent()
 	return self.view.parent
 end
 -- rotation
 --
-function CoronaBase.__getters:rotation()
+function ComponentBase.__getters:rotation()
 	return self.view.rotation
 end
-function CoronaBase.__setters:rotation( value )
+function ComponentBase.__setters:rotation( value )
 	self.view.rotation = value
 end
 -- stageBounds
 --
-function CoronaBase.__getters:stageBounds()
+function ComponentBase.__getters:stageBounds()
 	print( "\nDEPRECATED: object.stageBounds - use object.contentBounds\n" )
 	return self.view.stageBounds
 end
 -- width
 --
-function CoronaBase.__getters:width()
+function ComponentBase.__getters:width()
 	return self.view.width
 end
-function CoronaBase.__setters:width( value )
+function ComponentBase.__setters:width( value )
 	self.view.width = value
 end
 -- x
 --
-function CoronaBase.__getters:x()
+function ComponentBase.__getters:x()
 	return self.view.x
 end
-function CoronaBase.__setters:x( value )
+function ComponentBase.__setters:x( value )
 	self.view.x = value
 end
 -- xOrigin
 --
-function CoronaBase.__getters:xOrigin()
+function ComponentBase.__getters:xOrigin()
 	return self.view.xOrigin
 end
-function CoronaBase.__setters:xOrigin( value )
+function ComponentBase.__setters:xOrigin( value )
 	self.view.xOrigin = value
 end
 -- xReference
 --
-function CoronaBase.__getters:xReference()
+function ComponentBase.__getters:xReference()
 	return self.view.xReference
 end
-function CoronaBase.__setters:xReference( value )
+function ComponentBase.__setters:xReference( value )
 	self.view.xReference = value
 end
 -- xScale
 --
-function CoronaBase.__getters:xScale()
+function ComponentBase.__getters:xScale()
 	return self.view.xScale
 end
-function CoronaBase.__setters:xScale( value )
+function ComponentBase.__setters:xScale( value )
 	self.view.xScale = value
 end
 -- y
 --
-function CoronaBase.__getters:y()
+function ComponentBase.__getters:y()
 	return self.view.y
 end
-function CoronaBase.__setters:y( value )
+function ComponentBase.__setters:y( value )
 	self.view.y = value
 end
 -- yOrigin
 --
-function CoronaBase.__getters:yOrigin()
+function ComponentBase.__getters:yOrigin()
 	return self.view.yOrigin
 end
-function CoronaBase.__setters:yOrigin( value )
+function ComponentBase.__setters:yOrigin( value )
 	self.view.yOrigin = value
 end
 -- yReference
 --
-function CoronaBase.__getters:yReference()
+function ComponentBase.__getters:yReference()
 	return self.view.yReference
 end
-function CoronaBase.__setters:yReference( value )
+function ComponentBase.__setters:yReference( value )
 	self.view.yReference = value
 end
 -- yScale
 --
-function CoronaBase.__getters:yScale()
+function ComponentBase.__getters:yScale()
 	return self.view.yScale
 end
-function CoronaBase.__setters:yScale( value )
+function ComponentBase.__setters:yScale( value )
 	self.view.yScale = value
 end
 
 
 -- Methods --
 
-
--- addEventListener( eventName, handler )
+-- addEventListener( event, listener )
 --
-function CoronaBase:addEventListener( ... )
-	local args = { ... }
-	if args[1] == nil then
-		error( "ERROR addEventListener: event type can't be nil", 2 )
-	end
-	if args[2] == nil then
-		error( "ERROR addEventListener: listener function can't be nil", 2 )
-	end
-
+function ComponentBase:addEventListener( ... )
 	self.view:addEventListener( ... )
 end
 
 -- contentToLocal( x_content, y_content )
 --
-function CoronaBase:contentToLocal( ... )
+function ComponentBase:contentToLocal( ... )
 	self.view:contentToLocal( ... )
 end
 
-CoronaBase._buildDmcEvent = ObjectBase._buildDmcEvent
-
--- dispatchEvent( event info )
--- can either be dmc style event
--- or corona style event
-function CoronaBase:dispatchEvent( ... )
-	-- print( 'CoronaBase:dispatchEvent', self._dispatch_type)
-	if self._dispatch_type == CoronaBase.CORONA_EVENT_DISPATCH then
-		self.view:dispatchEvent( ... )
-	else
-		self.view:dispatchEvent( self:_buildDmcEvent( ... ) )
-	end
+-- dispatchEvent( event )
+--
+function ComponentBase:dispatchEvent( ... )
+	local evt = EventsMixModule.dmcEventFunc( ... )
+	print( evt )
+	self.display:dispatchEvent( evt )
 end
+
 -- localToContent( x, y )
 --
-function CoronaBase:localToContent( ... )
+function ComponentBase:localToContent( ... )
 	self.view:localToContent( ... )
 end
 
--- removeEventListener( eventName, handler )
+-- removeEventListener( eventName, listener )
 --
-function CoronaBase:removeEventListener( ... )
-	self.view:removeEventListener( ... )
+function ComponentBase:removeEventListener( ... )
+	self.display:removeEventListener( ... )
 end
 
--- removeSelf()
---
-function CoronaBase:removeSelf()
-	-- print( "\nOVERRIDE: removeSelf()\n" );
-
-	-- skip these if we're an intermediate class (eg, subclass)
-	if rawget( self, 'is_intermediate' ) == false then
-		self:_undoInitComplete()
-		self:_undoCreateView()
-	end
-
-	self:_undoInit()
-end
 -- rotate( deltaAngle )
 --
-function CoronaBase:rotate( ... )
+function ComponentBase:rotate( ... )
 	self.view:rotate( ... )
 end
 -- scale( sx, sy )
 --
-function CoronaBase:scale( ... )
+function ComponentBase:scale( ... )
 	self.view:scale( ... )
 end
 
 -- setAnchor
 --
-function CoronaBase:setAnchor( ... )
+function ComponentBase:setAnchor( ... )
 	local args = {...}
 	if type( args[2] ) == 'table' then
 		self.view.anchorX, self.view.anchorY = unpack( args[2] )
@@ -639,28 +786,28 @@ function CoronaBase:setAnchor( ... )
 		self.view.anchorY = args[3]
 	end
 end
-function CoronaBase:setMask( ... )
+function ComponentBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
 	self.view:setMask( ... )
 end
 -- setReferencePoint( referencePoint )
 --
-function CoronaBase:setReferencePoint( ... )
+function ComponentBase:setReferencePoint( ... )
 	self.view:setReferencePoint( ... )
 end
 -- toBack()
 --
-function CoronaBase:toBack()
+function ComponentBase:toBack()
 	self.view:toBack()
 end
 -- toFront()
 --
-function CoronaBase:toFront()
+function ComponentBase:toFront()
 	self.view:toFront()
 end
 -- translate( deltaX, deltaY )
 --
-function CoronaBase:translate( ... )
+function ComponentBase:translate( ... )
 	self.view:translate( ... )
 end
 
@@ -669,12 +816,12 @@ end
 
 --[[
 
--- =========================================================
--- CoronaPhysics Class
--- =========================================================
+--====================================================================--
+--== CoronaPhysics Class
+--====================================================================--
 
 
-local CoronaPhysics = inheritsFrom( CoronaBase )
+local CoronaPhysics = inheritsFrom( ComponentBase )
 CoronaPhysics.NAME = "Corona Physics"
 
 
@@ -810,7 +957,9 @@ end
 
 
 -- simply add to current exports
-LuaObject.CoronaBase = CoronaBase
+LuaObject.ObjectBase = ObjectBase
+LuaObject.ComponentBase = ComponentBase
+
 
 
 return LuaObject

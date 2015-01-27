@@ -1,59 +1,75 @@
 --====================================================================--
--- dmc_autostore.lua
+-- dmc_corona/dmc_autostore.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_autostore.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (C) 2013-2015 David McCuskey. All Rights Reserved.
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
 
 --====================================================================--
--- DMC Corona Library : DMC Autostore
+--== DMC Corona Library : AutoStore
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "2.1.0"
 
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
 
-local Utils = {} -- make copying from dmc_utils easier
 
+local Utils = {} -- make copying from Utils easier
+
+
+--== Start: copy from lua_utils ==--
+
+-- extend()
+-- Copy key/values from one table to another
+-- Will deep copy any value from first table which is itself a table.
+--
+-- @param fromTable the table (object) from which to take key/value pairs
+-- @param toTable the table (object) in which to copy key/value pairs
+-- @return table the table (object) that received the copied items
+--
 function Utils.extend( fromTable, toTable )
 
+	if not fromTable or not toTable then
+		error( "table can't be nil" )
+	end
 	function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
@@ -77,193 +93,198 @@ function Utils.extend( fromTable, toTable )
 	return _extend( fromTable, toTable )
 end
 
+--== End: copy from lua_utils ==--
+
+
 
 --====================================================================--
--- Configuration
+--== Configuration
 
 local dmc_lib_data, dmc_lib_info
 
--- boot dmc_library with boot script or
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 	_G.__dmc_corona = {
 		dmc_corona={},
 	}
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
+dmc_lib_info = dmc_lib_data.dmc_corona
 
 
 
 --====================================================================--
--- DMC Autostore
+--== DMC AutoStore
 --====================================================================--
 
 
+
 --====================================================================--
--- Configuration
+--== Configuration
+
 
 dmc_lib_data.dmc_autostore = dmc_lib_data.dmc_autostore or {}
 
 local DMC_AUTOSTORE_DEFAULTS = {
-	debug_active=false,
+	data_filename = 'dmc_autostore',
+	plugin_file = nil,
+	timer_min = 1000,
+	timer_max = 4000
 }
 
-local dmc_states_data = Utils.extend( dmc_lib_data.dmc_autostore, DMC_AUTOSTORE_DEFAULTS )
+local dmc_autostore_data = Utils.extend( dmc_lib_data.dmc_autostore, DMC_AUTOSTORE_DEFAULTS )
+
 
 
 --====================================================================--
--- Imports
+--== Imports
+
 
 local json = require 'json'
+local Error = require 'lua_error'
+local Files = require 'dmc_files'
+local Objects = require 'dmc_objects'
 
 
 
 --====================================================================--
--- Setup, Constants
---====================================================================--
+--== Setup, Constants
 
--- flag, false when initializing, true when everything is loaded
+
+-- aliases to make code cleaner
+local newClass = Objects.newClass
+local ObjectBase = Objects.ObjectBase
+
+
+-- STATE_ACTIVE flag
+-- false when initializing, true when everything is loaded
 -- so that changes in data don't fire AutoStore saving
-local STATE_ACTIVE = false -- will be true after main branch is initialized
+-- will be true after main branch is initialized
+--
+local STATE_ACTIVE = false
 
 
 -- need to pre-declare these so everything syncs
 
 local addPixieDust
-local AutoStore
-local autostore_singleton = nil
+local AutoStore, autostore_singleton = nil
 local TableProxy
 local createTableProxy
 
 
+
 --====================================================================--
--- Support Functions
+--== Table Proxy Support Functions
 
 
--- extend()
--- copied from DMC Utils
--- only used during event dispatch
+-- mtIndexFunc
+-- enhanced metatable lookup function
 --
-function extend( fromTable, toTable )
+local function mtIndexFunc( t, k )
+	--print( "mtIndexFunc: " .. tostring( t ) .. " " .. tostring( k ) )
 
-	function _extend( fT, tT )
+	local val, mt
 
-		for k,v in pairs( fT ) do
+	-- for lookup, let's do Table Proxy, then the table
 
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
+	-- check TableProxy Class
+	val = TableProxy[ k ]
 
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
+	if val == nil then
+		-- nothing, so check the table
+		mt = getmetatable( t )
+		val = mt.__dmc.dt[ k ]
 
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
---====================================================================--
--- Base File I/O Functions
-
--- read/write flags
-local Response = {}
-Response.ERROR = "io_error"
-Response.SUCCESS = "io_success"
-
-
--- basic read/write functions in Lua
--- options.lines = true
--- options.lines = false
-local function readFile( file_path, options )
-	local opts = options or {}
-	if opts.lines == nil then opts.lines = true end
-
-	local contents = {}
-	local ret_val = {} -- an array, [ status, content ]
-
-	if file_path == nil then
-		local ret_val = { Response.ERROR, "file path is NIL" }
-	else
-		local fh, reason = io.open( file_path, "r" )
-		if fh then
-			-- read all contents of file into a table
-			for line in fh:lines() do
-				table.insert( contents, line )
-			end
-			io.close( fh )
-			if opts.lines == true then
-				ret_val = { Response.SUCCESS, contents }
-			else
-				ret_val = { Response.SUCCESS, table.concat( contents, "" ) }
-			end
-		else
-			print("ERROR: datastore load settings: " .. tostring( reason ) )
-			ret_val = { Response.ERROR, reason }
+		-- we have a value, but if the value is of type "table"
+		-- then we need to use its proxy
+		if type( val ) == "table" then
+			--print( "getting next table" )
+			mt = getmetatable( val )
+			val = mt.__dmc.prx
 		end
 	end
-	return ret_val[1], ret_val[2]
+
+	return val
 end
 
 
-local function saveFile( file_path, data )
-	local ret_val = {} -- an array, [ status, content ]
+-- mtNewIndexFunc
+-- enhanced metatable set function
+--
+local function mtNewIndexFunc( t, k, v )
+	--print( "mtNewIndexFunc" )
+	local mt = getmetatable( t )
+	local dmc = mt ~= nil and mt.__dmc or nil
 
-	local fh, reason = io.open( file_path, "w" )
-	if fh then
-		fh:write( data )
-		io.close( fh )
-		ret_val = { Response.SUCCESS, contents }
-	else
-		print("ERROR: datastore save settings: " .. tostring( reason ) )
-		ret_val = { Response.ERROR, reason }
+	assert( type(dmc)=='table', "AutoStore: eeks, deep dark error" )
+
+	dmc.dt[ k ] = v
+	if type( v ) == "table" then
+		--print( "found table: " .. tostring( k ) .. " : " .. tostring( v ) )
+		local p = addPixieDust( v, t )
 	end
-	return ret_val
+
+	if dmc ~= nil and STATE_ACTIVE == true then dmc.root:_markDirty() end
 
 end
 
 
+-- createTableProxy()
+-- creates the "magic" handle for data retrieval
+-- 'data_table' is actual Lua table in original data structure
+--
+createTableProxy = function( data_table )
+	--print( "CreateTableProxy" )
 
---====================================================================--
--- Table Proxy Setup
---====================================================================--
+	local magic = {} -- this is to be empty, always
 
--- functionality for each table node in the data structure
+	-- references to important data
+	local refs = {
+		dt = data_table,
+		root = autostore_singleton,
+	}
+
+	-- our metable to store on data handle
+	local mt = {
+		__index = mtIndexFunc,
+		__newindex = mtNewIndexFunc,
+		__dmc = refs
+	}
+	setmetatable( magic, mt )
+
+	return magic
+end
 
 
 -- addPixieDust()
+-- wraps all data with Table Proxy
 --
---
-addPixieDust = function( obj, parent )
-	--print( "adding pixie dust: " .. tostring( obj ) )
+addPixieDust = function( data_table, parent )
+	-- print( "adding pixie dust: " .. tostring( data_table ) )
 
 	-- hiding our info on the metatable
-	local proxy = createTableProxy( obj )
-	local mt = {}
-	mt.__dmc = {
-		p = proxy
-	}
-	setmetatable( obj, mt )
+	local proxy = createTableProxy( data_table )
 
+	-- references to important data
+	local refs = {
+			prx = proxy
+	}
+
+	-- our metable to store on data table
+	local mt = {
+		__dmc = refs
+	}
+	setmetatable( data_table, mt )
 
 	-- check children to make sure they all have magic pixie dust
-
-	local p
-	if type( obj ) == "table" then
-		for k, v in pairs( obj ) do
+	if type( data_table ) == "table" then
+		for _, v in pairs( data_table ) do
 			if type( v ) == "table" then
-				--print( tostring( k ) .. " >> " .. tostring( v ) )
-				p = addPixieDust( v, obj )
+				--print( tostring( _ ) .. " >> " .. tostring( v ) )
+				local p = addPixieDust( v, data_table )
 			end
 		end
 	end
@@ -272,84 +293,98 @@ addPixieDust = function( obj, parent )
 end
 
 
-local function mtIndexFunc( t, k )
-	--print( "mtIndexFunc: " .. tostring( t ) .. " " .. tostring( k ) )
 
-	local val, mt
-
-	-- for lookup, let's do Table Proxy, then the table
-
-	-- check Table Proxy
-	val = TableProxy[ k ]
-
-	if val == nil then
-		-- nothing, so check the table
-		mt = getmetatable( t )
-		val = mt.__dmc.t[ k ]
-
-		-- we have a value, but if the value is of type "table"
-		-- then we need to use its proxy
-		if type( val ) == "table" then
-			--print( "getting next table" )
-			mt = getmetatable( val )
-			val = mt.__dmc.p
-		end
-	end
-
-	return val
-end
+--====================================================================--
+--== Table Proxy Class
+--====================================================================--
 
 
-local function mtNewIndexFunc( t, k, v )
-	--print( "mtNewIndexFunc" )
-	local mt = getmetatable( t )
-	local dmc = mt ~= nil and mt.__dmc or nil
-
-	dmc.t[ k ] = v
-	local p
-	if type( v ) == "table" then
-		--print( "found table: " .. tostring( k ) .. " : " .. tostring( v ) )
-		p = addPixieDust( v, t )
-	end
-
-	if dmc ~= nil and STATE_ACTIVE == true then dmc.root:isDirty() end
-
-end
-
-
---=======================--
---== Table Proxy Class ==--
+--[[
+This mixin-class allows us to add functionality
+to a data table node when doing lookup.
+This essentially adds additional 'API' to each node
+--]]
 
 TableProxy = {}
 TableProxy.NAME = "Table Proxy"
 
+
+
+--====================================================================--
+--== Private Methods
+
+
 -- __data()
--- gets the raw data from the proxy. used primarily when encoding JSON
+-- gets the raw data from the proxy
+-- used primarily when encoding JSON
 --
 function TableProxy:__data()
 	--print( "TableProxy:__data" )
 	local mt = getmetatable( self )
-	return mt.__dmc.t
+	return mt.__dmc.dt
 end
 
 
--- The following are methods to interface with the table library
--- since the table library doesn't "eat its own dogfood"
 
+--====================================================================--
+--== Public Methods
+
+
+--[[
+The following are methods to interface with the Lua table library
+since the table library doesn't "eat its own dogfood"
+--]]
+
+
+-- clone()
+-- convert autostore data back into regular Lua table
+-- this makes a deep copy
+--
+function TableProxy:clone()
+	-- print( "TableProxy:clone" )
+	local mt = getmetatable( self )
+	local dt = mt.__dmc.dt
+
+	local _extendTable -- forward declare, recursive
+
+	_extendTable = function( fT, tT )
+
+		for k,v in pairs( fT ) do
+			if type( fT[ k ] ) == 'table' and
+				type( tT[ k ] ) == 'table' then
+				tT[ k ] = _extendTable( fT[ k ], tT[ k ] )
+
+			elseif type( fT[ k ] ) == 'table' then
+				tT[ k ] = _extendTable( fT[ k ], {} )
+
+			else
+				tT[ k ] = v
+
+			end
+		end
+
+		return tT
+	end
+
+	return _extendTable( dt, {} )
+end
 
 -- len()
---
 -- get the length of the table
 -- replacement for table.len( tbl )
+-- or #tbl
 --
 function TableProxy:len()
 	--print( "TableProxy:len" )
 	local mt = getmetatable( self )
-	local t = mt.__dmc.t
+	local dt = mt.__dmc.dt
 
-	return #t
+	return #dt
 end
 
+-- ipairs()
+-- use this in an array-type iteration
+--
 function TableProxy:ipairs()
 	--print( "TableProxy:ipairs" )
 
@@ -369,17 +404,20 @@ function TableProxy:ipairs()
 	return f, self, 0
 end
 
+-- pairs()
+-- use this in an hash-type iteration
+--
 function TableProxy:pairs()
 	--print( "TableProxy:pairs" )
 
 	local mt = getmetatable( self )
-	local t = mt.__dmc.t
+	local dt = mt.__dmc.dt
 
 	-- custom iterator
 	-- @param tp ref: TableProxy (ie, self)
 	-- @param key string: key of previous item
 	local f = function( tp, k )
-		local key,_ = next( t, k )
+		local key,_ = next( dt, k )
 		if key ~= nil then
 			return key,tp[key]
 		else
@@ -390,89 +428,66 @@ function TableProxy:pairs()
 	return f, self, nil
 end
 
+-- insert()
+-- insert a value into the table
+--
 function TableProxy:insert( value, pos )
 	--print( "TableProxy:insert" )
 	local mt = getmetatable( self )
 
 	local root = mt.__dmc.root
-	local t = mt.__dmc.t
+	local dt = mt.__dmc.dt
 
 	if pos == nil then
-		table.insert( t, value )
+		table.insert( dt, value )
 	else
-		table.insert( t, pos, value )
+		table.insert( dt, pos, value )
 	end
 
 	if type( value ) == "table" then
-		p = addPixieDust( value, t )
+		p = addPixieDust( value, dt )
 	end
 
-	if STATE_ACTIVE == true then root:isDirty() end
+	if STATE_ACTIVE == true then root:_markDirty() end
 end
 
+-- remove()
+-- remove a value from the table
+--
 function TableProxy:remove( pos )
 	--print( "TableProxy:remove" )
 	local mt = getmetatable( self )
 
 	local root = mt.__dmc.root
-	local t = mt.__dmc.t
+	local dt = mt.__dmc.dt
 
-	if STATE_ACTIVE == true then root:isDirty() end
+	if STATE_ACTIVE == true then root:_markDirty() end
 
 	if pos == nil then
-		return table.remove( t )
+		return table.remove( dt )
 	else
-		return table.remove( t, pos )
+		return table.remove( dt, pos )
 	end
 
 end
 
--- createTableProxy()
---
---
-createTableProxy = function( table_obj )
-	--print( "CreateTableProxy" )
-	local o = {} -- this is to be empty, always
-	local mt = {
-		__index = mtIndexFunc,
-		__newindex = mtNewIndexFunc
-	}
-	-- so let's store some data in the metatable
-	mt.__dmc = {
-		t = table_obj,
-		root = autostore_singleton,
-	}
-	setmetatable( o, mt )
-
-	return o
-end
-
 
 
 --====================================================================--
--- Auto Store Class
+--== AutoStore Class
 --====================================================================--
 
-local AutoStore = {}
 
--- NOTE: defaults with upper case names are not copied !!!
---
-AutoStore.DEFAULTS = {
-	CONFIG_FILE = 'dmc_autostore.cfg',
-	data_filename = { type='string', value='dmc_autostore' }, -- '.json' appended later
-	timer_min = { type='integer', value=1000 },
-	timer_max = { type='integer', value=4000 }
-}
+local AutoStore = newClass( ObjectBase, { name="AutoStore" } )
 
+--== Class Constants ==--
 
--- keyed on callback function
-AutoStore._eventListeners = {}
+AutoStore.CONFIG_FILE = 'dmc_autostore.cfg'
 
+--== Event Constants ==--
 
--- Event Name
-AutoStore.AUTOSTORE_EVENT = 'autostore_event'
+AutoStore.EVENT = 'autostore_event'
 
--- Event Types
 AutoStore.START_MIN_TIMER = 'start_min_timer'
 AutoStore.STOP_MIN_TIMER = 'stop_min_timer'
 AutoStore.START_MAX_TIMER = 'start_max_timer'
@@ -480,207 +495,250 @@ AutoStore.STOP_MAX_TIMER = 'stop_max_timer'
 AutoStore.DATA_SAVED = 'data_saved'
 
 
-function AutoStore:new()
-	--print( "AutoStore:new" )
-	local o = {}
-	local mt = {
-		__index = AutoStore
-	}
-	setmetatable( o, mt )
+--======================================================--
+-- Start: Setup DMC Objects
 
-	--== Properties ==--
+function AutoStore:__init__()
+	-- print( "AutoStore:__init__" )
 
-	-- public
-	o.data = nil
-	o.is_new_file = false
+	--== Create Properties ==--
 
-	-- private
-	o._config = {}
-	o._timer_min = nil
-	o._timer_max = nil
+	self._data = nil
+	self._is_new_file = false
 
-	o._plugins = nil
-	o._preSave_f = nil
-	o._postRead_f = nil
+	self.__debug_on = false
 
-	return o
+	-- timer references
+	self._timer_min = nil
+	self._timer_max = nil
+
+	self._preSave_f = nil
+	self._postRead_f = nil
+
 end
 
-function AutoStore:init()
-	--print( "AutoStore:init" )
+
+function AutoStore:__initComplete__()
+	-- print( "AutoStore:__initComplete__" )
 
 	STATE_ACTIVE = false
-	local plugin
 
-	-- start with DEFAULTS, cover  if something missing in config
-	for k, v in pairs( AutoStore.DEFAULTS ) do
-		-- if uppercase, then don't include
-		if k == string.lower( k ) then
-			self._config[ k ] = v.value
-		end
+	self:_checkTimerValues()
+	self:_loadPlugins()
+
+end
+
+-- END: Setup DMC Objects
+--======================================================--
+
+
+
+--====================================================================--
+--== Public Methods
+
+
+function AutoStore.__getters:is_new_file()
+	return self._is_new_file
+end
+
+function AutoStore.__getters:data()
+	return self._data
+end
+
+function AutoStore.__setters:debug( value )
+	self.__debug_on = value
+end
+
+
+
+--====================================================================--
+--== Private Methods
+
+
+-- _checkTimerValues()
+-- make sure that the timer values work well
+--
+function AutoStore:_checkTimerValues()
+	local dmc = dmc_autostore_data
+
+	assert( type(dmc.timer_min)=='number', "AutoStore: TIMER MIN not a number" )
+	assert( type(dmc.timer_max)=='number', "AutoStore: TIMER MAX not a number" )
+	assert( dmc.timer_min >=0, "AutoStore: TIMER MIN not >= 0" )
+	assert( dmc.timer_min < dmc.timer_max, "AutoStore: TIMER MIN > TIMER MAX" )
+end
+
+
+-- _getDataFilePath()
+-- create full path name for file read/write
+--
+function AutoStore:_getDataFilePath()
+	local file_name = dmc_autostore_data.data_filename .. '.json'
+	local file_path = system.pathForFile( file_name, system.DocumentsDirectory )
+
+	return file_path
+end
+
+
+-- _loadPlugins()
+-- load and save contents of plugin file
+--
+function AutoStore:_loadPlugins()
+	-- print( "AutoStore:_loadPlugins" )
+
+	if not dmc_autostore_data.plugin_file then return end
+
+	if self.__debug_on then
+		print( "AutoStore: Loading plugin file", dmc_autostore_data.plugin_file )
 	end
 
-	-- read in config file
-	local file_path = system.pathForFile( self.DEFAULTS.CONFIG_FILE, system.ResourceDirectory )
-	local status, content = readFile( file_path, { lines=true } )
+	local plugin = require( dmc_autostore_data.plugin_file )
+	assert( type(plugin)=='table', "AutoStore: plugin file must return a table" )
 
-	if status == Response.SUCCESS then
-		--print( "AutoStore: found config file" )
-		local is_valid = true
-		for _, line in ipairs( content ) do
-
-			is_valid = ( string.find( line, '--', 1, true ) ~= 1 )
-
-			if is_valid then
-				for k, v in string.gmatch( line, "([%w_]+)%s*=%s*\'?([%w_.]+)\'?" ) do
-					--print( tostring( k ) .. " = " .. tostring( v ) )
-
-					k = string.lower( k ) -- use only lowercase inside of module
-					if AutoStore.DEFAULTS[ k ] and AutoStore.DEFAULTS[ k ].type == 'integer' then
-						v = tonumber( v )
-						if v == nil then v = 0 end
-					end
-					self._config[ k ] = v
-				end
-			end
-		end
-	end
-
-
-	-- container for event listeners
-	self._eventListeners[ AutoStore.AUTOSTORE_EVENT ] = {}
-
-
-	-- check for plugin file
-	if self._config[ 'plugin_file' ] ~= nil then
-		plugin = require( self._config[ 'plugin_file' ] )
-		if plugin.preSaveFunction then self._preSave_f = plugin.preSaveFunction end
-		if plugin.postReadFunction then self._postRead_f = plugin.postReadFunction end
-		self._plugins = plugin
-	end
-
-
-	-- check
-	-- timer_min can't be <= timer_max
-	-- TODO: sanity check on timers
+	if plugin.preSaveFunction then self._preSave_f = plugin.preSaveFunction end
+	if plugin.postReadFunction then self._postRead_f = plugin.postReadFunction end
 
 end
 
 
-function AutoStore:load()
-	--print( "AutoStore:load" )
+-- _loadData()
+-- loads data from JSON format
+--
+function AutoStore:_loadData()
+	-- print( "AutoStore:_loadData" )
 
-	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
-	local status, content = readFile( file_path, { lines=false } )
+	local file_path = self:_getDataFilePath()
 	local data
 
-	if status == Response.ERROR then
-		self.is_new_file = true
-		self.data = addPixieDust( {} )
-	else
-		if self._postRead_f then content = self._postRead_f( content ) end
-		data = json.decode( content )
-		self.data = addPixieDust( data )
-	end
+	try{
+		function()
+			data = Files.readFileContents( file_path )
+			if self._postRead_f then data = self._postRead_f( data ) end
+			data = json.decode( data )
+			self._is_new_file = false
+			self._data = addPixieDust( data )
+		end,
+
+		catch{
+			function( err )
+				self._is_new_file = true
+				self._data = addPixieDust( {} )
+			end
+		}
+	}
 
 	STATE_ACTIVE = true
 
 end
 
-function AutoStore:save()
-	--print( "AutoStore:save" )
 
-	local file_path = system.pathForFile( self._config.data_filename .. '.json', system.DocumentsDirectory )
-	local content = json.encode( self.data:__data() )
-	if self._preSave_f then content = self._preSave_f( content ) end
-	local status, content = saveFile( file_path, content )
+-- _saveData()
+-- saves data into JSON format
+--
+function AutoStore:_saveData()
+	-- print( "AutoStore:_saveData" )
 
-	self.is_new_file = false
+	local file_path = self:_getDataFilePath()
+	local data
 
-	self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.DATA_SAVED )
+	try{
+		function()
+			data = json.encode( self._data:__data() )
+			if self._preSave_f then data = self._preSave_f( data ) end
+			Files.saveFile( file_path, data )
+			self._is_new_file = false
+			self:dispatchEvent( self.DATA_SAVED )
+		end,
 
-end
-
-function AutoStore:isDirty()
-	--print( "AutoStore:isDirty" )
-
-	local f
-
-	-- end any current timer
-	if self._timer_min ~= nil then
-		timer.cancel( self._timer_min )
-		self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MIN_TIMER )
-
-	end
-
-	-- setup minimum timer
-	f = function()
-		if self._timer_max ~= nil then
-			timer.cancel( self._timer_max )
-			self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MAX_TIMER )
-			self._timer_max = nil
-		end
-		self._timer_min = nil
-		self:save()
-	end
-	self._timer_min = timer.performWithDelay( self._config.timer_min, f )
-	self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.START_MIN_TIMER, { time=self._config.timer_min } )
-
-	-- setup maximum timer
-	if self._timer_max == nil then
-		f = function()
-			if self._timer_min ~= nil then
-				timer.cancel( self._timer_min )
-				self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.STOP_MIN_TIMER )
-				self._timer_min = nil
+		catch{
+			function( err )
+				print( "AutoStore: error saving file" )
+				error( err )
 			end
-			self._timer_max = nil
-			self:save()
-		end
-		self._timer_max = timer.performWithDelay( self._config.timer_max, f )
-		self:dispatchEvent( AutoStore.AUTOSTORE_EVENT, AutoStore.START_MAX_TIMER, { time=self._config.timer_max } )
-	end
-end
-
-
-function AutoStore:dispatchEvent( event, type, data )
-	--print( "AutoStore:dispatchEvent" )
-
-	local et = self._eventListeners[ event ]
-
-	local e = {
-		name=event,
-		type=type
+		}
 	}
 
-	-- integrate the data into our custom event
-	if data ~= nil then e = extend( data, e ) end
+end
 
-	-- dispatch out event to listeners
-	for _, data in pairs( et ) do
-		data[2]( e )
+
+function AutoStore:_stopMinTimer()
+	-- print( "AutoStore:_stopMinTimer" )
+
+	if self._timer_min == nil then return end
+
+	timer.cancel( self._timer_min )
+	self:dispatchEvent( self.STOP_MIN_TIMER )
+	self._timer_min = nil
+end
+
+function AutoStore:_startMinTimer( )
+	-- print( "AutoStore:_startMinTimer" )
+
+	self:_stopMinTimer()
+
+	local f = function()
+		self:_stopMinTimer()
+		self:_stopMaxTimer()
+		self:_saveData()
+	end
+	self._timer_min = timer.performWithDelay( dmc_autostore_data.timer_min, f )
+	self:dispatchEvent( self.START_MIN_TIMER, { time=dmc_autostore_data.timer_min }, { merge=true } )
+
+end
+
+
+function AutoStore:_stopMaxTimer()
+	-- print( "AutoStore:_stopMaxTimer" )
+
+	if self._timer_max == nil then return end
+
+	timer.cancel( self._timer_max )
+	self:dispatchEvent( self.STOP_MAX_TIMER )
+	self._timer_max = nil
+end
+
+function AutoStore:_startMaxTimer( )
+	-- print( "AutoStore:_startMaxTimer" )
+
+	self:_stopMaxTimer()
+
+	local f = function()
+		self:_stopMinTimer()
+		self:_stopMaxTimer()
+		self:_saveData()
+	end
+	self._timer_max = timer.performWithDelay( dmc_autostore_data.timer_max, f )
+	self:dispatchEvent( self.START_MAX_TIMER, { time=dmc_autostore_data.timer_max }, { merge=true } )
+
+end
+
+
+-- _markDirty()
+-- sets timers in motion to save data
+--
+function AutoStore:_markDirty()
+	-- print( "AutoStore:_markDirty" )
+
+	self:_startMinTimer()
+
+	if self._timer_max == nil then
+		self:_startMaxTimer()
 	end
 
 end
 
-function AutoStore:addEventListener( type, callback )
-	--print( "AutoStore:addEventListener" )
-
-	local o = self._eventListeners[ type ]
-	if self._eventListeners[ type ] == nil then
-		print( "ERROR Autostore: event type not given")
-	else
-		local key = tostring( callback )
-		o[ key ] = { type, callback }
-	end
-
-end
 
 
-if autostore_singleton == nil then
-	autostore_singleton = AutoStore:new()
-	autostore_singleton:init()
-	autostore_singleton:load()
-end
+
+--===================================================================--
+-- Singleton Setup
+--===================================================================--
+
+
+--== Create Singleton ==--
+
+autostore_singleton = AutoStore:new()
+autostore_singleton:_loadData()
+
+
 return autostore_singleton
 

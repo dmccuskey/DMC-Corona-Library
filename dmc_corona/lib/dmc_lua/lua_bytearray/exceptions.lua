@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_corona/dmc_websockets/exception.lua
+-- dmc_lua/lua_bytearray/exceptions.lua
 --
 -- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
@@ -8,7 +8,7 @@
 
 The MIT License (MIT)
 
-Copyright (C) 2014-2015 David McCuskey. All Rights Reserved.
+Copyright (c) 2014-2015 David McCuskey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : WebSockets Exception
+--== DMC Lua Library : Byte Array Errors
 --====================================================================--
 
 
@@ -47,8 +47,8 @@ local VERSION = "0.2.0"
 --== Imports
 
 
-local Error = require 'lib.dmc_lua.lua_error'
-local Objects = require 'lib.dmc_lua.lua_objects'
+local Objects = require 'lua_objects'
+local Error = require 'lua_error'
 
 
 
@@ -62,40 +62,26 @@ local newClass = Objects.newClass
 
 
 --====================================================================--
---== Protocol Error Class
+--== Buffer Error Class
 --====================================================================--
 
 
-local ProtocolError = newClass( Error, { name="Protocol Error" } )
+--[[
+	This exception is triggered when there isn't enough data available
+	for a read, eg, 2 bytes available and requesting 10 bytes.
+--]]
 
--- params:
--- code
--- reason
--- message
---
-function ProtocolError:__new__( params )
-	-- print( "ProtocolError:__init__" )
-	params = params or {}
-	self:superCall( '__new__', params.message, params )
-	--==--
-
-	if self.is_class then return end
-
-	assert( params.code, "ProtocolError: missing protocol code" )
-
-	self.code = params.code
-	self.reason = params.reason or ""
-
-end
+local BufferError = newClass( Error )
+BufferError.NAME = "Buffer Error"
 
 
 
 
 --====================================================================--
---== Exception Facade
+--== Error Facade
 --====================================================================--
 
 
 return {
-	ProtocolError=ProtocolError
+	BufferError=BufferError
 }

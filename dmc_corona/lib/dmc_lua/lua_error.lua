@@ -1,7 +1,8 @@
 --====================================================================--
--- dmc_corona/dmc_websockets/exception.lua
+-- lua_error.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation:
+-- * http://github.com/dmccuskey/lua-error
 --====================================================================--
 
 --[[
@@ -33,7 +34,7 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : WebSockets Exception
+--== DMC Lua Library : Lua Error
 --====================================================================--
 
 
@@ -47,8 +48,13 @@ local VERSION = "0.2.0"
 --== Imports
 
 
-local Error = require 'lib.dmc_lua.lua_error'
-local Objects = require 'lib.dmc_lua.lua_objects'
+local Objects = require 'lua_objects'
+
+
+-- Check imports
+-- TODO: work on this
+assert( Objects, "lua_error: requires lua_objects" )
+if checkModule then checkModule( Objects, '1.1.2' ) end
 
 
 
@@ -62,40 +68,83 @@ local newClass = Objects.newClass
 
 
 --====================================================================--
---== Protocol Error Class
+--== Support Functions
+
+
+-- based on https://gist.github.com/cwarden/1207556
+
+local function try( funcs )
+	local try_f, catch_f, finally_f = funcs[1], funcs[2], funcs[3]
+	assert( try_f, "lua_error: missing function for try()" )
+	--==--
+	local status, result = pcall(try_f)
+	if not status and catch_f then
+		catch_f(result)
+	end
+	if finally_f then finally_f() end
+	return result
+end
+
+local function catch(f)
+	return f[1]
+end
+
+local function finally(f)
+	return f[1]
+end
+
+
+
+--====================================================================--
+--== Error Base Class
 --====================================================================--
 
 
-local ProtocolError = newClass( Error, { name="Protocol Error" } )
+local Error = newClass( nil, { name="Error Instance" } )
 
--- params:
--- code
--- reason
--- message
---
-function ProtocolError:__new__( params )
-	-- print( "ProtocolError:__init__" )
+--== Class Constants ==--
+
+Error.__version = VERSION
+
+Error.DEFAULT_PREFIX = "ERROR: "
+Error.DEFAULT_MESSAGE = "There was an error"
+
+
+function Error:__new__( message, params )
+	message = message or self.DEFAULT_MESSAGE
 	params = params or {}
-	self:superCall( '__new__', params.message, params )
+	params.prefix = params.prefix or self.DEFAULT_PREFIX
 	--==--
 
+	-- guard subclasses
 	if self.is_class then return end
 
-	assert( params.code, "ProtocolError: missing protocol code" )
+	-- save args
+	self.prefix = params.prefix
+	self.message = message
+	self.traceback = debug.traceback()
 
-	self.code = params.code
-	self.reason = params.reason or ""
+end
 
+
+-- must return a string
+--
+function Error:__tostring__( id )
+	return table.concat( { self.prefix, self.message, "\n", self.traceback } )
 end
 
 
 
 
 --====================================================================--
---== Exception Facade
+--== Error API Setup
 --====================================================================--
 
+-- globals
+_G.try = try
+_G.catch = catch
+_G.finally = finally
 
-return {
-	ProtocolError=ProtocolError
-}
+
+
+return Error

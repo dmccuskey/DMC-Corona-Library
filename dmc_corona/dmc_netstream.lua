@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -48,8 +48,10 @@ local VERSION = "0.2.0"
 --====================================================================--
 
 
+
 --====================================================================--
 --== Support Functions
+
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -79,12 +81,14 @@ function Utils.extend( fromTable, toTable )
 end
 
 
+
 --====================================================================--
 --== Configuration
 
-local dmc_lib_data, dmc_lib_info
 
--- boot dmc_library with boot script or
+local dmc_lib_data
+
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
 if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
@@ -94,13 +98,13 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
 
 
 
 --====================================================================--
 --== DMC NetStream
 --====================================================================--
+
 
 
 --====================================================================--
@@ -123,11 +127,11 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTR
 
 local UrlLib = require 'socket.url'
 
-local Objects = require 'lua_objects'
-local Patch = require('lua_patch')('string-format')
-local Sockets = require 'dmc_corona.dmc_sockets'
-local States = require 'lua_states'
-local Utils = require 'lua_utils'
+local Objects = require 'dmc_objects'
+local Patch = require 'lua_patch'
+local Sockets = require 'dmc_sockets'
+local StatesMixModule = require 'lua_states_mix'
+local Utils = require 'dmc_utils'
 
 
 
@@ -135,8 +139,12 @@ local Utils = require 'lua_utils'
 --== Setup, Constants
 
 
-local inheritsFrom = Objects.inheritsFrom
+Patch.addPatch( 'string-format' )
+
+local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
+
+local StatesMix = StatesMixModule.StatesMix
 
 local tconcat = table.concat
 local tinsert = table.insert
@@ -214,11 +222,7 @@ end
 --====================================================================--
 
 
-NetStream = inheritsFrom( ObjectBase )
-NetStream.NAME = "HTTP Streamer"
-
-States.mixin( NetStream )
-
+NetStream = newClass( { ObjectBase, StatesMix }, { name="DMC NetStream" } )
 
 --== Class Constants
 
@@ -245,10 +249,11 @@ NetStream.ERROR = 'netstream_error_event'
 --======================================================--
 -- Start: Setup DMC Objects
 
-function NetStream:_init( params )
-	-- print( "NetStream:_init", params )
+function NetStream:__init__( params )
+	-- print( "NetStream:__init__", params )
 	params = params or {}
-	self:superCall( '_init', params )
+	self:superCall( ObjectBase, '__init__', params )
+	self:superCall( StatesMix, '__init__', params )
 	--==--
 
 	-- Utils.print( params )
@@ -276,9 +281,9 @@ function NetStream:_init( params )
 end
 
 
-function NetStream:_initComplete()
-	-- print( "NetStream:_initComplete" )
-	self:superCall( '_initComplete' )
+function NetStream:__initComplete__()
+	-- print( "NetStream:__initComplete__" )
+	self:superCall( '__initComplete__' )
 	--==--
 
 	local url_parts = UrlLib.parse( self._url )
@@ -311,8 +316,8 @@ function NetStream:_initComplete()
 
 end
 
-function NetStream:_undoInitComplete()
-	-- print( "NetStream:_undoInitComplete" )
+function NetStream:__undoInitComplete__()
+	-- print( "NetStream:__undoInitComplete__" )
 
 	local o
 
@@ -321,7 +326,7 @@ function NetStream:_undoInitComplete()
 	self._sock = nil
 
 	--==--
-	self:superCall( '_undoInitComplete' )
+	self:superCall( '__undoInitComplete__' )
 end
 
 -- END: Setup DMC Objects

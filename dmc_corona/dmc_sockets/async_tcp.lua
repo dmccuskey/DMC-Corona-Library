@@ -1,16 +1,14 @@
 --====================================================================--
 -- dmc_sockets/async_tcp.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_sockets.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
 The MIT License (MIT)
 
-Copyright (c) 2014 David McCuskey
+Copyright (c) 2014-2015 David McCuskey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,31 +33,35 @@ SOFTWARE.
 
 
 --====================================================================--
--- DMC Corona Library : Async TCP
+--== DMC Corona Library : Async TCP
 --====================================================================--
+
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.1"
+
 
 
 --====================================================================--
--- Imports
+--== Imports
 
-local Objects = require 'lua_objects'
+
+local Objects = require 'dmc_objects'
 local socket = require 'socket'
-local tcp_socket = require 'dmc_sockets.tcp'
+local TCPSocket = require 'dmc_sockets.tcp'
+local SSLParams = require 'dmc_sockets.ssl_params'
 
-local openssl = require 'plugin.openssl'
-local ssl = require 'plugin_luasec_ssl'
--- require("ssl")
+local ssl
+
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 -- setup some aliases to make code cleaner
-local inheritsFrom = Objects.inheritsFrom
+local newClass = Objects.newClass
 
 local tconcat = table.concat
 local tinsert = table.insert
@@ -70,21 +72,31 @@ local LOCAL_DEBUG = false
 
 
 --====================================================================--
--- Async TCP Socket Class
+--== Support Functions
+
+
+local function loadSSL()
+	local openssl = require 'plugin.openssl'
+	ssl = require 'plugin_luasec_ssl'
+end
+
+
+
+--====================================================================--
+--== Async TCP Socket Class
 --====================================================================--
 
 
-local ATCPSocket = inheritsFrom( tcp_socket )
-ATCPSocket.NAME = "Async TCP Socket Class"
+local ATCPSocket = newClass( TCPSocket, { name="Async TCP Socket" } )
 
 
---====================================================================--
---== Start: Setup DMC Objects
+--======================================================--
+-- Start: Setup DMC Objects
 
-function ATCPSocket:_init( params )
-	-- print( "ATCPSocket:_init" )
+function ATCPSocket:__init__( params )
+	-- print( "ATCPSocket:__init__" )
 	params = params or {}
-	self:superCall( "_init", params )
+	self:superCall( '__init__', params )
 	--==--
 
 	--== Create Properties ==--
@@ -96,19 +108,69 @@ function ATCPSocket:_init( params )
 
 	self._read_in_process = false
 
+	self._ssl_params = params.ssl_params
+
 	--== Object References ==--
 
 end
 
---== END: Setup DMC Objects
---====================================================================--
+function ATCPSocket:__initComplete__()
+	-- print( "ATCPSocket:__initComplete__" )
+	self:superCall( '__initComplete__' )
+	--==--
+
+	self.ssl_params = self._ssl_params -- use setter
+end
+
+-- END: Setup DMC Objects
+--======================================================--
+
 
 
 --====================================================================--
 --== Public Methods
 
+
 function ATCPSocket.__getters:timeout( value )
 	self._timeout = value
+end
+
+
+function ATCPSocket.__setters:ssl_params( value )
+	-- print( "ATCPSocket.__setters:ssl_params", value )
+	assert( value==nil or type(value)=='table', "ATCPSocket.ssl_params incorrect value" )
+	--==--
+
+	if value == nil then
+		-- TODO: properly destroy
+		self._ssl_params = nil
+	elseif value.isa and value:isa( SSLParams ) then
+		self._ssl_params = value
+	else
+		self._ssl_params = SSLParams:new( value )
+	end
+
+end
+
+function ATCPSocket.__getters:ssl_params( value )
+	-- print( "ATCPSocket.__getters:ssl_params", is_secure )
+	return self._ssl_params
+end
+
+
+function ATCPSocket.__setters:secure( is_secure )
+	-- print( "ATCPSocket.__setters:secure", is_secure )
+	if not is_secure then
+		self._ssl_params = nil
+	elseif is_secure and self._ssl_params == nil then
+		self._ssl_params = SSLParams:new()
+	end
+	if is_secure and not ssl then loadSSL() end
+end
+
+function ATCPSocket.__getters:secure()
+	-- print( "ATCPSocket.__getters:secure" )
+	return (self._ssl_params ~= nil)
 end
 
 
@@ -134,7 +196,6 @@ function ATCPSocket:connect( host, port, params )
 	self:_createSocket( { timeout=0 } )
 
 	local f = function()
-
 		local beg_time = system.getTimer()
 		local timeout, time_diff = self._timeout, 0
 		local evt = {}
@@ -157,18 +218,11 @@ function ATCPSocket:connect( host, port, params )
 				evt.emsg = emsg
 
 				if self.secure == true then
-					local sslparams = {
-					  mode = "client",
-					  -- protocol = "tlsv1",
-					  protocol = "sslv3",
-					  verify = "none",
-					  options = "all",
-					}
 
-					local sock, emsg = ssl.wrap( self._socket, sslparams )
+					local sock, emsg = ssl.wrap( self._socket, self.ssl_params )
+
 					if sock then
 						self._socket = sock
-
 					else
 						evt.isError = true
 						evt.emsg = emsg
@@ -177,6 +231,7 @@ function ATCPSocket:connect( host, port, params )
 					end
 
 					local result, emsg = self._socket:dohandshake()
+
 					if not result then
 						evt.isError = true
 						evt.emsg = emsg
@@ -391,6 +446,7 @@ function ATCPSocket:receiveUntilNewline( callback )
 end
 
 
+
 --====================================================================--
 --== Private Methods
 
@@ -475,8 +531,10 @@ function ATCPSocket:_processCoroutineQueue()
 end
 
 
+
 --====================================================================--
 --== Event Handlers
+
 
 function ATCPSocket:_socketsEvent_handler( event )
 	-- print( 'ATCPSocket:_socketsEvent_handler', event )

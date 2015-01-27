@@ -1,14 +1,17 @@
 --====================================================================--
--- dmc_corona/dmc_websockets/exception.lua
+-- dmc_lua/bit.lua
+--
+-- a consistent method to load Lua BitOp on various systems
 --
 -- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
+
 
 --[[
 
 The MIT License (MIT)
 
-Copyright (C) 2014-2015 David McCuskey. All Rights Reserved.
+Copyright (c) 2014-2015 David McCuskey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,22 +36,13 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : WebSockets Exception
+--== DMC Lua Library: Bitop Shim
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
-
-
-
---====================================================================--
---== Imports
-
-
-local Error = require 'lib.dmc_lua.lua_error'
-local Objects = require 'lib.dmc_lua.lua_objects'
+local VERSION = "0.1.0"
 
 
 
@@ -56,46 +50,17 @@ local Objects = require 'lib.dmc_lua.lua_objects'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+-- these are some popular bit op modules
+local BITOP_LIBS = { 'plugin.bit', 'lib.bit.numberlua' }
 
+local has_bitOp, BitOp
 
-
---====================================================================--
---== Protocol Error Class
---====================================================================--
-
-
-local ProtocolError = newClass( Error, { name="Protocol Error" } )
-
--- params:
--- code
--- reason
--- message
---
-function ProtocolError:__new__( params )
-	-- print( "ProtocolError:__init__" )
-	params = params or {}
-	self:superCall( '__new__', params.message, params )
-	--==--
-
-	if self.is_class then return end
-
-	assert( params.code, "ProtocolError: missing protocol code" )
-
-	self.code = params.code
-	self.reason = params.reason or ""
-
+for _, name in ipairs( BITOP_LIBS ) do
+	has_bitOp, BitOp = pcall( require, name )
+	if has_bitOp then break end
 end
 
+assert( has_bitOp, "Bit module not found" )
 
+return BitOp
 
-
---====================================================================--
---== Exception Facade
---====================================================================--
-
-
-return {
-	ProtocolError=ProtocolError
-}
