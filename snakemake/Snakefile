@@ -39,7 +39,7 @@ def _loadModule( module ):
 
 
 def _lookup( path ):
-	if DEBUG: print( "_lookup", path )
+	if DEBUG: print( "_lookup '{0}'".format( path ) )
 	file = FILEMAP[ path ]
 	return file
 
@@ -94,13 +94,12 @@ def _getBuildModuleFileList( target ):
 
 	list = []
 
-
 	requires = _getModuleModules( target, section='module', type='requires' )
 	for module in requires:
 		if DEBUG: print( "loading files for module: ", module )
 		list += _getModuleFiles( module )
 
-	if DEBUG: print( "Got file list: ", list )
+	if DEBUG: print( "Got modules file list: ", list )
 	return list
 
 
@@ -131,14 +130,14 @@ def _getBuildExamplesFileList( target ):
 			if DEBUG: print( "loading files for module: ", module )
 			list += _getModuleFiles( module, dst_dir=dst_dir )
 
-	if DEBUG: print( "Got file list: ", list )
+	if DEBUG: print( "Got examples file list: ", list )
 	return list
 
 
 # loops through all required modules, gets their 'core' files
 #
 def _getBuildTestsFileList( target ):
-	if DEBUG: print( "_getBuildExamplesFileList", target )
+	if DEBUG: print( "_getBuildTestsFileList", target )
 	assert CONFIG[target], "config data missing for target"
 
 	list = []
@@ -172,6 +171,7 @@ def register( name, config ):
 
 REQUIRE_TO="./{base_dir}/{fname,[^/]+}.lua"
 
+print( "Building ", MODULE )
 
 rule build_all:
 	input:
@@ -193,4 +193,3 @@ rule copy_requires:
 	output: REQUIRE_TO
 	input: lambda wildcards: _lookup( "./{0}/{1}.lua".format(wildcards.base_dir, wildcards.fname) )
 	shell: "cp {input} {output}"
-
