@@ -21,7 +21,8 @@ module_config = {
 			"dmc-objects",
 			"dmc-sockets",
 			"dmc-utils",
-			"dmc-websockets"
+			"dmc-websockets",
+			"dmc-wamp"
 		]
 	},
 	"tests": {
