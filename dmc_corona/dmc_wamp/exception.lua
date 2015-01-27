@@ -1,39 +1,46 @@
 --====================================================================--
 -- dmc_wamp/exception.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
-Copyright (C) 2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2014-2015 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
 
 --====================================================================--
---== DMC Corona Library : Exception
+--== DMC Corona Library : DMC WAMP Exception
 --====================================================================--
+
+
+--[[
+WAMP support adapted from:
+* AutobahnPython (https://github.com/tavendo/AutobahnPython/)
+--]]
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -46,8 +53,8 @@ local VERSION = "1.0.0"
 --== Imports
 
 
-local Error = require 'lua_error'
-local Objects = require 'lua_objects'
+local Error = require 'lib.dmc_lua.lua_error'
+local Objects = require 'lib.dmc_lua.lua_objects'
 
 
 
@@ -56,7 +63,7 @@ local Objects = require 'lua_objects'
 
 
 -- setup some aliases to make code cleaner
-local inheritsFrom = Objects.inheritsFrom
+local newClass = Objects.newClass
 
 
 
@@ -69,15 +76,14 @@ local inheritsFrom = Objects.inheritsFrom
 Base class for all exceptions related to WAMP
 --]]
 
-local WAMPError = inheritsFrom( Error )
-WAMPError.NAME = "WAMP Error Base"
+local WAMPError = newClass( Error, {name="WAMP Error Base"} )
 
-function WAMPError:_init( reason )
-	-- print( "WAMPError:_init" )
+function WAMPError:__new__( reason )
+	-- print( "WAMPError:__new__" )
 	local p = {
 		reason or "unknown reason"
 	}
-	self:superCall( '_init', p )
+	self:superCall( '__new__', p )
 	--==--
 	self.reason = p.reason
 end
@@ -94,9 +100,7 @@ The application tried to perform a WAMP interaction, but the
 session is not yet fully established
 --]]
 
-local SessionNotReady = inheritsFrom( WAMPError )
-SessionNotReady.NAME = "Session Not Ready Error"
-
+local SessionNotReady = newClass( WAMPError, {name="Session Not Ready Error"} )
 
 
 
@@ -111,8 +115,7 @@ are fatal and are handled by the WAMP implementation. They are
 not supposed to be handled at the application level
 --]]
 
-local ProtocolError = inheritsFrom( WAMPError )
-ProtocolError.NAME = "Protocol Error"
+local ProtocolError = newClass( WAMPError, {name="Protocol Error"} )
 
 
 
@@ -126,16 +129,15 @@ Exception raised when the transport underlying
 the WAMP session was lost or is not connected
 --]]
 
-local TransportLost = inheritsFrom( WAMPError )
-TransportLost.NAME = "Protocol Error"
+local TransportLost = newClass( WAMPError, {name="Transport Lost Error"} )
 
 
-function TransportLost:_init( reason )
-	-- print( "TransportLost:_init" )
+function TransportLost:__new__( reason )
+	-- print( "TransportLost:__new__" )
 	local p = {
 		reason="WAMP transport lost"
 	}
-	self:superCall( '_init', p )
+	self:superCall( '__new__', p )
 end
 
 
@@ -151,8 +153,7 @@ Exception raised when the transport underlying
 the WAMP session was lost or is not connected
 --]]
 
-local ApplicationError = inheritsFrom( WAMPError )
-ApplicationError.NAME = "Protocol Error"
+local ApplicationError = newClass( WAMPError, {name="Application Error"} )
 
 --[[
 Peer provided an incorrect URI for a URI-based attribute
@@ -257,15 +258,16 @@ ApplicationError.NO_ELIGIBLE_CALLEE = "wamp.error.no_eligible_callee"
 
 -- TODO: integrate with Exception Class
 --
-function ApplicationError:_init( params )
-	-- print( "ApplicationError:_init" )
+-- params.error - The URI of the error that occurred, eg `wamp.error.not_authorized`
+--
+function ApplicationError:__new__( params )
+	-- print( "ApplicationError:__new__" )
 	params = params or {}
+	self:superCall( '__new__', p )
 	--==--
-	local error_uri = params.error
+	assert( type( params.error ) == 'string' )
 
-	assert( type( error_uri ) == 'string' )
-
-	self.error = error_uri
+	self.error = params.error
 	self.params = params
 end
 
