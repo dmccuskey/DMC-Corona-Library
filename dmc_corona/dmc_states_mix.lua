@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_corona/dmc_utils.lua
+-- dmc_corona/dmc_states_mix.lua
 --
 -- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
@@ -8,7 +8,7 @@
 
 The MIT License (MIT)
 
-Copyright (C) 2011-2015 David McCuskey. All Rights Reserved.
+Copyright (c) 2015 David McCuskey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,13 +33,13 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : DMC Utils
+--== DMC Corona Library : DMC States Mix
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.0"
+local VERSION = "0.1.0"
 
 
 
@@ -48,15 +48,28 @@ local VERSION = "1.2.0"
 --====================================================================--
 
 
-
 --====================================================================--
 --== Support Functions
 
 
-local Utils = {} -- make copying from lua_utils easier
+local Utils = {} -- make copying from Utils easier
 
+
+--== Start: copy from lua_utils ==--
+
+-- extend()
+-- Copy key/values from one table to another
+-- Will deep copy any value from first table which is itself a table.
+--
+-- @param fromTable the table (object) from which to take key/value pairs
+-- @param toTable the table (object) in which to copy key/value pairs
+-- @return table the table (object) that received the copied items
+--
 function Utils.extend( fromTable, toTable )
 
+	if not fromTable or not toTable then
+		error( "table can't be nil" )
+	end
 	function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
@@ -80,6 +93,8 @@ function Utils.extend( fromTable, toTable )
 	return _extend( fromTable, toTable )
 end
 
+--== End: copy from lua_utils ==--
+
 
 
 --====================================================================--
@@ -102,118 +117,30 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== DMC Utils
+--== DMC States Mix
 --====================================================================--
-
-
-
---====================================================================--
---== imports
-
-
-Utils = require 'lib.dmc_lua.lua_utils'
-
 
 
 --====================================================================--
 --== Configuration
 
 
-dmc_lib_data.dmc_utils = dmc_lib_data.dmc_utils or {}
+dmc_lib_data.dmc_states_mix = dmc_lib_data.dmc_states_mix or {}
 
-local DMC_UTILS_DEFAULTS = {
-	-- none
+local DMC_STATES_MIX_DEFAULTS = {
 }
 
-local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS )
+local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_states_mix, DMC_STATES_MIX_DEFAULTS )
 
 
 
 --====================================================================--
---== Audio Functions
---====================================================================--
+--== Imports
 
 
--- getAudioChannel( options )
--- simplifies getting an audio channel from Corona SDK
--- automatically sets volume and channel
---
--- @params opts table: with properties: volume, channel
---
-function Utils.getAudioChannel( opts )
-	opts = opts or {}
-	opts.volume = opts.volume == nil and 1.0 or opts.volume
-	opts.channel = opts.channel == nil and 1 or opts.channel
-	--==--
-	local ac = audio.findFreeChannel( opts.channel )
-	audio.setVolume( opts.volume, { channel=ac } )
-	return ac
-end
+local StatesMixModule = require 'lib.dmc_lua.lua_states_mix'
 
 
 
---====================================================================--
---== App Functions
---====================================================================--
+return StatesMixModule
 
-
-function Utils.is_iOS()
-	if string.sub(system.getInfo('model'),1,2) == "iP" then
-		return true
-	end
-	return false
-end
-
-
-function Utils.checkIsiPhone5( state, params )
-	local isiPhone5 = false
-
-	-- Check if device is iPhone 5
-	if string.sub(system.getInfo('model'),1,2) == "iP" and display.pixelHeight > 960 then
-		isiPhone5 = true
-	end
-	return isiPhone5
-end
-
-
---======================================================--
--- Status Bar Functions
-
-Utils.STATUS_BAR_DEFAULT = display.DefaultStatusBar
-Utils.STATUS_BAR_HIDDEN = display.HiddenStatusBar
-Utils.STATUS_BAR_TRANSLUCENT = display.TranslucentStatusBar
-Utils.STATUS_BAR_DARK = display.DarkStatusBar
-
-
-function Utils.setStatusBarDefault( status )
-	status = status == nil and display.DefaultStatusBar or status
-	Utils.STATUS_BAR_DEFAULT = status
-end
-
-
--- state -- 'show'/'hide'
---
-function Utils.setStatusBar( state, params )
-	params = params or {}
-	params.type = params.type or Utils.STATUS_BAR_DEFAULT
-	assert( state=='show' or state=='hide', "Utils.setStatusBar: unknown state "..tostring(state) )
-	--==--
-
-	if not Utils.is_iOS() then return end
-
-	local status
-
-	if state == 'hide' then
-		status = Utils.STATUS_BAR_HIDDEN
-	else
-		status = params.type
-	end
-	display.setStatusBar( status )
-
-end
-
-
-
-
-
-return Utils

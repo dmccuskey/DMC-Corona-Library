@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "2.1.0"
+local VERSION = "2.1.2"
 
 
 
@@ -741,11 +741,24 @@ function ComponentBase:contentToLocal( ... )
 	self.view:contentToLocal( ... )
 end
 
+
 -- dispatchEvent( event )
---
+-- can dispatch corona-style or dmc-style
+-- corona style, just pass in event table structure
+-- dmc-style, dispatchEvent( event-type, data (opt), params (opt) )
+-- params:
+-- event type (eg, 'button-changed-event')
+-- event data, any type of data (eg, object, string, number, table, etc)
+-- event params (optional, if have, must have arg for data (nil))
+-- params.merge merge data into event table, default 'true'
 function ComponentBase:dispatchEvent( ... )
-	local evt = EventsMixModule.dmcEventFunc( ... )
-	print( evt )
+	local args = {...}
+	local evt = args[1]
+	if type(evt)=='table' and type(evt.name)=='string' then
+		-- corona type event, pass
+	else
+		evt = EventsMixModule.dmcEventFunc( self, ... )
+	end
 	self.display:dispatchEvent( evt )
 end
 
