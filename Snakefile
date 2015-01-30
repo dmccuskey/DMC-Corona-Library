@@ -12,6 +12,7 @@ module_config = {
 		"dir": "dmc_corona",
 		"files": [
 			"dmc_autostore.lua",
+			"dmc_dragdrop.lua",
 			"dmc_files.lua",
 			"dmc_kozy.lua",
 			"dmc_netstream.lua",
@@ -42,6 +43,7 @@ module_config = {
 			"dmc-corona-boot",
 			"DMC-Lua-Library",
 			"dmc-autostore",
+			"dmc-dragdrop",
 			"dmc-files",
 			"dmc-kozy",
 			"dmc-netstream",
