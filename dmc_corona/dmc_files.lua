@@ -125,7 +125,7 @@ local dmc_files_data = Utils.extend( dmc_lib_data.dmc_files, DMC_FILES_DEFAULTS 
 
 
 local lfs = require 'lfs'
-local File = require 'lua_files'
+local File = require 'lib.dmc_lua.lua_files'
 
 
 

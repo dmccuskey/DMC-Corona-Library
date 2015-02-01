@@ -144,7 +144,7 @@ local dmc_autostore_data = Utils.extend( dmc_lib_data.dmc_autostore, DMC_AUTOSTO
 
 
 local json = require 'json'
-local Error = require 'lua_error'
+local Error = require 'lib.dmc_lua.lua_error'
 local Files = require 'dmc_files'
 local Objects = require 'dmc_objects'
 

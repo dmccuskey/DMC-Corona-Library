@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_corona/dmc_patch.lua
+-- dmc_corona/dmc_bytearray.lua
 --
 -- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
@@ -33,7 +33,7 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : DMC Patch
+--== DMC Corona Library : DMC Byte Array
 --====================================================================--
 
 
@@ -117,7 +117,7 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== DMC Patch
+--== DMC States Mix
 --====================================================================--
 
 
@@ -125,12 +125,12 @@ dmc_lib_data = _G.__dmc_corona
 --== Configuration
 
 
-dmc_lib_data.dmc_patch = dmc_lib_data.dmc_patch or {}
+dmc_lib_data.dmc_bytearray = dmc_lib_data.dmc_bytearray or {}
 
-local DMC_PATCH_DEFAULTS = {
+local DMC_BYTEARRAY_DEFAULTS = {
 }
 
-local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS )
+local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_bytearray, DMC_BYTEARRAY_DEFAULTS )
 
 
 
@@ -138,9 +138,9 @@ local dmc_patch_data = Utils.extend( dmc_lib_data.dmc_patch, DMC_PATCH_DEFAULTS 
 --== Imports
 
 
-local Patch = require 'lib.dmc_lua.lua_patch'
+local ByteArray = require 'lib.dmc_lua.lua_bytearray'
 
 
 
-return Patch
+return ByteArray
 

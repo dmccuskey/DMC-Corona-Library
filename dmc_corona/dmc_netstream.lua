@@ -117,7 +117,7 @@ local DMC_NETSTREAM_DEFAULTS = {
 	debug_active=false,
 }
 
-local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTREAM_DEFAULTS )
+local dmc_netstream_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTREAM_DEFAULTS )
 
 
 
@@ -128,9 +128,9 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTR
 local UrlLib = require 'socket.url'
 
 local Objects = require 'dmc_objects'
-local Patch = require 'lua_patch'
+local Patch = require 'lib.dmc_lua.lua_patch'
 local Sockets = require 'dmc_sockets'
-local StatesMixModule = require 'lua_states_mix'
+local StatesMixModule = require 'lib.dmc_lua.lua_states_mix'
 local Utils = require 'dmc_utils'
 
 

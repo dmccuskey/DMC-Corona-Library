@@ -129,7 +129,7 @@ local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEF
 
 
 local Objects = require 'dmc_objects'
-local Utils = require 'lua_utils'
+local Utils = require 'dmc_utils'
 
 local socket = require 'socket'
 

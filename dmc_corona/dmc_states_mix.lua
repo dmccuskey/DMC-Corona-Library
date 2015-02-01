@@ -130,7 +130,7 @@ dmc_lib_data.dmc_states_mix = dmc_lib_data.dmc_states_mix or {}
 local DMC_STATES_MIX_DEFAULTS = {
 }
 
-local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_states_mix, DMC_STATES_MIX_DEFAULTS )
+local dmc_states_mix_data = Utils.extend( dmc_lib_data.dmc_states_mix, DMC_STATES_MIX_DEFAULTS )
 
 
 

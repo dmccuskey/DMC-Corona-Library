@@ -138,7 +138,7 @@ local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEF
 --== Imports
 
 
-local LuaObject = require 'lib.dmc_lua.lua_objects'
+local Objects = require 'lib.dmc_lua.lua_objects'
 local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
 
 
@@ -148,10 +148,10 @@ local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
 
 
 -- setup some aliases to make code cleaner
-local newClass = LuaObject.newClass
-local Class = LuaObject.Class
-local registerCtorName = LuaObject.registerCtorName
-local registerDtorName = LuaObject.registerDtorName
+local newClass = Objects.newClass
+local Class = Objects.Class
+local registerCtorName = Objects.registerCtorName
+local registerDtorName = Objects.registerDtorName
 
 local EventsMix = EventsMixModule.EventsMix
 
@@ -970,10 +970,10 @@ end
 
 
 -- simply add to current exports
-LuaObject.ObjectBase = ObjectBase
-LuaObject.ComponentBase = ComponentBase
+Objects.ObjectBase = ObjectBase
+Objects.ComponentBase = ComponentBase
 
 
 
-return LuaObject
+return Objects
 
