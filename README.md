@@ -1,4 +1,7 @@
+**Note:** _Version 2.0 of DMC Corona Lib is close to being released so I would think about using that version intead. Right now changes are in branch `dmc_corona-2.x`_
+
 # Overview #
+
 
 The DMC Corona Library is collection of advanced modules and utilities for use with the Corona SDK. It has grown from the needs of several medium- to large-sized projects focused primarily on business-type apps, though it can be used for any size or type of application.
 
