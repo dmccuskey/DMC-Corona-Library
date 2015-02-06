@@ -166,8 +166,8 @@ registerDtorName( 'removeSelf', Class )
 
 
 _G.getDMCObject = function( object )
-	local ref = object.__dmc_ref
-	assert( ref, "No reference to DMC Object" )
+	local ref = object
+	if object.__dmc_ref then ref = object.__dmc_ref end
 	return ref
 end
 
@@ -292,11 +292,11 @@ end
 
 
 --====================================================================--
---== Corona Base Class
+--== Component Base Class
 --====================================================================--
 
 
-local ComponentBase = newClass( ObjectBase, { name="Component Class" } )
+local ComponentBase = newClass( ObjectBase, { name="Component" } )
 
 
 --== Class Constants ==--
@@ -729,7 +729,7 @@ end
 
 -- Methods --
 
--- addEventListener( event, listener )
+-- addEventListener( eventName, listener )
 --
 function ComponentBase:addEventListener( ... )
 	self.view:addEventListener( ... )
@@ -759,7 +759,7 @@ function ComponentBase:dispatchEvent( ... )
 	else
 		evt = EventsMixModule.dmcEventFunc( self, ... )
 	end
-	self.display:dispatchEvent( evt )
+	self.view:dispatchEvent( evt )
 end
 
 -- localToContent( x, y )
@@ -771,7 +771,7 @@ end
 -- removeEventListener( eventName, listener )
 --
 function ComponentBase:removeEventListener( ... )
-	self.display:removeEventListener( ... )
+	self.view:removeEventListener( ... )
 end
 
 -- rotate( deltaAngle )
@@ -827,97 +827,94 @@ end
 
 
 
---[[
-
 --====================================================================--
---== CoronaPhysics Class
+--== PhysicsComponentBase Class
 --====================================================================--
 
 
-local CoronaPhysics = inheritsFrom( ComponentBase )
-CoronaPhysics.NAME = "Corona Physics"
+local PhysicsComponentBase = newClass( ComponentBase, {name="Physics Component"})
 
 
 -- Properties --
 
 -- angularDamping()
 --
-function CoronaPhysics.__getters:angularDamping()
+function PhysicsComponentBase.__getters:angularDamping()
 	return self.view.angularDamping
 end
-function CoronaPhysics.__setters:angularDamping( value )
+function PhysicsComponentBase.__setters:angularDamping( value )
 	self.view.angularDamping = value
 end
 -- angularVelocity()
 --
-function CoronaPhysics.__getters:angularVelocity()
+function PhysicsComponentBase.__getters:angularVelocity()
 	return self.view.angularVelocity
 end
-function CoronaPhysics.__setters:angularVelocity( value )
+function PhysicsComponentBase.__setters:angularVelocity( value )
 	self.view.angularVelocity = value
 end
 -- bodyType()
 --
-function CoronaPhysics.__getters:bodyType()
+function PhysicsComponentBase.__getters:bodyType()
 	return self.view.bodyType
 end
-function CoronaPhysics.__setters:bodyType( value )
+function PhysicsComponentBase.__setters:bodyType( value )
 	self.view.bodyType = value
 end
 -- isAwake()
 --
-function CoronaPhysics.__getters:isAwake()
+function PhysicsComponentBase.__getters:isAwake()
 	return self.view.isAwake
 end
-function CoronaPhysics.__setters:isAwake( value )
+function PhysicsComponentBase.__setters:isAwake( value )
 	self.view.isAwake = value
 end
 -- isBodyActive()
 --
-function CoronaPhysics.__getters:isBodyActive()
+function PhysicsComponentBase.__getters:isBodyActive()
 	return self.view.isBodyActive
 end
-function CoronaPhysics.__setters:isBodyActive( value )
+function PhysicsComponentBase.__setters:isBodyActive( value )
 	self.view.isBodyActive = value
 end
 -- isBullet()
 --
-function CoronaPhysics.__getters:isBullet()
+function PhysicsComponentBase.__getters:isBullet()
 	return self.view.isBullet
 end
-function CoronaPhysics.__setters:isBullet( value )
+function PhysicsComponentBase.__setters:isBullet( value )
 	self.view.isBullet = value
 end
 -- isFixedRotation()
 --
-function CoronaPhysics.__getters:isFixedRotation()
+function PhysicsComponentBase.__getters:isFixedRotation()
 	return self.view.isFixedRotation
 end
-function CoronaPhysics.__setters:isFixedRotation( value )
+function PhysicsComponentBase.__setters:isFixedRotation( value )
 	self.view.isFixedRotation = value
 end
 -- isSensor()
 --
-function CoronaPhysics.__getters:isSensor()
+function PhysicsComponentBase.__getters:isSensor()
 	return self.view.isSensor
 end
-function CoronaPhysics.__setters:isSensor( value )
+function PhysicsComponentBase.__setters:isSensor( value )
 	self.view.isSensor = value
 end
 -- isSleepingAllowed()
 --
-function CoronaPhysics.__getters:isSleepingAllowed()
+function PhysicsComponentBase.__getters:isSleepingAllowed()
 	return self.view.isSleepingAllowed
 end
-function CoronaPhysics.__setters:isSleepingAllowed( value )
+function PhysicsComponentBase.__setters:isSleepingAllowed( value )
 	self.view.isSleepingAllowed = value
 end
 -- linearDamping()
 --
-function CoronaPhysics.__getters:linearDamping()
+function PhysicsComponentBase.__getters:linearDamping()
 	return self.view.linearDamping
 end
-function CoronaPhysics.__setters:linearDamping( value )
+function PhysicsComponentBase.__setters:linearDamping( value )
 	self.view.linearDamping = value
 end
 
@@ -926,41 +923,40 @@ end
 
 -- applyAngularImpulse( appliedForce )
 --
-function CoronaPhysics:applyAngularImpulse( ... )
+function PhysicsComponentBase:applyAngularImpulse( ... )
 	self.view:applyAngularImpulse( ... )
 end
 -- applyForce( xForce, yForce, bodyX, bodyY )
 --
-function CoronaPhysics:applyForce( ... )
+function PhysicsComponentBase:applyForce( ... )
 	self.view:applyForce( ... )
 end
 -- applyLinearImpulse( xForce, yForce, bodyX, bodyY )
 --
-function CoronaPhysics:applyLinearImpulse( ... )
+function PhysicsComponentBase:applyLinearImpulse( ... )
 	self.view:applyLinearImpulse( ... )
 end
 -- applyTorque( appliedForce )
 --
-function CoronaPhysics:applyTorque( ... )
+function PhysicsComponentBase:applyTorque( ... )
 	self.view:applyTorque( ... )
 end
 -- getLinearVelocity()
 --
-function CoronaPhysics:getLinearVelocity()
+function PhysicsComponentBase:getLinearVelocity()
 	return self.view:getLinearVelocity()
 end
 -- resetMassData()
 --
-function CoronaPhysics:resetMassData()
+function PhysicsComponentBase:resetMassData()
 	self.view:resetMassData()
 end
 -- setLinearVelocity( xVelocity, yVelocity )
 --
-function CoronaPhysics:setLinearVelocity( ... )
+function PhysicsComponentBase:setLinearVelocity( ... )
 	self.view:setLinearVelocity( ... )
 end
 
---]]
 
 
 
@@ -972,6 +968,7 @@ end
 -- simply add to current exports
 Objects.ObjectBase = ObjectBase
 Objects.ComponentBase = ComponentBase
+Objects.PhysicsComponentBase = PhysicsComponentBase
 
 
 

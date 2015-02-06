@@ -61,6 +61,7 @@ local newClass = Objects.newClass
 local Class = Objects.Class
 
 local EventsMix = LuaEventsMixin.EventsMix
+
 local singleton = nil
 
 
@@ -96,6 +97,7 @@ end
 --======================================================--
 
 
+
 --====================================================================--
 --== Public Methods
 
@@ -110,13 +112,13 @@ function Megaphone:say( message, params )
 end
 function Megaphone:listen( listener )
 	-- print( "Megaphone:listen " )
-	assert( type(listener)=='function', "Megaphone:say, arg 'listener' must be a function" )
+	assert( type(listener)=='function', "Megaphone:listen, arg 'listener' must be a function" )
 	--==--
 	self:addEventListener( Megaphone.EVENT, listener )
 end
 function Megaphone:ignore( listener )
 	-- print( "Megaphone:ignore " )
-	assert( type(listener)=='function', "Megaphone:say, arg 'listener' must be a function" )
+	assert( type(listener)=='function', "Megaphone:ignore, arg 'listener' must be a function" )
 	--==--
 	self:removeEventListener( Megaphone.EVENT, listener )
 end

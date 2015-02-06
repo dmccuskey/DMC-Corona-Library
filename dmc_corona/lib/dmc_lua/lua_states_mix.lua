@@ -47,6 +47,9 @@ local VERSION = "1.3.1"
 --== Setup, Constants
 
 
+local tinsert = table.insert
+local tremove = table.remove
+
 local States
 
 
@@ -127,6 +130,8 @@ end
 
 
 function States.resetStates( self, params )
+	params = params or {}
+	--==--
 	if self.__debug_on then
 		print( outStr( "resetStates: resetting object states" ) )
 	end
@@ -196,14 +201,12 @@ end
 
 function States.pushStateStack( self, state_name )
 	assert( state_name, errStr("no state name given") )
-
-	table.insert( self.__state_stack, 1, state_name )
+	tinsert( self.__state_stack, 1, state_name )
 end
 
 function States.popStateStack( self )
 	assert( #self.__state_stack > 0, errStr("state stack is empty") )
-
-	return table.remove( self.__state_stack, 1 )
+	return tremove( self.__state_stack, 1 )
 end
 
 
