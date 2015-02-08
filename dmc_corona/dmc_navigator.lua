@@ -1,33 +1,40 @@
 --====================================================================--
 -- dmc_navigator.lua
 --
---
--- by David McCuskey
 -- Documentation:
 --====================================================================--
 
 --[[
 
-Copyright (C) 2013-2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (C) 2013-2015 David McCuskey. All Rights Reserved.
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
+
+
+
+--====================================================================--
+--== DMC Corona Library : DMC Navigator
+--====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
@@ -35,9 +42,16 @@ DEALINGS IN THE SOFTWARE.
 local VERSION = "1.0.0"
 
 
+
 --====================================================================--
--- DMC Library Support Methods
+--== DMC Corona Library Config
 --====================================================================--
+
+
+
+--====================================================================--
+--== Support Functions
+
 
 local Utils = {} -- make copying from dmc_utils easier
 
@@ -69,79 +83,70 @@ end
 
 
 --====================================================================--
--- DMC Library Config
---====================================================================--
+--== Configuration
 
-local dmc_lib_data, dmc_lib_info, dmc_lib_location
 
--- boot dmc_library with boot script or
+local dmc_lib_data
+
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_library_boot" ) end ) then
-	_G.__dmc_library = {
-		dmc_library={
-			location = ''
-		},
-		func = {
-			find=function( name )
-				local loc = ''
-				if dmc_lib_data[name] and dmc_lib_data[name].location then
-					loc = dmc_lib_data[name].location
-				else
-					loc = dmc_lib_info.location
-				end
-				if loc ~= '' and string.sub( loc, -1 ) ~= '.' then
-					loc = loc .. '.'
-				end
-				return loc .. name
-			end
-		}
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
 	}
 end
 
-dmc_lib_data = _G.__dmc_library
-dmc_lib_func = dmc_lib_data.func
-dmc_lib_info = dmc_lib_data.dmc_library
-dmc_lib_location = dmc_lib_info.location
-
+dmc_lib_data = _G.__dmc_corona
 
 
 
 --====================================================================--
--- DMC Library : DMC Navigator
+--== DMC Navigator
 --====================================================================--
 
 
 
+--====================================================================--
+--== Configuration
+
+
+dmc_lib_data.dmc_navigator = dmc_lib_data.dmc_navigator or {}
+
+local DMC_NAVIGATOR_DEFAULTS = {
+	debug_active=false
+}
+
+local dmc_navigator_data = Utils.extend( dmc_lib_data.dmc_navigator, DMC_NAVIGATOR_DEFAULTS )
+local Config = dmc_navigator_data
+
+
 
 --====================================================================--
--- Imports
+--== Imports
+
+
+local Objects = require 'dmc_objects'
+-- local Utils = require 'dmc_utils'
+
+
+
 --====================================================================--
+--== Setup, Constants
 
-local Utils = require( dmc_lib_func.find("dmc_utils") )
-local Objects = require( dmc_lib_func.find("dmc_objects") )
-
-
-
---====================================================================--
--- Setup, Constants
---====================================================================--
 
 -- setup some aliases to make code cleaner
-local inheritsFrom = Objects.inheritsFrom
-local CoronaBase = Objects.CoronaBase
-
-local LOCAL_DEBUG = false
+local newClass = Objects.newClass
+local ComponentBase = Objects.ComponentBase
 
 
 
 --====================================================================--
--- Page Navigation Class
+--== View Navigation Class
 --====================================================================--
 
-local Navigator = inheritsFrom( CoronaBase )
-Navigator.NAME = "Base Navigator Class"
 
+local Navigator = newClass( ComponentBase, {name="Base Navigator"} )
 
 --== Class Constants
 
@@ -154,31 +159,29 @@ Navigator.BACKGROUND_COLOR = { 0.5, 0.5, 0, 1 }
 
 --== Event Constants
 
-Navigator.EVENT = "page_Navigator_event"
-Navigator.SLIDES_ON_STAGE = "slide_onstage_event"
-Navigator.UI_TAPPED = "Navigator_ui_tapped_event"
-Navigator.CENTER_STAGE = "slide_center_stage_event"
-Navigator.FORWARD = "forward"
-Navigator.BACK = "back"
+Navigator.EVENT = 'view_navigator-event'
+
+Navigator.SLIDES_ON_STAGE = 'slide_onstage_event'
+Navigator.UI_TAPPED = 'Navigator_ui_tapped_event'
+Navigator.CENTER_STAGE = 'slide_center_stage_event'
+Navigator.FORWARD = 'forward'
+Navigator.BACK = 'back'
 
 
+--======================================================--
+-- Start: Setup DMC Objects
 
-
---====================================================================--
---== Start: Setup DMC Objects
-
-function Navigator:_init( params )
-	-- print( "Navigator:_init" )
-	self:superCall( "_init", params )
+function Navigator:__init__( params )
+	-- print( "Navigator:__init__" )
 	params = params or {}
+	self:superCall( '__init__', params )
 	--==--
-
 
 	--== Sanity Check ==--
 
-	if not self.is_intermediate and ( not params.width or not params.height ) then
-		error( "ERROR DMC Navigator: requires dimensions", 3 )
-	end
+	if self.is_class then return end
+
+	assert( params.width and params.height, "ERROR DMC Navigator: requires dimensions")
 
 
 	--== Create Properties ==--
@@ -211,17 +214,18 @@ function Navigator:_init( params )
 	self._onStage = params.onStageFunc -- reference to onStage callback
 
 end
-function Navigator:_undoInit()
-	--print( "Navigator:_undoInit" )
-
+--[[
+function Navigator:__undoInit__()
+	--print( "Navigator:__undoInit__" )
 	--==--
-	self:superCall( "_undoInit" )
+	self:superCall( "__undoInit__" )
 end
+--]]
 
 
-function Navigator:_createView()
-	-- print( "Navigator:_createView" )
-	self:superCall( "_createView" )
+function Navigator:__createView__()
+	-- print( "Navigator:__createView__" )
+	self:superCall( '__createView__' )
 	--==--
 
 	local o, p, dg, tmp  -- object, display group, tmp
@@ -230,7 +234,7 @@ function Navigator:_createView()
 
 	o = display.newRect( 0, 0, self._width, self._height )
 	o:setFillColor(0,0,0,0)
-	if LOCAL_DEBUG then
+	if Config.debug_active then
 		o:setFillColor(0,255,0)
 	end
 	o.anchorX, o.anchorY = 0.5, 0
@@ -245,8 +249,8 @@ function Navigator:_createView()
 	self.x, self.y = 0,0
 
 end
-function Navigator:_undoCreateView()
-	-- print( "Navigator:_undoCreateView" )
+function Navigator:__undoCreateView__()
+	-- print( "Navigator:__undoCreateView__" )
 
 	local o
 
@@ -255,40 +259,36 @@ function Navigator:_undoCreateView()
 	self._primer = nil
 
 	--==--
-	self:superCall( "_undoCreateView" )
+	self:superCall( '__undoCreateView__' )
 end
 
 
--- _initComplete()
+-- __initComplete__()
 --
-function Navigator:_initComplete()
-	--print( "Navigator:_initComplete" )
-	self:superCall( "_initComplete" )
+--[[
+function Navigator:__initComplete__()
+	--print( "Navigator:__initComplete__" )
+	self:superCall( "__initComplete__" )
 	--==--
-
 	-- self:addEventListener( "touch", self )
-
 end
+--]]
+--[[
 function Navigator:_undoInitComplete()
 	--print( "Navigator:_undoInitComplete" )
-
 	-- self:removeEventListener( "touch", self )
-
 	--==--
 	self:superCall( "_undoInitComplete" )
 end
+--]]
 
-
---== END: Setup DMC Objects
---====================================================================--
-
+-- END: Setup DMC Objects
+--======================================================--
 
 
 
 --====================================================================--
 --== Public Methods
-
-
 
 
 function Navigator:viewIsVisible( value )
