@@ -55,8 +55,8 @@ local VERSION = "1.0.0"
 --== Imports
 
 
-local Objects = require 'lib.dmc_lua.lua_objects'
-local Utils = require 'lib.dmc_lua.lua_utils'
+local Objects = require 'dmc_objects'
+local Utils = require 'dmc_utils'
 
 local WErrors = require 'dmc_wamp.exception'
 
@@ -85,7 +85,7 @@ function RoleFeatures:_filterAttributes()
 	local attrs = {}
 
 	for k,v in pairs( self ) do
-		if k:sub(1,1) ~= '_' and not Utils.propertyIn( { 'is_intermediate' }, k ) then
+		if k:sub(1,1) ~= '_' and not Utils.propertyIn( { 'is_class' }, k ) then
 			-- print(k,v)
 			local attr = rawget( self, k )
 			if attr ~= nil then
