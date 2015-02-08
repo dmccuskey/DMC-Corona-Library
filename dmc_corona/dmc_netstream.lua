@@ -128,9 +128,9 @@ local dmc_netstream_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTRE
 local UrlLib = require 'socket.url'
 
 local Objects = require 'dmc_objects'
-local Patch = require 'lib.dmc_lua.lua_patch'
+local Patch = require 'dmc__patch'
 local Sockets = require 'dmc_sockets'
-local StatesMixModule = require 'lib.dmc_lua.lua_states_mix'
+local StatesMixModule = require 'dmc_states_mix'
 local Utils = require 'dmc_utils'
 
 
@@ -252,8 +252,8 @@ NetStream.ERROR = 'netstream_error_event'
 function NetStream:__init__( params )
 	-- print( "NetStream:__init__", params )
 	params = params or {}
-	self:superCall( ObjectBase, '__init__', params )
 	self:superCall( StatesMix, '__init__', params )
+	self:superCall( ObjectBase, '__init__', params )
 	--==--
 
 	-- Utils.print( params )
