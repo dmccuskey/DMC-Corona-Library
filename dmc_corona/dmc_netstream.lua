@@ -128,7 +128,7 @@ local dmc_netstream_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTRE
 local UrlLib = require 'socket.url'
 
 local Objects = require 'dmc_objects'
-local Patch = require 'dmc__patch'
+local Patch = require 'dmc_patch'
 local Sockets = require 'dmc_sockets'
 local StatesMixModule = require 'dmc_states_mix'
 local Utils = require 'dmc_utils'
