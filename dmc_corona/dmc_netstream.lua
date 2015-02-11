@@ -379,7 +379,7 @@ function NetStream:do_state_not_connected( params )
 		-- we're coming from being connected
 		self:_send( nil, event.emsg )
 
-		self:dispatchEvent( self.DISCONNECTED, { emsg=event.emsg } )
+		self:dispatchEvent( self.DISCONNECTED, { emsg=event.emsg }, {merge=true} )
 
 	else
 		-- haven't connected yet
@@ -481,7 +481,7 @@ function NetStream:_handleErrorEvent( event )
 	-- print("NetStream:_handleErrorEvent", event )
 
 	self:_send( nil, event.emsg )
-	self:dispatchEvent( self.ERROR, { emsg=event.emsg } )
+	self:dispatchEvent( self.ERROR, { emsg=event.emsg }, {merge=true} )
 
 	self:gotoState( self.STATE_NOT_CONNECTED )
 
@@ -566,7 +566,7 @@ function NetStream:_onData_handler( event )
 		-- Utils.hexDump( e.data )
 		if e.data ~= nil then
 			self:_send( e.data, e.emsg )
-			self:dispatchEvent( self.DATA, { data=e.data, emsg=event.emsg } )
+			self:dispatchEvent( self.DATA, { data=e.data, emsg=event.emsg }, {merge=true} )
 		end
 	end
 

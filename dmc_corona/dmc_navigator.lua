@@ -158,6 +158,12 @@ Navigator.TRANSITION_TIME = 400
 Navigator.FORWARD = 'forward-direction'
 Navigator.REVERSE = 'reverse-direction'
 
+--== Event Constants
+
+Navigator.EVENT = 'dmc-navigator-event'
+
+Navigator.REMOVED_VIEW = 'removed-view-event'
+
 
 --======================================================--
 -- Start: Setup DMC Objects
@@ -373,11 +379,6 @@ function Navigator:_addToView( view )
 	view.isVisible=false
 end
 
-function Navigator:_removeFromView( view )
-	-- print( "Navigator:_removeFromView", view )
-	if view and view.removeSelf then view:removeSelf() end
-end
-
 
 function Navigator:_startEnterFrame( func )
 	Runtime:addEventListener( 'enterFrame', func )
@@ -494,7 +495,7 @@ function Navigator:_getTransition( from_view, to_view, direction )
 
 			if direction==self.REVERSE then
 				local view = tremove( stack )
-				self:_removeFromView( view )
+				self:_dispatchRemovedView( view )
 
 				self._top_view = from_view
 				self._new_view = nil
@@ -566,6 +567,12 @@ local s2_a = function()
 	s2_b()
 end
 --]]
+
+
+function Navigator:_dispatchRemovedView( view )
+	-- print( "Navigator:_dispatchRemovedView", view )
+	self:dispatchEvent( self.REMOVED_VIEW, {view=view}, {merge=true} )
+end
 
 
 
