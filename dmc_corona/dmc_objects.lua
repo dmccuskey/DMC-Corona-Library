@@ -755,7 +755,8 @@ function ComponentBase:dispatchEvent( ... )
 	local args = {...}
 	local evt = args[1]
 	if type(evt)=='table' and type(evt.name)=='string' then
-		-- corona type event, pass
+		-- corona type event
+		self:dispatchRawEvent( evt )
 	else
 		evt = EventsMixModule.dmcEventFunc( self, ... )
 	end

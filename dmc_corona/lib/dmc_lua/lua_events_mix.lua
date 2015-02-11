@@ -206,6 +206,10 @@ function Events.setEventFunc( self, func )
 end
 
 
+function Events.createEvent( self, ... )
+	return self.__event_func( self, ... )
+end
+
 function Events.dispatchEvent( self, ... )
 	-- print( "Events.dispatchEvent" )
 	local f = self.__event_func
