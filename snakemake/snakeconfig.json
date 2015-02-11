@@ -3,7 +3,8 @@
 		"default_dir": "dmc_corona",
 		"libs": {
 			"dmc-corona-boot": "",
-			"DMC-Lua-Library": "dmc_corona/lib/dmc_lua"
+			"DMC-Lua-Library": "dmc_corona/lib/dmc_lua",
+			"DMC-Corona-Widgets": ""
 		}
 	}
 }
