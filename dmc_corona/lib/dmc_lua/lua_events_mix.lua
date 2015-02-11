@@ -88,13 +88,14 @@ end
 
 
 -- obj,
--- event type
--- data
--- params
+-- event type, string
+-- data, anything
+-- params, table of params
+-- params.merge, boolean, if to merge data (table) in with event table
 --
 function _createDmcEvent( obj, e_type, data, params )
 	params = params or {}
-	if params.merge == nil then params.merge = true end
+	if params.merge==nil then params.merge=false end
 	--==--
 	local e
 

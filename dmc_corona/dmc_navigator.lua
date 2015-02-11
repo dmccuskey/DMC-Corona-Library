@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "0.3.0"
 
 
 
@@ -139,6 +139,9 @@ local Objects = require 'dmc_objects'
 local newClass = Objects.newClass
 local ComponentBase = Objects.ComponentBase
 
+local tinsert = table.insert
+local tremove = table.remove
+
 
 
 --====================================================================--
@@ -150,22 +153,10 @@ local Navigator = newClass( ComponentBase, {name="Base Navigator"} )
 
 --== Class Constants
 
-Navigator.TRANSITION_TIME = 250
-Navigator.BUTTON_MARGIN = 8
-Navigator.SLIDE_PADDING = 10
+Navigator.TRANSITION_TIME = 400
 
-Navigator.BACKGROUND_COLOR = { 0.5, 0.5, 0, 1 }
-
-
---== Event Constants
-
-Navigator.EVENT = 'view_navigator-event'
-
-Navigator.SLIDES_ON_STAGE = 'slide_onstage_event'
-Navigator.UI_TAPPED = 'Navigator_ui_tapped_event'
-Navigator.CENTER_STAGE = 'slide_center_stage_event'
-Navigator.FORWARD = 'forward'
-Navigator.BACK = 'back'
+Navigator.FORWARD = 'forward-direction'
+Navigator.REVERSE = 'reverse-direction'
 
 
 --======================================================--
@@ -174,6 +165,7 @@ Navigator.BACK = 'back'
 function Navigator:__init__( params )
 	-- print( "Navigator:__init__" )
 	params = params or {}
+	if params.transition_time==nil then params.transition_time=Navigator.TRANSITION_TIME end
 	self:superCall( '__init__', params )
 	--==--
 
@@ -183,44 +175,39 @@ function Navigator:__init__( params )
 
 	assert( params.width and params.height, "ERROR DMC Navigator: requires dimensions")
 
-
 	--== Create Properties ==--
 
 	self._width = params.width
 	self._height = params.height
 
-	self._views = params.slides or {} -- slide list, in order
-	self._curr_slide = 1 -- showing current slide
+	self._trans_time = params.transition_time
+	self._btn_back_f = nil
 
-	self._trans_time = self.TRANSITION_TIME
-
-	self._canInteract = true
-	self._isMoving = false -- flag, used to control dispatched events during touch move
-
-
-	-- current, prev, next tweens
-	self._tween = {
-		c = nil,
-		p = nil,
-		n = nil
-	} -- showing current slide
-
-	--== Display Groups ==--
+	self._views = {} -- slide list, in order
 
 	--== Object References ==--
 
-	self._primer = nil -- ref to display primer object
+	self._root_view = nil
+	self._back_view = nil
+	self._top_view = nil
+	self._new_view = nil
+	self._visible_view = nil
 
-	self._onStage = params.onStageFunc -- reference to onStage callback
+	self._nav_bar = nil
+	self._primer = nil
 
 end
---[[
+
 function Navigator:__undoInit__()
 	--print( "Navigator:__undoInit__" )
+	self._root_view = nil
+	self._back_view = nil
+	self._top_view = nil
+	self._new_view = nil
+	self._visible_view = nil
 	--==--
 	self:superCall( "__undoInit__" )
 end
---]]
 
 
 function Navigator:__createView__()
@@ -234,19 +221,14 @@ function Navigator:__createView__()
 
 	o = display.newRect( 0, 0, self._width, self._height )
 	o:setFillColor(0,0,0,0)
-	if Config.debug_active then
-		o:setFillColor(0,255,0)
+	if false or Config.debug_active then
+		o:setFillColor(0.5,1,0.5)
 	end
 	o.anchorX, o.anchorY = 0.5, 0
 	o.x, o.y = 0,0
 
-
 	self:insert( o )
 	self._primer = o
-
-	-- set the main object, after first child object
-	self:setAnchor( self.TopCenterReferencePoint )
-	self.x, self.y = 0,0
 
 end
 function Navigator:__undoCreateView__()
@@ -265,22 +247,28 @@ end
 
 -- __initComplete__()
 --
---[[
 function Navigator:__initComplete__()
 	--print( "Navigator:__initComplete__" )
-	self:superCall( "__initComplete__" )
+	self:superCall( '__initComplete__' )
 	--==--
-	-- self:addEventListener( "touch", self )
+	self._btn_back_f = self:createCallback( self._backButtonRelease_handler )
 end
---]]
---[[
+
 function Navigator:_undoInitComplete()
 	--print( "Navigator:_undoInitComplete" )
-	-- self:removeEventListener( "touch", self )
+	local o
+
+	self._btn_back_f = nil
+
+	o = self._nav_bar
+	if o then
+		o:removeSelf()
+		self._nav_bar = nil
+	end
+
 	--==--
-	self:superCall( "_undoInitComplete" )
+	self:superCall( '_undoInitComplete' )
 end
---]]
 
 -- END: Setup DMC Objects
 --======================================================--
@@ -289,6 +277,50 @@ end
 
 --====================================================================--
 --== Public Methods
+
+
+function Navigator.__setters:nav_bar( value )
+	-- print( "Navigator.__setters:nav_bar", value )
+	-- TODO
+	assert( value )
+	self._nav_bar = value
+end
+
+
+
+function Navigator:pushView( view, params )
+	-- print( "Navigator:pushView" )
+	params = params or {}
+	assert( view )
+	-- assert( type(item)=='table' and item.isa and item:isa( NavItem ), "pushNavItem: item must be a NavItem" )
+	if params.animate==nil then params.animate=true end
+	--==--
+
+	if self._root_view then
+		-- pass
+	else
+		self._root_view = view
+		self._top_view = nil
+		self._visible_view = nil
+		params.animate = false
+	end
+	self._new_view = view
+
+	self:_gotoNextView( params.animate )
+end
+
+
+function Navigator:popViewAnimated()
+	self:_gotoPrevView( true )
+end
+
+
+
+function Navigator:viewIsVisible( value )
+	-- print( "Navigator:viewIsVisible" )
+	local o = self._current_view
+	if o and o.viewIsVisible then o:viewIsVisible( value ) end
+end
 
 
 function Navigator:viewIsVisible( value )
@@ -305,183 +337,246 @@ end
 
 
 
-function Navigator:addView( key, object, params )
-	-- print( "Navigator:addView" )
-	params = params or {}
-	--==--
-
-	local W, H = self._width, self._height
-	local H_CENTER, V_CENTER = W*0.5, H*0.5
-
-	self._views[ key ] = object
-	object.isVisible = false
-
-	local o = object
-	if object.view then o = object.view end
-	o.x, o.y = 0, 0
-
-	self:insert( o )
-
-end
-
-function Navigator:removeView( key )
-	-- print( "Navigator:removeView" )
-	local o
-	if key then
-		o = self._views[ key ]
-		self._views[ key ] = nil
-	end
-
-	return o
-end
-
-function Navigator:getView( key )
-	-- print( "Navigator:getView ", key )
-	return self._views[ key ]
-end
-
-
-
-function Navigator:gotoView( key, params )
-	-- print( "Navigator:gotoView ", key )
-	params = params or {}
-	params.do_animation = params.do_animation or true
-	params.direction = params.direction or Navigator.FORWARD
-	--==--
-
-	local W, H = self._width, self._height
-	local H_CENTER, V_CENTER = W*0.5, H*0.5
-
-	local o
-
-	if self._current_view == nil or params.do_animation == false then
-		-- have seen a view, but no transition necessary
-		o = self._current_view
-		if o then
-			o.x, o.y = H_CENTER, 0
-			o.isVisible = false
-			if o then o.view_is_visible = false end
-		end
-
-		o = self:getView( key )
-		o.x, o.y = 0, 0
-		o.isVisible = true
-		if o then o.view_is_visible = true end
-		if o then o.view_on_stage = true end
-
-		self._current_view = o
-
-	else
-		self:_transitionViews( key, params )
-
-	end
-
-	return self._current_view
-end
-
-
-
-
 --====================================================================--
 --== Private Methods
 
 
-
-function Navigator:_transitionViews( next_key, params )
-	--print( "Navigator:_transitionViews" )
-
-	local W, H = self._width, self._height
-	local H_CENTER, V_CENTER = W*0.5, H*0.5
-
-	local direction = params.direction
-	local prev_view, next_view
-	local time = self._trans_time
-
-	prev_view = self._current_view
-	next_view = self:getView( next_key )
-	self._current_view = next_view
-
-
-	-- remove previous view
-	local step_3 = function()
-		self.display.x, self.display.y = 0, 0
-
-		prev_view.x, prev_view.y = H_CENTER, 0
-		prev_view.isVisible = false
-		if prev_view.viewOnStage then prev_view:viewOnStage( false ) end
-
-		next_view.x, next_view.y = H_CENTER, 0
-		next_view.isVisible = true
-		if next_view.viewOnStage then next_view:viewOnStage( true ) end
-
+function Navigator:_getPushNavBarTransition( view, params )
+	-- print( "Navigator:_getPushNavBarTransition", view )
+	params = params or {}
+	local o, callback
+	if self._nav_bar then
+		o = view.nav_bar_item
+		assert( o, "view doesn't have nav bar item" )
+		o.back_button.onRelease = self._btn_back_f
+		callback = self._nav_bar:_pushNavItemGetTransition( o, {} )
 	end
-
-	-- transition both views
-	local step_2 = function()
-
-		local s2_c = function()
-			if prev_view.viewInMotion then prev_view:viewInMotion( false ) end
-			if prev_view.viewIsVisible then prev_view:viewIsVisible( false ) end
-			if next_view.viewInMotion then next_view:viewInMotion( false ) end
-			if next_view.viewIsVisible then next_view:viewIsVisible( true ) end
-
-			step_3()
-		end
-
-		-- perform transition
-		local s2_b = function()
-			local p = {
-				time=time,
-				onComplete=s2_c
-			}
-			if direction == Navigator.FORWARD then
-				p.x = -W
-				transition.to( self.display, p )
-			else
-				p.x = 0
-				transition.to( self.display, p )
-			end
-		end
-
-		local s2_a = function()
-			if prev_view.viewInMotion then prev_view:viewInMotion( true ) end
-			if prev_view.viewIsVisible then prev_view:viewIsVisible( true ) end
-			if next_view.viewInMotion then next_view:viewInMotion( true ) end
-			if next_view.viewIsVisible then next_view:viewIsVisible( false ) end
-			s2_b()
-		end
-
-		s2_a()
-	end
-
-	-- setup next view
-	local step_1 = function()
-
-		next_view.isVisible = true
-
-		if direction == Navigator.FORWARD then
-			self.display.x, self.display.y = 0, 0
-			prev_view.x, prev_view.y = H_CENTER, 0
-			next_view.x, next_view.y = W+H_CENTER, 0
-
-		else
-			self.display.x, self.display.y = -W, 0
-			prev_view.x, prev_view.y = W+H_CENTER, 0
-			next_view.x, next_view.y = H_CENTER, 0
-
-		end
-
-		step_2()
-	end
-
-	step_1()
+	return callback
 end
 
+function Navigator:_getPopNavBarTransition()
+	-- print( "Navigator:_getPopNavBarTransition" )
+	params = params or {}
+	return self._nav_bar:_popNavItemGetTransition( params )
+end
+
+
+function Navigator:_addToView( view )
+	-- print( "Navigator:_addToView", view )
+	local o = view
+	if o.view then
+		o = o.view
+	elseif o.display then
+		o = o.display
+	end
+	self:insert( o )
+	view.isVisible=false
+end
+
+function Navigator:_removeFromView( view )
+	-- print( "Navigator:_removeFromView", view )
+	if view and view.removeSelf then view:removeSelf() end
+end
+
+
+function Navigator:_startEnterFrame( func )
+	Runtime:addEventListener( 'enterFrame', func )
+end
+
+function Navigator:_stopEnterFrame( func )
+	Runtime:removeEventListener( 'enterFrame', func )
+end
+
+
+function Navigator:_startReverse( func )
+	local start_time = system.getTimer()
+	local duration = self._trans_time
+	local rev_f -- forward
+
+	rev_f = function(e)
+		local delta_t = e.time-start_time
+		local perc = 100-(delta_t/duration*100)
+		if perc <= 0 then
+			perc = 0
+			self:_stopEnterFrame( rev_f )
+		end
+		func( perc )
+	end
+	self:_startEnterFrame( rev_f )
+end
+
+function Navigator:_startForward( func )
+	local start_time = system.getTimer()
+	local duration = self._trans_time
+	local frw_f -- forward
+
+	frw_f = function(e)
+		local delta_t = e.time-start_time
+		local perc = delta_t/duration*100
+		if perc >= 100 then
+			perc = 100
+			self:_stopEnterFrame( frw_f )
+		end
+		func( perc )
+	end
+	self:_startEnterFrame( frw_f )
+end
+
+
+-- can be retreived by another object (ie, NavBar)
+function Navigator:_getNextTrans()
+	return self:_getTransition( self._top_view, self._new_view, self.FORWARD )
+end
+
+function Navigator:_gotoNextView( animate )
+	-- print( "Navigator:_gotoNextView", animate )
+	local func = self:_getNextTrans()
+	if not animate then
+		func( 100 )
+	else
+		self:_startForward( func )
+	end
+end
+
+
+-- can be retreived by another object (ie, NavBar)
+function Navigator:_getPrevTrans()
+	-- print( "Navigator:_getPrevTrans" )
+	return self:_getTransition( self._back_view, self._top_view, self.REVERSE )
+end
+
+function Navigator:_gotoPrevView( animate )
+	-- print( "Navigator:_gotoPrevView" )
+	local func = self:_getPrevTrans()
+	if not animate then
+		func( 0 )
+	else
+		self:_startReverse( func )
+	end
+end
+
+
+function Navigator:_getTransition( from_view, to_view, direction )
+	-- print( "Navigator:_getTransition", from_view, to_view, direction )
+	local W, H = self._width, self._height
+	local H_CENTER, V_CENTER = W*0.5, H*0.5
+	local MARGINS = self.MARGINS
+
+	local callback, nav_callback
+	local stack, stack_size, stack_offset
+
+	-- calcs for showing left/back buttons
+	stack_offset = 0
+	if direction==self.FORWARD then
+		self:_addToView( to_view )
+		nav_callback = self:_getPushNavBarTransition( to_view )
+		stack_offset = 0
+	else
+		nav_callback = self:_getPopNavBarTransition()
+		stack_offset = 1
+	end
+
+	stack, stack_size = self._views, #self._views
+
+	callback = function( percent )
+		-- print( ">>trans", percent )
+		local dec_p = percent/100
+		local FROM_X_OFF = H_CENTER/2*dec_p
+		local TO_X_OFF = W*dec_p
+
+		if nav_callback then nav_callback( percent ) end
+
+
+		if percent==0 then
+			--== edge of transition ==--
+
+			--== Finish up
+
+			if direction==self.REVERSE then
+				local view = tremove( stack )
+				self:_removeFromView( view )
+
+				self._top_view = from_view
+				self._new_view = nil
+				self._back_view = stack[ #stack-1 ] -- get previous
+			end
+
+			if from_view then
+				from_view.isVisible = true
+				from_view.x = 0
+			end
+
+			if to_view then
+				to_view.isVisible = false
+			end
+
+
+
+		elseif percent==100 then
+			--== edge of transition ==--
+
+			if to_view then
+				to_view.isVisible = true
+				to_view.x = 0
+			end
+
+			if from_view then
+				from_view.isVisible = false
+				from_view.x = 0-FROM_X_OFF
+			end
+
+
+			if direction==self.FORWARD then
+				self._back_view = from_view
+				self._new_view = nil
+				self._top_view = to_view
+
+				tinsert( self._views, to_view )
+			end
+
+
+		else
+			--== middle of transition ==--
+
+			if to_view then
+				to_view.isVisible = true
+				to_view.x = W-TO_X_OFF
+			end
+
+			if from_view then
+				from_view.isVisible = true
+				from_view.x = 0-FROM_X_OFF
+			end
+
+		end
+
+	end
+
+	return callback
+end
+
+
+-- TODO: add methods
+--[[
+local s2_a = function()
+	if prev_view.viewInMotion then prev_view:viewInMotion( true ) end
+	if prev_view.viewIsVisible then prev_view:viewIsVisible( true ) end
+	if next_view.viewInMotion then next_view:viewInMotion( true ) end
+	if next_view.viewIsVisible then next_view:viewIsVisible( false ) end
+	s2_b()
+end
+--]]
 
 
 
 --====================================================================--
 --== Event Handlers
+
+
+function Navigator:_backButtonRelease_handler( event )
+	-- print( "Navigator:_backButtonRelease_handler", event )
+	self:popViewAnimated()
+end
 
 
 

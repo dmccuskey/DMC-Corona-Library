@@ -102,13 +102,13 @@ end
 --== Public Methods
 
 
-function Megaphone:say( message, params )
+function Megaphone:say( message, data, params )
 	-- print( "Megaphone:say ", message )
 	params = params or {}
 	assert( type(message)=='string', "Megaphone:say, arg 'message' must be a string" )
-	assert( type(params)=='table', "Megaphone:say, arg 'params' must be a table" )
+	assert( params==nil or type(params)=='table', "Megaphone:say, arg 'params' must be a table" )
 	--==--
-	self:dispatchEvent( message, params )
+	self:dispatchEvent( message, data, params )
 end
 function Megaphone:listen( listener )
 	-- print( "Megaphone:listen " )
