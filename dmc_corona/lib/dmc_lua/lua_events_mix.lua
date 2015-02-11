@@ -212,6 +212,15 @@ function Events.dispatchEvent( self, ... )
 	self:_dispatchEvent( f( self, ... ) )
 end
 
+function Events.dispatchRawEvent( self, event )
+	-- print( "Events.dispatchRawEvent", event )
+	assert( type(event)=='table', "wrong type for event" )
+	assert( event.name, "event must have property 'name'")
+	--==--
+	self:_dispatchEvent( event )
+end
+
+
 
 -- addEventListener()
 --
