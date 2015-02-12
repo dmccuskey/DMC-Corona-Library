@@ -149,7 +149,7 @@ local tremove = table.remove
 --====================================================================--
 
 
-local Navigator = newClass( ComponentBase, {name="Base Navigator"} )
+local Navigator = newClass( ComponentBase, {name="DMC Navigator"} )
 
 --== Class Constants
 
@@ -188,6 +188,7 @@ function Navigator:__init__( params )
 
 	self._trans_time = params.transition_time
 	self._btn_back_f = nil
+	self._enterFrame_f = nil
 
 	self._views = {} -- slide list, in order
 
@@ -212,7 +213,7 @@ function Navigator:__undoInit__()
 	self._new_view = nil
 	self._visible_view = nil
 	--==--
-	self:superCall( "__undoInit__" )
+	self:superCall( '__undoInit__' )
 end
 
 
@@ -254,26 +255,21 @@ end
 -- __initComplete__()
 --
 function Navigator:__initComplete__()
-	--print( "Navigator:__initComplete__" )
+	-- print( "Navigator:__initComplete__" )
 	self:superCall( '__initComplete__' )
 	--==--
 	self._btn_back_f = self:createCallback( self._backButtonRelease_handler )
 end
 
-function Navigator:_undoInitComplete()
-	--print( "Navigator:_undoInitComplete" )
+function Navigator:__undoInitComplete__()
+	-- print( "Navigator:__undoInitComplete__" )
 	local o
 
 	self._btn_back_f = nil
 
-	o = self._nav_bar
-	if o then
-		o:removeSelf()
-		self._nav_bar = nil
-	end
-
+	self:cleanUp()
 	--==--
-	self:superCall( '_undoInitComplete' )
+	self:superCall( '__undoInitComplete__' )
 end
 
 -- END: Setup DMC Objects
@@ -293,11 +289,20 @@ function Navigator.__setters:nav_bar( value )
 end
 
 
+function Navigator:cleanUp()
+	-- print( "Navigator:cleanUp" )
+	self:_stopEnterFrame()
+	for i=#self._views, 1, -1 do
+		local view = self:_popStackView()
+		self:_removeViewFromNav( view )
+	end
+end
+
 
 function Navigator:pushView( view, params )
 	-- print( "Navigator:pushView" )
 	params = params or {}
-	assert( view )
+	assert( view, "[ERROR] Navigator:pushView requires a view object" )
 	-- assert( type(item)=='table' and item.isa and item:isa( NavItem ), "pushNavItem: item must be a NavItem" )
 	if params.animate==nil then params.animate=true end
 	--==--
@@ -367,8 +372,17 @@ function Navigator:_getPopNavBarTransition()
 end
 
 
-function Navigator:_addToView( view )
-	-- print( "Navigator:_addToView", view )
+function Navigator:_pushStackView( view )
+	tinsert( self._views, view )
+end
+
+function Navigator:_popStackView( notify )
+	return tremove( self._views )
+end
+
+
+function Navigator:_addViewToNav( view )
+	-- print( "Navigator:_addViewToNav", view )
 	local o = view
 	if o.view then
 		o = o.view
@@ -379,13 +393,22 @@ function Navigator:_addToView( view )
 	view.isVisible=false
 end
 
+function Navigator:_removeViewFromNav( view )
+	-- print( "Navigator:_removeViewFromNav", view )
+	view.isVisible=false
+	self:_dispatchRemovedView( view )
+end
+
+
 
 function Navigator:_startEnterFrame( func )
+	self._enterFrame_f = func
 	Runtime:addEventListener( 'enterFrame', func )
 end
 
-function Navigator:_stopEnterFrame( func )
-	Runtime:removeEventListener( 'enterFrame', func )
+function Navigator:_stopEnterFrame()
+	if not self._enterFrame_f then return end
+	Runtime:removeEventListener( 'enterFrame', self._enterFrame_f )
 end
 
 
@@ -399,7 +422,7 @@ function Navigator:_startReverse( func )
 		local perc = 100-(delta_t/duration*100)
 		if perc <= 0 then
 			perc = 0
-			self:_stopEnterFrame( rev_f )
+			self:_stopEnterFrame()
 		end
 		func( perc )
 	end
@@ -416,7 +439,7 @@ function Navigator:_startForward( func )
 		local perc = delta_t/duration*100
 		if perc >= 100 then
 			perc = 100
-			self:_stopEnterFrame( frw_f )
+			self:_stopEnterFrame()
 		end
 		func( perc )
 	end
@@ -469,7 +492,7 @@ function Navigator:_getTransition( from_view, to_view, direction )
 	-- calcs for showing left/back buttons
 	stack_offset = 0
 	if direction==self.FORWARD then
-		self:_addToView( to_view )
+		self:_addViewToNav( to_view )
 		nav_callback = self:_getPushNavBarTransition( to_view )
 		stack_offset = 0
 	else
@@ -494,8 +517,8 @@ function Navigator:_getTransition( from_view, to_view, direction )
 			--== Finish up
 
 			if direction==self.REVERSE then
-				local view = tremove( stack )
-				self:_dispatchRemovedView( view )
+				local view = self:_popStackView()
+				self:_removeViewFromNav( view )
 
 				self._top_view = from_view
 				self._new_view = nil
@@ -532,7 +555,7 @@ function Navigator:_getTransition( from_view, to_view, direction )
 				self._new_view = nil
 				self._top_view = to_view
 
-				tinsert( self._views, to_view )
+				self:_pushStackView( to_view )
 			end
 
 
