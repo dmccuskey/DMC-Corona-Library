@@ -609,6 +609,18 @@ function Native.newWebView( ... )
 end
 
 
+function Native.setKeyboardFocus( obj )
+	-- print( 'dmc_kozy.setKeyboardFocus', obj )
+
+	if obj~=nil and obj.__is_dmc and obj.setKeyboardFocus then
+		obj:setKeyboardFocus()
+	else
+		Native.super.setKeyboardFocus( obj )
+	end
+end
+
+
+
 
 --====================================================================--
 --== Final Setup

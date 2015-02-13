@@ -382,6 +382,7 @@ local function blessObject( inheritance, params )
 
 	-- add Class property, access via getters:supers()
 	o.__parents = inheritance
+	o.__is_dmc = true
 
 	-- create lookup tables - setters, getters
 	o.__setters = {}
