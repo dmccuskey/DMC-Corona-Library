@@ -116,9 +116,14 @@ end
 
 Lifecycle = {}
 
+Lifecycle.__getters = {}
+Lifecycle.__setters = {}
+
 Lifecycle.NAME = "Lifecycle Mixin"
 
 Lifecycle.LIFECYCLE_UPDATED = 'lifecycle-updated-event'
+Lifecycle.PROPERTY_UPDATED = 'property-updated-event'
+
 
 --======================================================--
 -- Start: Mixin Setup for Lua Objects
@@ -157,6 +162,7 @@ function Lifecycle.resetLifecycle( self, params )
 	assert( type(self.__enterFrame__)=='function' )
 	self.__enterFrame_f = Utils.createObjectCallback( self, self.__enterFrame__ )
 	self.__onUpdate = nil
+	self.__onProperty = nil
 	self.__debug_on = params.debug_on
 
 	-- need to do these manually, because in setters/getters
@@ -171,11 +177,29 @@ function Lifecycle.onUpdate( self, func )
 	self.__onUpdate = func
 end
 
+function Lifecycle.__setters.onProperty( self, func )
+	-- print( 'Lifecycle.onProperty', func )
+	assert( func==nil or type(func)=='function' )
+	--==--
+	self.__onProperty = func
+end
+
 
 function Lifecycle.__invalidateProperties__( self )
 	-- print("Lifecycle.__invalidateProperties__")
 	self.__commit_dirty = true
 	self:__invalidateNextFrame__()
+end
+
+function Lifecycle.__dispatchInvalidateNotification__( self, prop, value )
+	-- print("Lifecycle.__dispatchInvalidateNotification__", prop, value)
+	local e = {
+		name=self.EVENT,
+		type=self.PROPERTY_UPDATED,
+		property=prop,
+		value=value
+	}
+	if self.__onProperty then self.__onProperty( e ) end
 end
 
 function Lifecycle.__invalidateNextFrame__( self )
