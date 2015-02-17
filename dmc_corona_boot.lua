@@ -41,7 +41,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.5.0"
+local VERSION = "1.5.1"
 
 
 
@@ -430,7 +430,10 @@ local DMC_CORONA_CONFIG_FILE = 'dmc_corona.cfg'
 local DMC_CORONA_DEFAULT_SECTION = 'dmc_corona'
 
 -- locations of third party libs used by dmc_corona
-local THIRD_LIBS = { 'lib/dmc_lua' }
+local THIRD_LIBS = {}
+
+--- add 'lib/dmc' location
+tinsert( THIRD_LIBS, tconcat( {'lib','dmc_lua'}, Utils.getSystemSeparator() ) )
 
 local REQ_STACK = {}
 
