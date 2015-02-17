@@ -49,7 +49,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.3.0"
+local VERSION = "1.3.1"
 
 
 
@@ -111,7 +111,6 @@ dmc_lib_data = _G.__dmc_corona
 
 
 
-
 --====================================================================--
 --== DMC WebSockets
 --====================================================================--
@@ -163,7 +162,6 @@ Patch.addAllPatches()
 
 local StatesMix = LuaStatesMixin.StatesMix
 
--- setup some aliases to make code cleaner
 local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
 
@@ -192,6 +190,7 @@ local ERROR_CODES = {
 
 
 local LOCAL_DEBUG = false
+
 
 
 --====================================================================--
@@ -328,23 +327,28 @@ end
 --== Public Methods
 
 
+-- connect()
+--
 function WebSocket:connect()
 	-- print( 'WebSocket:connect' )
 	self:gotoState( WebSocket.STATE_INIT )
 end
 
-
+-- .throttle
+--
 function WebSocket.__setters:throttle( value )
 	-- print( 'WebSocket.__setters:throttle', value )
 	Sockets.throttle = value
 end
 
-
+-- .readyState
+--
 function WebSocket.__getters:readyState()
 	return self._ready_state
 end
 
-
+-- send()
+--
 function WebSocket:send( data, params )
 	-- print( "WebSocket:send", #data )
 	assert( type(data)=='string', "expected string for send()")
@@ -360,7 +364,8 @@ function WebSocket:send( data, params )
 
 end
 
-
+-- close()
+--
 function WebSocket:close()
 	-- print( "WebSocket:close" )
 	local evt = Utils.extend( ws_frame.close.OK, {} )
@@ -371,6 +376,7 @@ end
 
 --====================================================================--
 --== Private Methods
+
 
 --== the following "_on"-methods dispatch event to app client level
 
@@ -390,7 +396,7 @@ function WebSocket:_onMessage( msg )
 	local evt = {
 		message=msg
 	}
-	self:dispatchEvent( WebSocket.ONMESSAGE, evt )
+	self:dispatchEvent( WebSocket.ONMESSAGE, evt, {merge=true} )
 end
 
 function WebSocket:_onClose( params )
@@ -401,7 +407,7 @@ function WebSocket:_onClose( params )
 		code=params.code,
 		reason=params.reason
 	}
-	self:dispatchEvent( self.ONCLOSE, evt )
+	self:dispatchEvent( self.ONCLOSE, evt, {merge=true} )
 end
 
 function WebSocket:_onError( params )
@@ -412,7 +418,7 @@ function WebSocket:_onError( params )
 		code=params.code,
 		reason=params.reason
 	}
-	self:dispatchEvent( self.ONERROR, evt )
+	self:dispatchEvent( self.ONERROR, evt, {merge=true} )
 end
 
 
@@ -1097,9 +1103,9 @@ end
 --======================================================--
 
 
+
 --====================================================================--
 --== Event Handlers
-
 
 
 -- handle connection events from socket
