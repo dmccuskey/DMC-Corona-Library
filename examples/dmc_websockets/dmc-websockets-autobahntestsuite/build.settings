@@ -1,10 +1,15 @@
 settings =
 {
+	plugins =
+	{
+		["plugin.bit"] = { publisherId = "com.coronalabs" },
+		["plugin.openssl"] = { publisherId = "com.coronalabs" }
+	},
 	android =
 	{
 		usesPermissions =
 		{
-			"android.permission.INTERNET",
-		},
-	},  -- end Android
+			"android.permission.INTERNET"
+		}
+	}
 }

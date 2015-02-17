@@ -1,38 +1,39 @@
 --====================================================================--
--- frame.lua (part of dmc_websockets)
+-- dmc_corona/dmc_websockets/frame.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_websockets.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
 
-Copyright (C) 2014 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (C) 2014-2015 David McCuskey. All Rights Reserved.
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
 
 --====================================================================--
--- DMC Corona Library : WebSocket Frame
+--== DMC Corona Library : DMC WebSockets Frame
 --====================================================================--
 
 
@@ -48,21 +49,26 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
+
 
 
 --====================================================================--
--- Imports
+--== Imports
 
-local bit = require 'bit'
-local ByteArray = require 'dmc_websockets.bytearray'
+
+local bit = require 'lib.dmc_lua.bit'
+local ByteArray = require 'lib.dmc_lua.lua_bytearray'
 local Error = require 'dmc_websockets.exception'
-local ProtocolError = Error.ProtocolError
-local Utils = require 'lua_utils'
+local Utils = require 'dmc_utils'
+
 
 
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
+
+local ProtocolError = Error.ProtocolError
 
 local band = bit.band
 local bor = bit.bor
@@ -141,8 +147,10 @@ local VALID_CLOSE_CODES = {
 }
 
 
+
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local bits = function(...)
 	local n = 0
@@ -618,7 +626,6 @@ end
 
 
 return {
-
 	type = FRAME_TYPE,
 	close = CLOSE_CODES,
 	size = {
@@ -631,6 +638,5 @@ return {
 	buildFrames = buildWSFrames,
 	encodeCloseFrameData = encodeCloseFrameData,
 	decodeCloseFrameData = decodeCloseFrameData
-
 }
 

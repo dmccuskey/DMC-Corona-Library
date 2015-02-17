@@ -7,7 +7,7 @@ Config.app = {
 
 Config.deployment = {
 	-- 192.168.0.102, 192.168.3.120
-	server_url = '192.168.2.84', -- or IP
+	server_url = '192.168.3.84', -- or IP
 	server_port = '9001',
 	io_buffering_active = false
 }

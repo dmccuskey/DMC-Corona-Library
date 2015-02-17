@@ -5,27 +5,34 @@
 --
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
--- Copyright (C) 2014 David McCuskey. All Rights Reserved.
+-- Copyright (C) 2014-2015 David McCuskey. All Rights Reserved.
 --====================================================================--
+
 
 
 print( '\n\n##############################################\n\n' )
 
 
+require 'dmc_corona_boot'
+require 'dmc_corona.lib.dmc_lua.lua_bytearray'
+
+
 --====================================================================--
--- Imports
+--== Imports
+
 
 local WebSockets = require 'dmc_corona.dmc_websockets'
 
 local test_cases = require 'test_cases'
-local Patch = require( 'lua_patch' )( 'string-format' )
 
 -- read in app deployment configuration
 gAPP_CONF = require 'app_config'
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 local ws
 local test_idx = 0
@@ -40,8 +47,10 @@ end
 local LOCAL_DEBUG = false
 
 
+
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local doTest, gotoNextTest
 local ws_handler
@@ -53,12 +62,18 @@ local function createURI( params )
 	assert( params.test_index )
 	assert( params.user_agent )
 	--==--
-	return 'ws://%s:%s/runCase?case=%s&agent=%s' % {
+	local vars = {
 		params.server_url,
 		params.server_port,
 		params.test_index,
 		params.user_agent
 	}
+	local url_temp = 'ws://%s:%s/runCase?case=%s&agent=%s'
+	local url = string.format( url_temp, unpack( vars ) )
+	if LOCAL_DEBUG then
+		print( "Testing: ", url )
+	end
+	return url
 end
 
 
@@ -94,6 +109,7 @@ ws_handler = function( event )
 	end
 end
 
+
 doTest = function( test_case )
 	local out = {
 		-- "\n\n=== dmc_websockets: doTest ===\n",
@@ -120,6 +136,7 @@ doTest = function( test_case )
 
 end
 
+
 gotoNextTest = function()
 	-- print( "gotoNextTest" )
 	test_idx = test_idx + 1
@@ -134,8 +151,10 @@ gotoNextTest = function()
 end
 
 
+
 --====================================================================--
--- Main Functions
+--== Main Functions
+
 
 print( "dmc_websockets: Start Autobahn Testing\n\n" )
 gotoNextTest()

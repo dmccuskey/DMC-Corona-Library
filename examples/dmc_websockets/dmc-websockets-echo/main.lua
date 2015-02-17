@@ -1,7 +1,7 @@
 --====================================================================--
--- Websockets Echo
+-- DMC WebSockets Echo
 --
--- Communicate with Websockets echo server
+-- Communicate with websocket.org echo server
 --
 -- Sample code is MIT licensed, the same license which covers Lua itself
 -- http://en.wikipedia.org/wiki/MIT_License
@@ -13,22 +13,27 @@ print( '\n\n##############################################\n\n' )
 
 
 --====================================================================--
--- Imports
+--== Imports
+
 
 local WebSockets = require 'dmc_corona.dmc_websockets'
 -- local Utils = require( "dmc_corona.dmc_utils" )
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Setup, Constants
+
 
 local ws
 local num_msgs = 5
 local count = 0
 
 
+
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local function sendMessage()
 	count = count + 1
@@ -38,8 +43,10 @@ local function sendMessage()
 end
 
 
+
 --====================================================================--
--- Main Functions
+--== Main Functions
+
 
 local function webSocketsEvent_handler( event )
 	-- print( "webSocketsEvent_handler", event.type )
@@ -73,6 +80,7 @@ local function webSocketsEvent_handler( event )
 
 	end
 end
+
 
 ws = WebSockets{
 	uri='ws://echo.websocket.org'
