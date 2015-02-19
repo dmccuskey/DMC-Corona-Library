@@ -81,7 +81,7 @@ end
 
 -- return event unmodified
 --
-function _createCoronaEvent( obj, event )
+local function _createCoronaEvent( obj, event )
 	return event
 end
 
@@ -93,7 +93,7 @@ end
 -- params, table of params
 -- params.merge, boolean, if to merge data (table) in with event table
 --
-function _createDmcEvent( obj, e_type, data, params )
+local function _createDmcEvent( obj, e_type, data, params )
 	params = params or {}
 	if params.merge==nil then params.merge=false end
 	--==--
@@ -119,7 +119,7 @@ end
 
 
 
-function _patch( obj )
+local function _patch( obj )
 
 	obj = obj or {}
 
