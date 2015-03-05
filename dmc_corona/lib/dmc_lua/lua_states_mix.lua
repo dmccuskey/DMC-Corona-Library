@@ -201,6 +201,7 @@ end
 
 
 function States.pushStateStack( self, state_name )
+	assert( self.__state_stack, errStr("no state stack: did you init() ??") )
 	assert( state_name, errStr("no state name given") )
 	tinsert( self.__state_stack, 1, state_name )
 end

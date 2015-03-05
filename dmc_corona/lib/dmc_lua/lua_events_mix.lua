@@ -50,6 +50,8 @@ local VERSION = "0.2.2"
 local Events
 local Utils = {} -- make copying from Utils easier
 
+local sformat = string.format
+
 
 
 --====================================================================--
@@ -229,7 +231,9 @@ end
 -- addEventListener()
 --
 function Events.addEventListener( self, e_name, listener )
-	-- print( "Events.addEventListener", e_name, listener );
+	-- print( "Events.addEventListener", e_name, listener )
+	assert( type(e_name)=='string', sformat( "Events.addEventListener event name should be a string, received '%s'", tostring(e_name)) )
+	assert( type(listener)=='function' or type(listener)=='table', sformat( "Events.addEventListener callback should be function or object, received '%s'", tostring(listener) ))
 
 	-- Sanity Check
 

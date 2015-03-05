@@ -638,7 +638,7 @@ function Wamp:_wamp_close( reason, message )
 	end
 
 	if had_session then
-		self:dispatchEvent( Wamp.ONDISCONNECT, { reason=reason, message=message } )
+		self:dispatchEvent( Wamp.ONDISCONNECT, { reason=reason, message=message }, {merge=true} )
 	end
 
 end
@@ -750,7 +750,7 @@ function Wamp:_wampSessionEvent_handler( event )
 
 	elseif e_type == session.ONCHALLENGE then
 		assert( event.challenge )
-		self:dispatchEvent( Wamp.ONCHALLENGE, { challenge=event.challenge } )
+		self:dispatchEvent( Wamp.ONCHALLENGE, { challenge=event.challenge }, {merge=true} )
 
 	end
 
