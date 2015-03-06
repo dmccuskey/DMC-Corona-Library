@@ -74,19 +74,19 @@ end
 
 
 -- create general output string
-function outStr( msg )
+local function outStr( msg )
 	return sformat( "DMC Lifecycle (debug) :: %s", tostring(msg) )
 end
 
 -- create general error string
-function errStr( msg )
+local function errStr( msg )
 	return sformat( "\n\n[ERROR] DMC Lifecycle ::  %s\n\n", tostring(msg) )
 end
 
 
 
 
-function _patch( obj )
+local function _patch( obj )
 
 	obj = obj or {}
 

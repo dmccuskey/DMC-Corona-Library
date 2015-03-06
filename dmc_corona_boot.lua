@@ -106,7 +106,7 @@ function Utils.split( str, sep )
 	if sep == nil then
 		sep = "%s"
 	end
-	t={} ; i=1
+	local t, i = {}, 1
 	for str in string.gmatch( str, "([^"..sep.."]+)") do
 		t[i] = str
 		i = i + 1
@@ -305,6 +305,7 @@ function File.processKeyLine( line )
 	key_type = File.processKeyType( key_type )
 
 	-- get final value
+	local key_value
 	if key_type and Utils.propertyIn( KEY_TYPES, key_type ) then
 		local method = 'castTo_'..key_type
 		key_value = File[method]( trim )
