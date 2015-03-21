@@ -49,7 +49,7 @@ local VERSION = "0.1.0"
 
 local tinsert = table.insert
 local tremove = table.remove
-local sformat = string.format
+local sfmt = string.format
 
 local Utils
 local Lifecycle
@@ -75,12 +75,12 @@ end
 
 -- create general output string
 local function outStr( msg )
-	return sformat( "DMC Lifecycle (debug) :: %s", tostring(msg) )
+	return sfmt( "DMC Lifecycle (debug) :: %s", tostring(msg) )
 end
 
 -- create general error string
 local function errStr( msg )
-	return sformat( "\n\n[ERROR] DMC Lifecycle ::  %s\n\n", tostring(msg) )
+	return sfmt( "\n\n[ERROR] DMC Lifecycle ::  %s\n\n", tostring(msg) )
 end
 
 

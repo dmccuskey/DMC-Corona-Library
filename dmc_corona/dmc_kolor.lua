@@ -165,6 +165,17 @@ local function initialize()
 end
 
 
+--== Test Functions
+
+local function dAToTest( value )
+	return value
+end
+
+local function RGBToTest( value )
+	return value
+end
+
+
 --== Decimal Alpha to HDR
 
 local function dAToHDR( value )
@@ -183,42 +194,39 @@ end
 
 --== Decimal RGB to HDR
 
-local function dRGBToHDR( ... )
-	local args = {...}
-	assert( args[1]>=0 and args[1]<=1 )
-	assert( args[2]>=0 and args[2]<=1 )
-	assert( args[3]>=0 and args[3]<=1 )
-	if args[4] then
-		assert( args[4]>=0 and args[4]<=1, "incorrect range for alpha" )
+local function dRGBToHDR( c_tbl )
+	assert( c_tbl[1]>=0 and c_tbl[1]<=1, "incorrect value for color component" )
+	assert( c_tbl[2]>=0 and c_tbl[2]<=1, "incorrect value for color component" )
+	assert( c_tbl[3]>=0 and c_tbl[3]<=1, "incorrect value for color component" )
+	if c_tbl[4] then
+		assert( c_tbl[4]>=0 and c_tbl[4]<=1, "incorrect range for alpha" )
 	end
-	return {...}
+	return c_tbl
 end
 
 
 --== Hex RGB to HDR
 
 -- translate 255 to 1.0
-local function hRGBToHDR( ... )
+local function hRGBToHDR( c_tbl )
 	-- print( "hRGBToHDR" )
-	local args = { ... }
-
-	if args[2] == nil then
+	if c_tbl[2] == nil then
 		-- greyscale
-		args[2] = args[1]
-		args[3] = args[1]
-	elseif args[3] == nil then
+		c_tbl[2] = c_tbl[1]
+		c_tbl[3] = c_tbl[1]
+	elseif c_tbl[3] == nil then
 		-- greyscale with alpha
-		args[2] = args[1]
-		args[3] = args[1]
-		args[4] = Kolor.translateAlpha( args[2] )
-	elseif args[4] == nil then
+		c_tbl[2] = c_tbl[1]
+		c_tbl[3] = c_tbl[1]
+		c_tbl[4] = Kolor.translateAlpha( c_tbl[2] )
+	elseif c_tbl[4] == nil then
 		-- RGB, no alpha
 	else
 		-- RGB, with alpha
-		args[4] = Kolor.translateAlpha( args[4] )
+		c_tbl[4] = Kolor.translateAlpha( c_tbl[4] )
 	end
 
-	return { args[1]/255, args[2]/255, args[3]/255, args[4] }
+	return { c_tbl[1]/255, c_tbl[2]/255, c_tbl[3]/255, c_tbl[4] }
 end
 
 
@@ -250,7 +258,7 @@ Kolor.dRGBA ='dRGBA'
 Kolor.hRGBA ='hRGBA'
 Kolor.hRGBdA ='hRGBdA'
 
-Kolor._NAMED_COLORS = {}
+Kolor._NAMED_COLORS = nil -- set to table when loaded
 
 Kolor._VALID_FORMATS = {
 	Kolor.dRGBA,
@@ -265,11 +273,34 @@ Kolor._FORMAT = nil -- set format
 Kolor._COLOR_FUNC = nil -- color trans function
 Kolor._ALPHA_FUNC = nil -- alpha trans function
 
+Kolor._RUN_MODE = 'run'
+Kolor.isTesting = Kolor._RUN_MODE=='run'
 
 
 --====================================================================--
 --== Public Functions
 
+
+--== Initialize Kolor Set
+
+function Kolor.initializeKolorSet( func, mode )
+	-- print( "Kolor.initializeKolorSet", mode )
+	assert( func, "Kolor.initializeKolorSet requires function" )
+	mode = mode or Kolor.dRGBA
+	--==--
+	local format = Kolor.getColorFormat()
+	Kolor.setColorFormat( mode )
+	func()
+	Kolor.setColorFormat( format )
+end
+
+function Kolor.setRunMode( mode )
+	Kolor._RUN_MODE = mode
+	Kolor.isTesting = ( Kolor._RUN_MODE=='run' )
+end
+
+
+--== Color Format
 
 function Kolor.getColorFormat()
 	return Kolor._FORMAT
@@ -287,36 +318,22 @@ function Kolor.setColorFormat( value )
 end
 
 
+--== Color Translation
+
+-- colors ( 5,5,5,5 )
 function Kolor.translateColor(...)
 	local args = {...}
-	local tstr = tostring
-	local color, tmp, key
 	local arg1 = args[1]
+	local arg1Type = type(arg1)
 
-	if type( arg1 )=='number' then
-		-- regular RGB
-		color = Kolor._COLOR_FUNC(...)
-
-	elseif type( arg1 )=='table' and arg1.type=='gradient' then
-		-- gradient RGB
-		tmp = arg1
-		tmp.color1 = Kolor._COLOR_FUNC( tmp.color1 )
-		tmp.color2 = Kolor._COLOR_FUNC( tmp.color2 )
-		color = tmp
-
-	elseif type( arg1 ) == 'string' and arg1:sub(1,1)=='#' then
-		-- hex string
-		color = HexToHDR( arg1, args[2] )
-
-	elseif type( arg1 ) == 'string' then
-		-- named color
-		Kolor.getNamedColor( arg1 )
-
+	if arg1Type=='nil' then
+		return nil
+	elseif arg1Type=='table' and arg1.type==nil then
+		-- not gradient
+		return Kolor._translateColor( arg1 )
 	else
-		error( sfmt("ERROR dmc_kolor: unknown RGB color type '%s'", type( arg1 ) ))
+		return Kolor._translateColor( args )
 	end
-
-	return color
 end
 
 function Kolor.translateAlpha( alpha )
@@ -324,6 +341,13 @@ function Kolor.translateAlpha( alpha )
 	return Kolor._ALPHA_FUNC( alpha )
 end
 
+
+--======================================================--
+-- Named-Color Functions
+
+function Kolor.purgeNamedColors()
+	Kolor._NAMED_COLORS = nil
+end
 
 -- Lua path, 'colors.data_file'
 function Kolor.importColorFile( path )
@@ -339,13 +363,16 @@ function Kolor.addColors( struct, params )
 	if params.format==nil then params.format=Kolor._DEFAULT_FORMAT end
 	--==--
 	local c, a = Kolor._getTranslateFunctions( params.format )
+	Kolor._NAMED_COLORS = Kolor._NAMED_COLORS or {}
 	Kolor._processColors( Kolor._NAMED_COLORS, struct, c, a )
 end
 
 function Kolor.getNamedColor( name )
 	assert( type(name)=='string' )
 	--==--
-	return Kolor._NAMED_COLORS[ name ]
+	assert( type(Kolor._NAMED_COLORS)=='table', "Kolor:getNamedColor there are no named colors loaded" )
+	local key = string.lower( name )
+	return Kolor._NAMED_COLORS[ key ]
 end
 
 
@@ -358,7 +385,10 @@ function Kolor._getTranslateFunctions( format )
 	assert( Utils.propertyIn( Kolor._VALID_FORMATS, format ), sfmt( "Kolor.setColorFormat unknown color format '%s'", tostring(format) ))
 	--==--
 	local c, a
-	if format == Kolor.dRGBA then
+	if Kolor.isTesting then
+		c = RGBToTest
+		a = dAToTest
+	elseif format == Kolor.dRGBA then
 		c = dRGBToHDR
 		a = dAToHDR
 	elseif format==Kolor.hRGBA then
@@ -371,6 +401,46 @@ function Kolor._getTranslateFunctions( format )
 	return c, a
 end
 
+-- param c_tbl, array of color values
+--
+function Kolor._translateColor( c_tbl )
+	-- print( "Kolor._translateColor" )
+	local tstr = tostring
+	local color, tmp, key
+	local arg1 = c_tbl[1]
+	local arg1Type = type(arg1)
+
+	-- print( unpack( c_tbl ) )
+
+	if arg1Type=='number' then
+		-- regular RGB
+		color = Kolor._COLOR_FUNC( c_tbl )
+
+	elseif arg1Type=='table' and arg1.type=='gradient' then
+		-- gradient RGB
+		tmp = arg1
+		tmp.color1 = Kolor._COLOR_FUNC( tmp.color1 )
+		tmp.color2 = Kolor._COLOR_FUNC( tmp.color2 )
+		color = tmp
+
+	elseif arg1Type=='string' and arg1:sub(1,1)=='#' then
+		-- hex string
+		color = HexToHDR( arg1, c_tbl[2] )
+
+	elseif arg1Type=='string' then
+		-- named color
+		color = Kolor.getNamedColor( arg1 )
+
+	else
+		error( sfmt("ERROR dmc_kolor: unknown RGB color type '%s'", type( arg1 ) ))
+	end
+
+	-- print( unpack( color ) )
+
+	return color
+end
+
+
 
 -- _processColors()
 -- loop through key/value in table
@@ -378,24 +448,26 @@ end
 --
 function Kolor._processColors( tbl, data, color_f, alpha_f )
 
-	local function translateColor(...)
-		local args = {...}
-		local color
+	-- string or table
+	local function translateColor( value )
+		local val_type = type(value)
 
-		if type( args[1] )=='table' then
-			color = color_f( unpack( args[1] ) )
-		elseif type( args[1] ) == 'string' and args[1]:sub(1,1)=='#' then
-			color = HexToHDR( args[1], args[2] )
+		if val_type=='table' then
+			color = color_f( value )
+		elseif val_type=='string' and value:sub(1,1)=='#' then
+			color = HexToHDR( value )
 		else
-			error( sfmt("ERROR dmc_kolor: unknown RGB color type '%s'", type( args[1] ) ))
+			error( sfmt("ERROR dmc_kolor: unknown RGB color type '%s'", type( value ) ))
 		end
 
 		return color
 	end
 
-	for name, color in pairs( data ) do
-		-- print( name, color )
-		tbl[name] = translateColor( color )
+	local slower = string.lower
+	for name, value in pairs( data ) do
+		-- print( name, value )
+		local key = slower( name )
+		tbl[ key ] = translateColor( value )
 	end
 end
 

@@ -59,7 +59,7 @@ local VERSION = "1.2.2"
 local assert, type, rawget, rawset = assert, type, rawget, rawset
 local getmetatable, setmetatable = getmetatable, setmetatable
 
-local sformat = string.format
+local sfmt = string.format
 local tinsert = table.insert
 local tremove = table.remove
 
@@ -484,7 +484,7 @@ end
 
 
 function ClassBase:__tostring__( id )
-	return sformat( "%s (%s)", self.NAME, id )
+	return sfmt( "%s (%s)", self.NAME, id )
 end
 
 

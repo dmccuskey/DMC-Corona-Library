@@ -359,7 +359,7 @@ function Navigator:_getPushNavBarTransition( view, params )
 	if self._nav_bar then
 		o = view.nav_bar_item
 		assert( o, "view doesn't have nav bar item" )
-		o.back_button.onRelease = self._btn_back_f
+		o.backButton.onRelease = self._btn_back_f
 		callback = self._nav_bar:_pushNavItemGetTransition( o, {} )
 	end
 	return callback
