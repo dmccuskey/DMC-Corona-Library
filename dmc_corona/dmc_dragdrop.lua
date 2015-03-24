@@ -729,7 +729,7 @@ function DragDrop:touch( e )
 		self._drop_target = newDropTarget
 
 
-	elseif phase=='ended' or phase=='canceled' then
+	elseif phase=='ended' or phase=='cancelled' then
 
 		local animateFunc
 
