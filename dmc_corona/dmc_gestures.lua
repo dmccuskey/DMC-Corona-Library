@@ -228,7 +228,7 @@ end
 --- Optional parameters for newPinchGesture()
 -- @string id a name for the gesture, available in events
 -- @object delegate a delegate object to control this gesture
--- @boolean reset_scale reset scale to 1.0 after pinch, default true
+-- @bool reset_scale reset scale to 1.0 after pinch, default true
 -- @int threshold touch movement required to recognize the gesture, default 5
 -- @int time_limit max time allowed to recognize the gesture, default 500ms
 -- @table newPinchParams
