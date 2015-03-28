@@ -1,8 +1,7 @@
 --===================================================================--
 -- dmc_corona/dmc_touchmanager.lua
 --
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: http://docs.davidmccuskey.com/dmc-touchmanager
 --===================================================================--
 
 --[[
@@ -30,6 +29,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --]]
+
+
+--- Touch Manager Module
+-- @module TouchManager
+-- @usage
+-- local TouchMgr = require 'dmc_corona.dmc_touchmanager'
+-- local o = createDisplayObject( color )
+-- TouchMgr.register( o )
 
 
 --====================================================================--
@@ -406,11 +413,11 @@ end
 --======================================================--
 -- Client Handler
 
---- register a Display Object and handler with Touch Manager
---  puts Touch Manager in control of touch events for this object
+--- register a Display Object and handler.
+--  puts Touch Manager in control of touch events for this object.
 --
 -- @object t_obj a Corona-type object
--- @param handler the function or object to handle 'touch' events
+-- @param[opt] handler the function or object to handle 'touch' events. if missing, will default to t_obj
 --
 function TouchMgr.register( t_obj, handler )
 	assert( t_obj, "ERROR: TouchMgr.register missing touch object parameter" )
@@ -420,11 +427,11 @@ function TouchMgr.register( t_obj, handler )
 	struct:addListener( handler )
 end
 
---- unregister a Display Object and handler from Touch Manager
--- removes Touch Manager control of touch events for this object
+--- unregister a Display Object and handler.
+-- removes Touch Manager control of touch events for this object.
 --
--- @param obj a Corona-type object
--- @param handler the function handler for the touch event (optional)
+-- @param t_obj a Corona-type object
+-- @param[opt] handler the function or object to handle 'touch' events. if missing, will default to t_obj
 --
 function TouchMgr.unregister( t_obj, handler )
 	assert( t_obj, "ERROR: TouchMgr.unregister missing touch object parameter" )
@@ -437,8 +444,8 @@ function TouchMgr.unregister( t_obj, handler )
 end
 
 
---- sets focus on an object for a single touch event
--- ensures touch event is locked to this touch object
+--- sets focus on an object for a single touch event.
+-- ensures touch event is locked to this touch object.
 --
 -- @object t_obj a Corona-type object
 -- @param event_id id of the touch event
@@ -451,8 +458,8 @@ function TouchMgr.setFocus( t_obj, event_id )
 	TouchMgr._setRegisteredTouch( event_id, t_obj )
 end
 
---- removes focus on an object for a single touch
--- removes touch event lock on this touch object
+--- removes focus on an object for a single touch.
+-- removes touch event lock on this touch object.
 --
 -- @object t_obj a Corona-type object
 -- @param event_id id of the touch event
@@ -486,7 +493,7 @@ function TouchMgr._getRegisteredObjectStruct( t_obj )
 	return struct
 end
 
---- remove touch struct
+-- remove touch struct
 -- only removes if there are no listeners
 --
 function TouchMgr._removeRegisteredObjectStruct( t_obj )
