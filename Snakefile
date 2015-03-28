@@ -42,6 +42,7 @@ module_config = {
 			"dmc_sockets/async_tcp.lua",
 			"dmc_sockets/ssl_params.lua",
 			"dmc_sockets/tcp.lua",
+			"dmc_touchmanager.lua",
 			"dmc_utils.lua",
 			"dmc_wamp.lua",
 			"dmc_wamp/auth.lua",
@@ -81,6 +82,7 @@ module_config = {
 			"dmc-promise",
 			"dmc-sockets",
 			"dmc-states-mixin",
+			"dmc-touchmanager",
 			"dmc-utils",
 			"dmc-wamp",
 			"dmc-websockets"
