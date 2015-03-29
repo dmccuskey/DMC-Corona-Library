@@ -172,6 +172,48 @@ end
 
 
 --======================================================--
+-- newLongPressGesture Support
+
+function Gesture._loadLongPressGestureSupport( params )
+	-- print( "Gesture._loadLongPressGestureSupport" )
+	if Gesture.LongPress then return end
+	--==--
+	local LongPress = require 'dmc_gestures.longpress_gesture'
+	Gesture.LongPress=LongPress
+end
+
+---
+
+--- Optional parameters for newLongPressGesture()
+-- @string id a name for the gesture, available in events
+-- @object delegate a delegate object to control this gesture
+-- @int touches minimum number of taps, default 1
+-- @int max_touches maximum number of taps, default 1
+-- @int threshold movement required to recognize the tap, default 10
+-- @table newLongPressParams
+
+
+--- Create a Long Press Gesture Recognizer.
+-- creates recognizers which watch for drag/pan gestures
+--
+-- @object view Corona Display object
+-- @tparam[opt] table params @{newLongPressParams}
+-- @treturn LongPress a long-press gesture object
+-- @usage local g = Gesture.newLongPressGesture( view )
+--
+function Gesture.newLongPressGesture( view, params )
+	-- print( "Gesture.newLongPressGesture", view )
+	params = params or {}
+	params.view = view
+	--==--
+	if not Gesture.LongPress then Gesture._loadLongPressGestureSupport() end
+	local o = Gesture.LongPress:new( params )
+	Gesture._addGestureToManager( o )
+	return o
+end
+
+
+--======================================================--
 -- newPanGesture Support
 
 function Gesture._loadPanGestureSupport( params )

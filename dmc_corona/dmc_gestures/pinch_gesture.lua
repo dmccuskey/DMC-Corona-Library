@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/pinch_gesture.lua
 --
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/dmc-gestures
 --====================================================================--
 
 --[[
@@ -64,6 +64,7 @@ local Objects = require 'dmc_objects'
 local Utils = require 'dmc_utils'
 
 local Continuous = require 'dmc_gestures.core.continuous_gesture'
+local Constants = require 'dmc_gestures.gesture_constants'
 
 
 
@@ -94,10 +95,7 @@ local PinchGesture = newClass( Continuous, { name="Pinch Gesture" } )
 
 --== Class Constants
 
-PinchGesture.TYPE = 'pinch'
-
-PinchGesture.RECOGNITION_TIME_LIMIT = 500
-PinchGesture.MIN_DISTANCE_THRESHOLD = 5
+PinchGesture.TYPE = Constants.TYPE_PINCH
 
 
 --- Event name constant.
@@ -123,9 +121,8 @@ PinchGesture.MIN_DISTANCE_THRESHOLD = 5
 function PinchGesture:__init__( params )
 	-- print( "PinchGesture:__init__", params )
 	params = params or {}
-	if params.reset_scale==nil then params.reset_scale=true end
-	if params.threshold==nil then params.threshold=PinchGesture.MIN_DISTANCE_THRESHOLD end
-	if params.time_limit==nil then params.time_limit=PinchGesture.RECOGNITION_TIME_LIMIT end
+	if params.reset_scale==nil then params.reset_scale=Constants.PINCH_RESET_SCALE end
+	if params.threshold==nil then params.threshold=Constants.PINCH_THRESHOLD end
 
 	self:superCall( '__init__', params )
 	--==--
@@ -134,20 +131,15 @@ function PinchGesture:__init__( params )
 
 	self._threshold = params.threshold
 	self._reset_scale = params.reset_scale
-	self._max_time = params.time_limit
+
+	self._prev_scale = 1.0
+	self._velocity = 0
 
 	-- internal
 
 	self._max_touches = 2
 	self._min_touches = 2
-
-	self._prev_scale = 1.0
-	self._touch_count = 0
 	self._touch_dist = 0
-	self._velocity = 0
-
-	self._pinch_timer=nil
-	self._fail_timer=nil
 
 end
 
@@ -158,7 +150,6 @@ function PinchGesture:__initComplete__()
 	--== use setters
 	self.reset_scale = self._reset_scale
 	self.threshold = self._threshold
-	self.time = self._time
 end
 
 --[[
@@ -249,22 +240,6 @@ function PinchGesture.__setters:threshold( value )
 end
 
 
---- max time allowed to recognize the gesture (number).
---
--- @function .time_limit
--- @usage print( gesture.time_limit )
--- @usage gesture.time_limit = 500
---
-function PinchGesture.__getters:time_limit()
-	return self._time_limit
-end
-function PinchGesture.__setters:time_limit( value )
-	assert( type(value)=='number' and value>50 )
-	--==--
-	self._time_limit = value
-end
-
-
 -- @TODO
 -- the velocity of the gesture motion (number).
 -- Get Only
@@ -285,7 +260,6 @@ function PinchGesture:_do_reset()
 	-- print( "PinchGesture:_do_reset" )
 	Continuous._do_reset( self )
 	self._velocity=0
-	self._touch_count=0
 	self._touch_dist = 0
 	if self._reset_scale then
 		self._prev_scale = 1.0
@@ -293,73 +267,11 @@ function PinchGesture:_do_reset()
 end
 
 
--- create data structure for Gesture which has been recognized
--- module will add phase=began/changed/ended
-function PinchGesture:_createGestureEvent( event )
-	return {
-		x=event.x,
-		y=event.y,
-		xStart=event.xStart,
-		yStart=event.yStart,
-	}
-end
-
-
-function PinchGesture:_stopFailTimer()
-	-- print( "PinchGesture:_stopFailTimer" )
-	if not self._fail_timer then return end
-	timer.cancel( self._fail_timer )
-	self._fail_timer=nil
-end
-
-function PinchGesture:_startFailTimer()
-	-- print( "PinchGesture:_startFailTimer", self )
-	self:_stopFailTimer()
-	local time = self._max_time
-	local func = function()
-		timer.performWithDelay( 1, function()
-			self:gotoState( PinchGesture.STATE_FAILED )
-			self._fail_timer = nil
-		end)
-	end
-	self._fail_timer = timer.performWithDelay( time, func )
-end
-
-
-function PinchGesture:_stopPinchTimer()
-	-- print( "PinchGesture:_stopPinchTimer" )
-	if not self._pinch_timer then return end
-	timer.cancel( self._pinch_timer )
-	self._pinch_timer=nil
-end
-
-function PinchGesture:_startPinchTimer()
-	-- print( "PinchGesture:_startPinchTimer", self )
-	self:_stopFailTimer()
-	self:_stopPinchTimer()
-	local time = self._max_time
-	local func = function()
-		timer.performWithDelay( 1, function()
-			self:gotoState( PinchGesture.STATE_FAILED )
-			self._pinch_timer = nil
-		end)
-	end
-	self._pinch_timer = timer.performWithDelay( time, func )
-end
-
-
-function PinchGesture:_stopAllTimers()
-	self:_stopFailTimer()
-	self:_stopPinchTimer()
-end
-
-
-
 function PinchGesture:_calculateTouchDistance( touches )
 	-- print( "PinchGesture:_calculateTouchDistance" )
 	local tch={}
-	for k,v in pairs( touches ) do
-		tinsert( tch, v)
+	for _,v in pairs( touches ) do
+		tinsert( tch, v )
 	end
 	local xDelta = tch[1].x-tch[2].x
 	local yDelta = tch[1].y-tch[2].y
@@ -367,7 +279,7 @@ function PinchGesture:_calculateTouchDistance( touches )
 end
 
 function PinchGesture:_calculateTouchChange( touches, o_dist )
-	-- print( "PinchGesture:_calculateTouchChange" )
+	-- print( "PinchGesture:_calculateTouchChange", o_dist )
 	local n_dist = self:_calculateTouchDistance( touches )
 	return mabs( n_dist-o_dist )
 end
@@ -383,12 +295,15 @@ function PinchGesture:_calculateAnchorPoint( x, y )
 end
 
 
-function PinchGesture:_startMultitouchEvent()
-	-- print( "PinchGesture:_startMultitouchEvent" )
+function PinchGesture:_createMultitouchEvent( params )
+	-- print( "PinchGesture:_createMultitouchEvent" )
 	-- update to our "starting" touch
-	local me = Continuous._startMultitouchEvent( self )
-
-	self._touch_dist = self:_calculateTouchDistance( self._touches )
+	params = params or {}
+	--==--
+	local me = Continuous._createMultitouchEvent( self, params )
+	if params.phase==Continuous.BEGAN then
+		self._touch_dist = self:_calculateTouchDistance( self._touches )
+	end
 	local o_dist = self._touch_dist
 	local n_dist = o_dist
 	me.scale = (1-(o_dist-n_dist)/o_dist)*self._prev_scale
@@ -399,9 +314,9 @@ function PinchGesture:_startMultitouchEvent()
 	return me
 end
 
-function PinchGesture:_updateMultitouchEvent()
+function PinchGesture:_updateMultitouchEvent( me, params )
 	-- print( "PinchGesture:_updateMultitouchEvent" )
-	local me = Continuous._updateMultitouchEvent( self )
+	me = Continuous._updateMultitouchEvent( self, me, params )
 
 	local o_dist = self._touch_dist
 	local n_dist = self:_calculateTouchDistance( self._touches )
@@ -409,9 +324,9 @@ function PinchGesture:_updateMultitouchEvent()
 	return me
 end
 
-function PinchGesture:_endMultitouchEvent()
+function PinchGesture:_endMultitouchEvent( me, params )
 	-- print( "PinchGesture:_endMultitouchEvent" )
-	local me = Continuous._endMultitouchEvent( self )
+	me = Continuous._endMultitouchEvent( self, me, params )
 
 	local o_dist = self._touch_dist
 	local n_dist = self:_calculateTouchDistance( self._touches )
@@ -431,40 +346,39 @@ function PinchGesture:touch( event )
 	-- print("PinchGesture:touch", event.phase, event.id, self )
 	Continuous.touch( self, event )
 
-	local _mabs = mabs
 	local phase = event.phase
-	local threshold = self._threshold
 	local state = self:getState()
-	local t_max = self._max_touches
-	local t_min = self._min_touches
 	local touch_count = self._touch_count
-	local touches = self._touches
-	local data
 
 	local is_touch_ok = ( touch_count==2 )
 
 	if phase=='began' then
+		local touches = self._touches
+		local t_max = self._max_touches
+
 		self:_startFailTimer()
+		self._gesture_attempt=true
+
 		if is_touch_ok then
 			self._touch_dist = self:_calculateTouchDistance( touches )
-			self:_startPinchTimer()
+			self:_addMultitouchToQueue( Continuous.BEGAN )
+			self:_startGestureTimer()
 		elseif touch_count>t_max then
 			self:gotoState( PinchGesture.STATE_FAILED )
 		end
 
 	elseif phase=='moved' then
+		local touches = self._touches
+		local threshold = self._threshold
 
 		if state==Continuous.STATE_POSSIBLE then
-			if is_touch_ok and self:_calculateTouchChange( touches, self._touch_dist )>threshold then
-				self:gotoState( Continuous.STATE_BEGAN, event )
-			end
-		elseif state==Continuous.STATE_BEGAN then
 			if is_touch_ok then
-				self:gotoState( Continuous.STATE_CHANGED, event )
-			else
-				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+				self:_addMultitouchToQueue( Continuous.CHANGED )
+				if self:_calculateTouchChange( touches, self._touch_dist )>threshold then
+					self:gotoState( Continuous.STATE_BEGAN, event )
+				end
 			end
-		elseif state==Continuous.STATE_CHANGED then
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
 			if is_touch_ok then
 				self:gotoState( Continuous.STATE_CHANGED, event )
 			else
@@ -496,23 +410,7 @@ end
 --== State Machine
 
 
---== State Recognized ==--
-
-function PinchGesture:do_state_began( params )
-	-- print( "PinchGesture:do_state_began" )
-	self:_stopAllTimers()
-	Continuous.do_state_began( self, params )
-end
-
-
---== State Failed ==--
-
-function PinchGesture:do_state_failed( params )
-	-- print( "PinchGesture:do_state_failed" )
-	self:_stopAllTimers()
-	Continuous.do_state_failed( self, params )
-end
-
+-- none
 
 
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/gesture_manager.lua
 --
--- Documentation:
+-- Documentation: http://docs.davidmccuskey.com/dmc-gestures
 --====================================================================--
 
 --[[
