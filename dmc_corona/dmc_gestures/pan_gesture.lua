@@ -304,7 +304,7 @@ function PanGesture:touch( event )
 				self:gotoState( Continuous.STATE_BEGAN, event )
 			end
 		elseif touch_count>t_max then
-			self:gotoState( PanGesture.STATE_FAILED )
+			self:gotoState( Continuous.STATE_FAILED )
 		end
 
 	elseif phase=='moved' then
@@ -327,7 +327,7 @@ function PanGesture:touch( event )
 		end
 
 	elseif phase=='cancelled' then
-		self:gotoState( PanGesture.STATE_FAILED  )
+		self:gotoState( Continuous.STATE_CANCELLED )
 
 	else -- ended
 		if is_touch_ok then

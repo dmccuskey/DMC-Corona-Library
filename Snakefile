@@ -18,18 +18,24 @@ module_config = {
 			"dmc_error.lua",
 			"dmc_events_mix.lua",
 			"dmc_files.lua",
+
 			"dmc_gestures.lua",
 			"dmc_gestures/core/gesture.lua",
 			"dmc_gestures/core/continuous_gesture.lua",
+			"dmc_gestures/gesture_constants.lua",
 			"dmc_gestures/gesture_manager.lua",
+			"dmc_gestures/longpress_gesture.lua",
 			"dmc_gestures/pan_gesture.lua",
 			"dmc_gestures/pinch_gesture.lua",
 			"dmc_gestures/tap_gesture.lua",
+
 			"dmc_kolor.lua",
 			"dmc_kolor/named_colors_hdr.lua",
 			"dmc_kolor/named_colors_hex.lua",
 			"dmc_kolor/named_colors_rgb.lua",
+
 			"dmc_kozy.lua",
+
 			"dmc_megaphone.lua",
 			"dmc_lifecycle_mix.lua",
 			"dmc_navigator.lua",
@@ -44,6 +50,7 @@ module_config = {
 			"dmc_sockets/tcp.lua",
 			"dmc_touchmanager.lua",
 			"dmc_utils.lua",
+
 			"dmc_wamp.lua",
 			"dmc_wamp/auth.lua",
 			"dmc_wamp/exception.lua",
@@ -54,6 +61,7 @@ module_config = {
 			"dmc_wamp/serializer.lua",
 			"dmc_wamp/types.lua",
 			"dmc_wamp/utils.lua",
+
 			"dmc_websockets.lua",
 			"dmc_websockets/exception.lua",
 			"dmc_websockets/frame.lua",
