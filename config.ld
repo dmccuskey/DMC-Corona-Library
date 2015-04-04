@@ -15,12 +15,14 @@ file = {
 	'dmc_corona/dmc_gestures.lua',
 	'dmc_corona/dmc_gestures/pan_gesture.lua',
 	'dmc_corona/dmc_gestures/pinch_gesture.lua',
-	'dmc_corona/dmc_gestures/tap_gesture.lua'
+	'dmc_corona/dmc_gestures/tap_gesture.lua',
+	'dmc_corona/dmc_touchmanager.lua'
 }
 
 --== Output 
 
-dir = "docs/api"
+style="!fixed"
+dir = "docs/api" 
 output = "index"
 ext = "html"
 
