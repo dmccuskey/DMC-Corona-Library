@@ -76,8 +76,10 @@ local newClass = Objects.newClass
 
 local mabs = math.abs
 local msqrt = math.sqrt
+local tdelay = timer.performWithDelay
 local tinsert = table.insert
 local tremove = table.remove
+local tstr = tostring
 
 
 
@@ -141,6 +143,9 @@ function PinchGesture:__init__( params )
 	self._min_touches = 2
 	self._touch_dist = 0
 
+	self._test_mode = true
+	self._test_evt = nil
+
 end
 
 function PinchGesture:__initComplete__()
@@ -174,9 +179,6 @@ end
 -- @section getters-setters
 
 
---======================================================--
--- START: bogus methods, copied from super class
-
 --- the gesture's id (string).
 -- this is useful to differentiate between
 -- different gestures attached to the same view object
@@ -184,27 +186,18 @@ end
 -- @function .id
 -- @usage print( gesture.id )
 -- @usage gesture.id = "myid"
---
-function PinchGesture.__gs_id() end
 
 --- the gesture's target view (Display Object).
 --
 -- @function .view
 -- @usage print( gesture.view )
 -- @usage gesture.view = DisplayObject
---
-function PinchGesture.__gs_view() end
 
 --- the gesture's delegate (object/table)
 --
 -- @function .delegate
 -- @usage print( gesture.delegate )
 -- @usage gesture.delegate = DisplayObject
---
-function PinchGesture.__gs_delegate() end
-
--- END: bogus methods, copied from super class
---======================================================--
 
 
 
@@ -240,6 +233,13 @@ function PinchGesture.__setters:threshold( value )
 end
 
 
+function PinchGesture.__setters:test_mode( value )
+	assert( type(value)=='boolean' )
+	--==--
+	self._test_mode = value
+end
+
+
 -- @TODO
 -- the velocity of the gesture motion (number).
 -- Get Only
@@ -261,6 +261,7 @@ function PinchGesture:_do_reset()
 	Continuous._do_reset( self )
 	self._velocity=0
 	self._touch_dist = 0
+	self._test_evt = nil
 	if self._reset_scale then
 		self._prev_scale = 1.0
 	end
@@ -331,7 +332,40 @@ function PinchGesture:_endMultitouchEvent( me, params )
 	local o_dist = self._touch_dist
 	local n_dist = self:_calculateTouchDistance( self._touches )
 	me.scale = (1-(o_dist-n_dist)/o_dist)*self._prev_scale
+	self._prev_scale = me.scale
 	return me
+end
+
+
+--== Test Methods
+
+function PinchGesture:_startTestEvent( event )
+	-- print("PinchGesture:_startTestEvent")
+	local offset = 30
+	local evt ={
+		id=tstr( event.id )..'-test',
+		name=event.name,
+		xStart=event.xStart-offset*2,
+		yStart=event.yStart+offset,
+		x=event.xStart-offset*2,
+		y=event.yStart+offset,
+		time=event.time+100,
+		phase=event.phase
+	}
+	tdelay( 100, function()
+		self._test_evt = evt
+		self:touch( evt )
+	end)
+end
+
+function PinchGesture:_endTestEvent( event )
+	-- print("PinchGesture:_endTestEvent")
+	local evt = self._test_evt
+	evt.phase = event.phase
+	tdelay( 100, function()
+		self._test_evt = nil
+		self:touch( evt )
+	end)
 end
 
 
@@ -352,6 +386,7 @@ function PinchGesture:touch( event )
 
 	local is_touch_ok = ( touch_count==2 )
 
+
 	if phase=='began' then
 		local touches = self._touches
 		local t_max = self._max_touches
@@ -365,6 +400,11 @@ function PinchGesture:touch( event )
 			self:_startGestureTimer()
 		elseif touch_count>t_max then
 			self:gotoState( PinchGesture.STATE_FAILED )
+		end
+
+		if self._test_mode and not self._test_evt then
+			-- add extra touch, for testing
+			self:_startTestEvent( event )
 		end
 
 	elseif phase=='moved' then
@@ -390,6 +430,7 @@ function PinchGesture:touch( event )
 		self:gotoState( PinchGesture.STATE_FAILED  )
 
 	else -- ended
+
 		if is_touch_ok then
 			self:gotoState( Continuous.STATE_CHANGED, event )
 		else
@@ -398,6 +439,11 @@ function PinchGesture:touch( event )
 			else
 				self:gotoState( Continuous.STATE_FAILED )
 			end
+		end
+
+		if self._test_mode and self._test_evt then
+			-- remove extra touch, for testing
+			self:_endTestEvent( event )
 		end
 
 	end
