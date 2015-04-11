@@ -198,7 +198,7 @@ end
 --
 -- @object view Corona Display object
 -- @tparam[opt] table params @{newLongPressParams}
--- @treturn LongPress a long-press gesture object
+-- @treturn @{Widget.LongPress} a long-press gesture object
 -- @usage local g = Gesture.newLongPressGesture( view )
 --
 function Gesture.newLongPressGesture( view, params )
