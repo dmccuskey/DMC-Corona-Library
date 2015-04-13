@@ -143,7 +143,7 @@ function PinchGesture:__init__( params )
 	self._min_touches = 2
 	self._touch_dist = 0
 
-	self._test_mode = true
+	self._test_mode = false
 	self._test_evt = nil
 
 end
@@ -233,6 +233,9 @@ function PinchGesture.__setters:threshold( value )
 end
 
 
+-- sets Test Mode, which injects another Touch Event.
+-- allows easier testing on the simultator
+--
 function PinchGesture.__setters:test_mode( value )
 	assert( type(value)=='boolean' )
 	--==--
@@ -268,6 +271,23 @@ function PinchGesture:_do_reset()
 end
 
 
+-- experimental
+function PinchGesture:_calculateAnchorPoint( x, y )
+	local view = self.view
+	local w, h = view.width, view.height
+	local xP, yP = view:contentToLocal( x, y )
+	-- print( xP, yP, w/2+xP, h/2+yP, (w/2+xP)/w, (h/2+yP)/h  )
+	return (w/2+xP)/w, (h/2+yP)/h
+end
+
+
+function PinchGesture:_calculateTouchChange( touches, o_dist )
+	-- print( "PinchGesture:_calculateTouchChange", o_dist )
+	local n_dist = self:_calculateTouchDistance( touches )
+	return mabs( n_dist-o_dist )
+end
+
+
 function PinchGesture:_calculateTouchDistance( touches )
 	-- print( "PinchGesture:_calculateTouchDistance" )
 	local tch={}
@@ -279,22 +299,9 @@ function PinchGesture:_calculateTouchDistance( touches )
 	return msqrt( xDelta*xDelta + yDelta*yDelta )
 end
 
-function PinchGesture:_calculateTouchChange( touches, o_dist )
-	-- print( "PinchGesture:_calculateTouchChange", o_dist )
-	local n_dist = self:_calculateTouchDistance( touches )
-	return mabs( n_dist-o_dist )
-end
 
-
--- experimental
-function PinchGesture:_calculateAnchorPoint( x, y )
-	local view = self.view
-	local w, h = view.width, view.height
-	local xP, yP = view:contentToLocal( x, y )
-	-- print( xP, yP, w/2+xP, h/2+yP, (w/2+xP)/w, (h/2+yP)/h  )
-	return (w/2+xP)/w, (h/2+yP)/h
-end
-
+--======================================================--
+--== Multitouch Event Methods
 
 function PinchGesture:_createMultitouchEvent( params )
 	-- print( "PinchGesture:_createMultitouchEvent" )
@@ -337,6 +344,7 @@ function PinchGesture:_endMultitouchEvent( me, params )
 end
 
 
+--======================================================--
 --== Test Methods
 
 function PinchGesture:_startTestEvent( event )

@@ -120,24 +120,32 @@ function Gesture:__init__( params )
 
 	assert( params.view )
 
+	-- save params for later
+	self._gr_params = params
+
 	--== Create Properties ==--
 
-	self._id = params.id
-
+	self._delegate = nil
+	self._id = nil
 	self._view = params.view
 
-	self._delegate = params.delegate
+	-- internal properties
+
+	self._fail_timer=nil
+
+	self._gesture_attempt=false
+	self._gesture_timer=nil
+
+	self._multitouch_evt = nil
+	self._multitouch_queue = {}
 
 	self._touch_count = 0
 	self._total_touch_count = 0
 	self._touches = {} -- keyed on ID
-	self._multitouch_evt = nil
-	self._multitouch_queue = {}
-	self._gesture_attempt=false
-	self._gesture_timer=nil
-	self._fail_timer=nil
 
-	self._gesture_mgr = params.gesture_mgr
+	--== Objects ==--
+
+	self._gesture_mgr = nil
 
 	self:setState( Gesture.STATE_CREATE )
 end
@@ -153,6 +161,16 @@ function Gesture:__initComplete__()
 	-- print( "Gesture:__initComplete__" )
 	self:superCall( ObjectBase, '__initComplete__' )
 	--==--
+
+	local tmp = self._gr_params
+
+	--== Use Setters
+	self.id = tmp.id
+	self.delegate = tmp.delegate
+	self.gesture_mgr = tmp.gesture_mgr
+
+	self._gr_params = nil
+
 	self:gotoState( Gesture.STATE_POSSIBLE )
 end
 
@@ -172,6 +190,28 @@ end
 --====================================================================--
 --== Public Methods
 
+--======================================================--
+-- Getters/Setters
+
+
+function Gesture.__getters:id()
+	return self._id
+end
+function Gesture.__setters:id( value )
+	assert( value==nil or type(value)=='string' )
+	self._id = value
+end
+
+-- delegate
+
+function Gesture.__getters:delegate()
+	return self._delegate
+end
+function Gesture.__setters:delegate( value )
+	assert( value==nil or type(value)=='table' )
+	self._delegate = value
+end
+
 
 function Gesture.__getters:gesture_mgr()
 	return self._gesture_mgr
@@ -184,24 +224,28 @@ end
 function Gesture.__getters:view()
 	return self._view
 end
-function Gesture.__setters:view( value )
-	self._view = value
-end
+-- function Gesture.__setters:view( value )
+-- 	self._view = value
+-- end
 
 
+-- @TODO
 function Gesture:cancelsTouchesInView()
 	-- print( "Gesture:cancelsTouchesInView" )
 end
 
+-- @TODO
 function Gesture:delaysTouchesBegan()
 	-- print( "Gesture:delaysTouchesBegan" )
 end
 
 
+-- @TODO
 function Gesture:delaysTouchesEnded()
 	-- print( "Gesture:delaysTouchesEnded" )
 end
 
+-- @TODO
 function Gesture:requiresGestureRecognizerToFail()
 	-- print( "Gesture:requiresGestureRecognizerToFail" )
 end
@@ -236,16 +280,20 @@ function Gesture:shouldReceiveTouch()
 	local f = del and del.shouldReceiveTouch
 	local shouldReceiveTouch = true
 	if f then shouldReceiveTouch = f( self ) end
+	assert( type(shouldReceiveTouch)=='boolean', "ERROR: Delegate shouldReceiveTouch, expected return type boolean")
 	return shouldReceiveTouch
 end
 
 
+-- gesture is one which is Recognizing
+--
 function Gesture:forceToFail( gesture )
 	-- print( "Gesture:forceToFail", gesture )
 	local del = self._delegate
-	local f = del and del.shouldRecognizeSimultaneously
+	local f = del and del.shouldRecognizeWith
 	local shouldResume = false
-	if f then shouldResume = f( self, gesture ) end
+	if f then shouldResume = f( del, gesture, self ) end
+	assert( type(shouldResume)=='boolean', "ERROR: Delegate shouldRecognizeWith, expected return type boolean")
 	if not shouldResume then
 		self:gotoState( Gesture.STATE_FAILED, {notify=false} )
 	end

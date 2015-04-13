@@ -222,9 +222,9 @@ function GestureMgr:_resetGestures( params )
 end
 
 
--- _removeActiveGesture()
 -- remove Gesture from remaining Possible Gestures
--- does not fail, gesture stops receiving Touch notifications
+-- gesture stops receiving Touch notifications
+-- does not Fail
 --
 function GestureMgr:_removeActiveGesture( gesture )
 	-- print("GestureMgr:_removeActiveGesture", gesture._id )
@@ -238,11 +238,11 @@ function GestureMgr:_removeActiveGesture( gesture )
 end
 
 
--- _failOtherGestures()
 -- Fail remaining Gestures after getting Recognized notification
+-- @param gesture the Gesture which has Recognized
 --
 function GestureMgr:_failOtherGestures( gesture )
-	-- print("GestureMgr:_failOtherGestures",gesture._id )
+	-- print("GestureMgr:_failOtherGestures", gesture._id )
 	local active = self._active
 	for i=#active, 1, -1 do
 		local g = active[i]
@@ -256,10 +256,77 @@ function GestureMgr:_failOtherGestures( gesture )
 end
 
 
--- _processQuarantine()
--- here we go through groups of touches
--- each group gets filtered to 1, and phase
--- is set to 'began'
+-- gives Touch Event to remaining Possible Gestures
+--
+function GestureMgr:_processQueue( queue, gestures )
+	-- print("GestureMgr:_processQueue", #queue )
+	for i=1,#queue do
+		for j=#gestures, 1, -1 do
+			local g = gestures[j]
+			if g then g:touch( queue[i] ) end
+		end
+	end
+end
+
+
+--======================================================--
+--== EnterFrame Control
+
+function GestureMgr:_stopEnterFrame()
+	local eF = self._enterFrameIterator
+	if not eF then return end
+	Runtime:removeEventListener( 'enterFrame', eF )
+	self._enterFrameIterator = nil
+end
+
+function GestureMgr:_startEnterFrame()
+	local eF = function( e )
+		-- print( "GestureMgr:enterFrame" )
+		local active = self._active
+		local quarantine = self._quarantine
+		local queue = self._queue
+
+		self:_stopEnterFrame()
+		if quarantine then
+			self:_processQuarantine( quarantine, active )
+			self._quarantine = nil -- empty quarantine
+		end
+		if #queue then
+			self:_processQueue( queue, active )
+			self._queue = {} -- empty queue
+		end
+		self:_resetGestures()
+	end
+	Runtime:addEventListener( 'enterFrame', eF )
+	self._enterFrameIterator = eF
+end
+
+
+--======================================================--
+--== Quarantine Control
+
+function GestureMgr:_addToQuarantine( quarantine, touch )
+	-- print("GestureMgr:_addToQuarantine", touch.phase )
+	if quarantine==nil then quarantine={} end
+	--==--
+	quarantine[ touch.id ] = { touch }
+	return quarantine
+end
+
+-- returns true/false, whether added to quarantine
+--
+function GestureMgr:_checkQuarantine( quarantine, touch )
+	-- print("GestureMgr:_checkQuarantine", touch.phase )
+	local isQuarantined = quarantine and quarantine[ touch.id ]
+	if isQuarantined then
+		tinsert( isQuarantined, touch )
+	end
+	return (isQuarantined~=nil)
+end
+
+-- process the groups of stored touches
+-- each group gets filtered to 1 Touch Event,
+-- and its phase is set to 'began'
 --
 function GestureMgr:_processQuarantine( quarantine, gestures )
 	-- print("GestureMgr:_processQuarantine", quarantine, gestures )
@@ -295,69 +362,6 @@ function GestureMgr:_processQuarantine( quarantine, gestures )
 		end
 	end
 end
-
--- _processQueue()
--- gives Touch Event to Possible Gestures
---
-function GestureMgr:_processQueue( queue, gestures )
-	-- print("GestureMgr:_processQueue", #queue )
-	for i=1,#queue do
-		for j=#gestures, 1, -1 do
-			local g = gestures[j]
-			if g then g:touch( queue[i] ) end
-		end
-	end
-end
-
-
-function GestureMgr:_stopEnterFrame()
-	local eF = self._enterFrameIterator
-	if not eF then return end
-	Runtime:removeEventListener( 'enterFrame', eF )
-	self._enterFrameIterator = nil
-end
-
-function GestureMgr:_startEnterFrame()
-	local eF = function( e )
-		-- print( "GestureMgr:enterFrame" )
-		local active = self._active
-		local quarantine = self._quarantine
-		local queue = self._queue
-
-		self:_stopEnterFrame()
-		if quarantine then
-			self:_processQuarantine( quarantine, active )
-			self._quarantine = nil -- empty quarantine
-		end
-		if #queue then
-			self:_processQueue( queue, active )
-			self._queue = {} -- empty queue
-		end
-		self:_resetGestures()
-	end
-	Runtime:addEventListener( 'enterFrame', eF )
-	self._enterFrameIterator = eF
-end
-
-
-function GestureMgr:_addToQuarantine( quarantine, touch )
-	-- print("GestureMgr:_addToQuarantine", touch.phase )
-	if quarantine==nil then quarantine={} end
-	--==--
-	quarantine[ touch.id ] = { touch }
-	return quarantine
-end
-
--- returns true/false, whether added to quarantine
-function GestureMgr:_checkQuarantine( quarantine, touch )
-	-- print("GestureMgr:_checkQuarantine", touch.phase )
-	local isQuarantined = quarantine and quarantine[ touch.id ]
-	if isQuarantined then
-		tinsert( isQuarantined, touch )
-	end
-	return (isQuarantined~=nil)
-end
-
 
 
 --====================================================================--
