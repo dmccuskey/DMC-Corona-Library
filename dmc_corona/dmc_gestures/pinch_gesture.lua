@@ -347,16 +347,17 @@ end
 --======================================================--
 --== Test Methods
 
-function PinchGesture:_startTestEvent( event )
-	-- print("PinchGesture:_startTestEvent")
+function PinchGesture:_startTestTouchEvent( event )
+	-- print("PinchGesture:_startTestTouchEvent")
 	local offset = 30
+	local xOff, yOff = 2, 0
 	local evt ={
 		id=tstr( event.id )..'-test',
 		name=event.name,
-		xStart=event.xStart-offset*2,
-		yStart=event.yStart+offset,
-		x=event.xStart-offset*2,
-		y=event.yStart+offset,
+		xStart=event.xStart-offset*xOff,
+		yStart=event.yStart+offset*yOff,
+		x=event.xStart-offset*xOff,
+		y=event.yStart+offset*yOff,
 		time=event.time+100,
 		phase=event.phase
 	}
@@ -366,8 +367,8 @@ function PinchGesture:_startTestEvent( event )
 	end)
 end
 
-function PinchGesture:_endTestEvent( event )
-	-- print("PinchGesture:_endTestEvent")
+function PinchGesture:_endTestTouchEvent( event )
+	-- print("PinchGesture:_endTestTouchEvent")
 	local evt = self._test_evt
 	evt.phase = event.phase
 	tdelay( 100, function()
@@ -412,7 +413,7 @@ function PinchGesture:touch( event )
 
 		if self._test_mode and not self._test_evt then
 			-- add extra touch, for testing
-			self:_startTestEvent( event )
+			self:_startTestTouchEvent( event )
 		end
 
 	elseif phase=='moved' then
@@ -451,7 +452,7 @@ function PinchGesture:touch( event )
 
 		if self._test_mode and self._test_evt then
 			-- remove extra touch, for testing
-			self:_endTestEvent( event )
+			self:_endTestTouchEvent( event )
 		end
 
 	end

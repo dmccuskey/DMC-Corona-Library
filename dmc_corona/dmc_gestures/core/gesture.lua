@@ -353,7 +353,6 @@ end
 --======================================================--
 -- Gesture Timers
 
-
 function Gesture:_stopFailTimer()
 	-- print( "Gesture:_stopFailTimer" )
 	if not self._fail_timer then return end
@@ -403,8 +402,6 @@ function Gesture:_stopAllTimers()
 	self:_stopFailTimer()
 	self:_stopGestureTimer()
 end
-
-
 
 
 --======================================================--

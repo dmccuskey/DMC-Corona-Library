@@ -264,11 +264,71 @@ end
 --== Private Methods
 
 
+--- calculate the "middle" of touch points in this gesture
+-- @tparam table touches
+-- @return Coordinate table of coordinates
+--
+function PanGesture:_calculateCentroid( touches )
+	-- print("PanGesture:_calculateCentroid" )
+	local cnt=0
+	local x,y = 0,0
+	for _, te in pairs( touches ) do
+		x=x+te.x ; y=y+te.y
+		cnt=cnt+1
+	end
+	return {x=x/cnt,y=y/cnt}
+end
+
+
 function PanGesture:_do_reset()
 	-- print( "PanGesture:_do_reset" )
 	Continuous._do_reset( self )
 	self._velocity=0
 end
+
+
+--======================================================--
+--== Multitouch Event Methods
+
+
+function PanGesture:_createMultitouchEvent( params )
+	-- print( "PanGesture:_createMultitouchEvent" )
+	-- update to our "starting" touch
+	params = params or {}
+	--==--
+	local me = Continuous._createMultitouchEvent( self, params )
+
+	local pos = self:_calculateCentroid( self._touches )
+	me.xStart=pos.x
+	me.yStart=pos.y
+	me.x=pos.x
+	me.y=pos.y
+
+	return me
+end
+
+
+function PanGesture:_updateMultitouchEvent( me, params )
+	-- print( "PanGesture:_updateMultitouchEvent" )
+	me = Continuous._updateMultitouchEvent( self, me, params )
+
+	local pos = self:_calculateCentroid( self._touches )
+	me.x, me.y = pos.x, pos.y
+
+	return me
+end
+
+
+function PanGesture:_endMultitouchEvent( me, params )
+	-- print( "PanGesture:_endMultitouchEvent" )
+	me = Continuous._endMultitouchEvent( self, me, params )
+
+	local pos = self:_calculateCentroid( self._touches )
+	me.x, me.y = pos.x, pos.y
+
+	return me
+end
+
 
 
 
