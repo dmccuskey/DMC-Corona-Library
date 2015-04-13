@@ -22,6 +22,7 @@ module_config = {
 			"dmc_gestures.lua",
 			"dmc_gestures/core/gesture.lua",
 			"dmc_gestures/core/continuous_gesture.lua",
+			"dmc_gestures/delegate_gesture.lua",
 			"dmc_gestures/gesture_constants.lua",
 			"dmc_gestures/gesture_manager.lua",
 			"dmc_gestures/longpress_gesture.lua",
