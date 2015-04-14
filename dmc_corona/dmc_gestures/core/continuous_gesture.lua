@@ -297,7 +297,7 @@ function Continuous:state_possible( next_state, params )
 		self:do_state_possible( params )
 
 	else
-		print( "WARNING :: Continuous:state_possible " .. tstr( next_state ) )
+		pwarn( sfmt( "Continuous:state_possible unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -333,7 +333,7 @@ function Continuous:state_began( next_state, params )
 		self:do_state_cancelled( params )
 
 	else
-		print( "WARNING :: Continuous:state_began " .. tstr( next_state ) )
+		pwarn( sfmt( "Continuous:state_began unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -367,7 +367,7 @@ function Continuous:state_changed( next_state, params )
 		self:do_state_cancelled( params )
 
 	else
-		print( "WARNING :: Continuous:state_changed " .. tstr( next_state ) )
+		pwarn( sfmt( "Continuous:state_changed unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -405,7 +405,7 @@ function Continuous:state_cancelled( next_state, params )
 		self:do_state_possible( params )
 
 	else
-		print( "WARNING :: Continuous:state_cancelled " .. tstr( next_state ) )
+		pwarn( sfmt( "Continuous:state_cancelled unknown transition '%s'", tstr( next_state )))
 	end
 end
 

@@ -57,13 +57,19 @@ local Utils = {} -- make copying easier
 
 local lua_patch_data = {
 	string_format_active = false,
-	table_pop_active = false
+	table_pop_active = false,
+	print_output_active = false
 }
 
 local PATCH_TABLE_POP = 'table-pop'
 local PATCH_STRING_FORMAT = 'string-format'
+local PATCH_PRINT_OUTPUT = 'print-output'
 local addTablePopPatch, removeTablePopPatch
 local addStringFormatPatch, removeStringFormatPatch
+local addPrintOutputPatch, removePrintOutputPatch
+
+local sfmt = string.format
+local tstr = tostring
 
 
 
@@ -110,6 +116,9 @@ local function addLuaPatch( input )
 		elseif patch_name == PATCH_STRING_FORMAT then
 			addStringFormatPatch()
 
+		elseif patch_name == PATCH_PRINT_OUTPUT then
+			addPrintOutputPatch()
+
 		else
 			error( "Lua Patch:: unknown patch name '" .. tostring( patch ) .. "'" )
 		end
@@ -141,6 +150,9 @@ local function removeLuaPatch( input )
 		elseif patch_name == PATCH_STRING_FORMAT then
 			removeStringFormatPatch()
 
+		elseif patch_name == PATCH_PRINT_OUTPUT then
+			removePrintOutputPatch()
+
 		else
 			error( "Lua Patch:: unknown patch name '" .. tostring( patch ) .. "'" )
 		end
@@ -159,10 +171,8 @@ end
 --====================================================================--
 
 
-
---====================================================================--
---== Python-style string formatting
-
+--======================================================--
+-- Python-style string formatting
 
 addStringFormatPatch = function()
 	if lua_patch_data.string_format_active == false then
@@ -181,10 +191,8 @@ removeStringFormatPatch = function()
 end
 
 
-
---====================================================================--
---== Python-style table pop() method
-
+--======================================================--
+-- Python-style table pop() method
 
 -- tablePop()
 --
@@ -213,6 +221,48 @@ removeTablePopPatch = function()
 end
 
 
+--======================================================--
+-- Print Output functions
+
+local function printNotice( str, params )
+	params = params or {}
+	if params.newline==nil then params.newline=true end
+	--==--
+	local prefix = "NOTICE"
+	local nlstr = "\n\n"
+	if not params.newline then nlstr='' end
+	print( sfmt( "%s[%s] %s%s", nlstr, prefix, tstr(str), nlstr ) )
+end
+
+local function printWarning( str, params )
+	params = params or {}
+	if params.newline==nil then params.newline=true end
+	--==--
+	local prefix = "WARNING"
+	local nlstr = "\n\n"
+	if not params.newline then nlstr='' end
+	print( sfmt( "%s[%s] %s%s", nlstr, prefix, tstr(str), nlstr ) )
+end
+
+
+addPrintOutputPatch = function()
+	if lua_patch_data.print_output_active == false then
+		_G.pnotice = printNotice
+		_G.pwarn = printWarning
+		lua_patch_data.print_output_active = true
+	end
+end
+
+removePrintOutputPatch = function()
+	if lua_patch_data.print_output_active == true then
+		_G.pnotice = nil
+		_G.pwarn = nil
+		lua_patch_data.print_output_active = false
+	end
+end
+
+
+
 
 --====================================================================--
 --== Patch Facade
@@ -220,6 +270,10 @@ end
 
 
 return {
+	PATCH_TABLE_POP=PATCH_TABLE_POP,
+	PATCH_STRING_FORMAT=PATCH_STRING_FORMAT,
+	PATCH_PRINT_OUTPUT=PATCH_PRINT_OUTPUT,
+
 	addPatch = addLuaPatch,
 	addAllPatches=addAllLuaPatches,
 	removePatch=removeLuaPatch,

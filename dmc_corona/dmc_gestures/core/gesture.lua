@@ -483,7 +483,7 @@ function Gesture:state_create( next_state, params )
 	elseif next_state == Gesture.STATE_FAILED then
 		self:do_state_failed( params )
 	else
-		print( "WARNING :: Gesture:state_create " .. tstr( next_state ) )
+		pwarn( sfmt( "Gesture:state_create unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -520,7 +520,7 @@ function Gesture:state_possible( next_state, params )
 		self:do_state_possible( params )
 
 	else
-		print( "WARNING :: Gesture:state_possible " .. tstr( next_state ) )
+		pwarn( sfmt( "Gesture:state_possible unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -545,7 +545,7 @@ function Gesture:state_recognized( next_state, params )
 		self:do_state_possible( params )
 
 	else
-		print( "WARNING :: Gesture:state_recognized " .. tstr( next_state ) )
+		pwarn( sfmt( "Gesture:state_recognized unknown transition '%s'", tstr( next_state )))
 	end
 end
 
@@ -570,7 +570,7 @@ function Gesture:state_failed( next_state, params )
 	elseif next_state == Gesture.STATE_FAILED then
 		-- pass
 	else
-		print( "WARNING :: Gesture:state_failed " .. tstr( next_state ) )
+		pwarn( sfmt( "Gesture:state_failed unknown transition '%s'", tstr( next_state )))
 	end
 end
 
