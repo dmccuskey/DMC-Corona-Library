@@ -137,6 +137,8 @@ local function _patch( obj )
 	obj.setDebug = Events.setDebug
 	obj.setEventFunc = Events.setEventFunc
 
+	obj._dispatchEvent = Events._dispatchEvent
+
 	return obj
 end
 
