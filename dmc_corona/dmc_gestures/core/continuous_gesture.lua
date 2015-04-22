@@ -64,6 +64,7 @@ local Gesture = require 'dmc_gestures.core.gesture'
 
 local newClass = Objects.newClass
 
+local sfmt = string.format
 local tinsert = table.insert
 local tstr = tostring
 
