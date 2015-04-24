@@ -342,17 +342,22 @@ function LongPressGesture:touch( event )
 		local r_taps = self._req_taps
 		local taps = self._tap_count
 
-		self:_startFailTimer()
-		self._gesture_attempt=true
+		if state==Continuous.STATE_POSSIBLE then
+			self:_startFailTimer()
+			self._gesture_attempt=true
 
-		if is_touch_ok and taps==r_taps then
-			self:_addMultitouchToQueue( Continuous.BEGAN )
-			self:_startPressTimer()
+			if is_touch_ok and taps==r_taps then
+				self:_addMultitouchToQueue( Continuous.BEGAN )
+				self:_startPressTimer()
 
-		elseif is_touch_ok then
-			self:_startGestureTimer()
+			elseif is_touch_ok then
+				self:_startGestureTimer()
 
-		elseif touch_count>r_touches then
+			elseif touch_count>r_touches then
+				self:gotoState( Continuous.STATE_FAILED )
+			end
+
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
 			self:gotoState( Continuous.STATE_FAILED )
 		end
 
@@ -361,8 +366,10 @@ function LongPressGesture:touch( event )
 		local accuracy = self._min_accuracy
 
 		if state==Continuous.STATE_POSSIBLE then
-			if _mabs(event.xStart-event.x)>accuracy or _mabs(event.yStart-event.y)>accuracy then
-				self:gotoState( Continuous.STATE_FAILED )
+			if is_touch_ok then
+				if _mabs(event.xStart-event.x)>accuracy or _mabs(event.yStart-event.y)>accuracy then
+					self:gotoState( Continuous.STATE_FAILED )
+				end
 			end
 
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
@@ -377,7 +384,7 @@ function LongPressGesture:touch( event )
 	elseif phase=='cancelled' then
 		self:gotoState( Continuous.STATE_FAILED )
 
-	else -- ended
+	else -- phase='ended'
 
 		if state==Continuous.STATE_POSSIBLE then
 			local r_taps = self._req_taps

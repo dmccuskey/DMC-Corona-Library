@@ -329,7 +329,7 @@ end
 -- event is Corona Touch Event
 --
 function PanGesture:touch( event )
-	-- print("PanGesture:touch", event.phase, event.id, self )
+	-- print("PanGesture:touch", event.phase, self.id )
 	Continuous.touch( self, event )
 
 	local phase = event.phase
@@ -343,18 +343,20 @@ function PanGesture:touch( event )
 	if phase=='began' then
 		local threshold = self._threshold
 
-		self:_startFailTimer()
-		self._gesture_attempt=true
+		if state==Continuous.STATE_POSSIBLE then
+			if is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.BEGAN )
 
-		if is_touch_ok then
-			self:_addMultitouchToQueue( Continuous.BEGAN )
-			self:_startGestureTimer()
-
-			if threshold==0 then
-				self:gotoState( Continuous.STATE_BEGAN, event )
+				if threshold==0 then
+					self:gotoState( Continuous.STATE_BEGAN, event )
+				end
 			end
-		elseif touch_count>t_max then
-			self:gotoState( Continuous.STATE_FAILED )
+
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
+			if not is_touch_ok then
+				self:gotoState( Continuous.STATE_SOFT_RESET )
+			end
+
 		end
 
 	elseif phase=='moved' then
@@ -362,32 +364,59 @@ function PanGesture:touch( event )
 		local threshold = self._threshold
 
 		if state==Continuous.STATE_POSSIBLE then
-			self:_addMultitouchToQueue( Continuous.CHANGED )
-			if is_touch_ok and (_mabs(event.xStart-event.x)>threshold or _mabs(event.yStart-event.y)>threshold) then
-				self:gotoState( Continuous.STATE_BEGAN, event )
+			if is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.CHANGED )
+				if (_mabs(event.xStart-event.x)>threshold or _mabs(event.yStart-event.y)>threshold) then
+					self:gotoState( Continuous.STATE_BEGAN, event )
+				end
 			end
 
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
 			if is_touch_ok then
 				self:gotoState( Continuous.STATE_CHANGED, event )
 			else
-				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
+
+		elseif state==Continuous.STATE_SOFT_RESET then
+			if is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.BEGAN )
+				self:gotoState( Continuous.STATE_BEGAN, event )
 			end
 
 		end
 
 	elseif phase=='cancelled' then
+		-- @TODO: think about this, merge with 'ended' ?
 		self:gotoState( Continuous.STATE_CANCELLED )
 
-	else -- ended
-		if is_touch_ok then
-			self:gotoState( Continuous.STATE_CHANGED, event )
-		else
-			if state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
-				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+	else -- phase='ended'
+		local _mabs = mabs
+		local threshold = self._threshold
+
+		if state==Continuous.STATE_POSSIBLE then
+			if touch_count==0 then
+				self:gotoState( Continuous.STATE_FAILED )
+			elseif is_touch_ok then
+				if (_mabs(event.xStart-event.x)>threshold or _mabs(event.yStart-event.y)>threshold) then
+					self:gotoState( Continuous.STATE_BEGAN, event )
+				end
 			else
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
+
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
+			if touch_count==0 then
+				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+			elseif not is_touch_ok then
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
+
+		elseif state==Continuous.STATE_SOFT_RESET then
+			if touch_count==0 then
 				self:gotoState( Continuous.STATE_FAILED )
 			end
+
 		end
 
 	end

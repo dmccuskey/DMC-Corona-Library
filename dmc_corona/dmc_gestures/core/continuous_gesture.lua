@@ -86,6 +86,7 @@ Continuous.TYPE = nil -- override this
 Continuous.STATE_BEGAN = 'state_began'
 Continuous.STATE_CHANGED = 'state_changed'
 Continuous.STATE_CANCELLED = 'state_cancelled'
+Continuous.STATE_SOFT_RESET = 'state_soft_reset'
 
 --== Event Constants
 
@@ -150,7 +151,7 @@ end
 
 
 function Continuous:_addMultitouchToQueue( phase )
-	-- print("Continuous:_addMultitouchToQueue", phase )
+	-- print("Continuous:_addMultitouchToQueue", phase, self.id )
 	local me = self:_createMultitouchEvent({phase=phase})
 	self._multitouch_evt = me
 	tinsert( self._multitouch_queue, me )
@@ -276,7 +277,7 @@ Continuous.touch = Gesture.touch
 
 
 function Continuous:state_possible( next_state, params )
-	-- print( "Continuous:state_possible: >> ", next_state )
+	-- print( "Continuous:state_possible: >> ", next_state, self.id )
 
 	--== Check Delegate to see if this transition is OK
 
@@ -312,13 +313,13 @@ function Continuous:do_state_began( params )
 	--==--
 	self:_stopAllTimers()
 	self:setState( Continuous.STATE_BEGAN )
-	self:_dispatchGestureNotification( params.notify )
-	self:_dispatchStateNotification( params.notify )
+	self:_dispatchGestureNotification( params )
+	self:_dispatchStateNotification( params )
 	self:_dispatchBeganEvent()
 end
 
 function Continuous:state_began( next_state, params )
-	-- print( "Continuous:state_began: >> ", next_state, params )
+	-- print( "Continuous:state_began: >> ", next_state, self.id )
 
 	if next_state == Continuous.STATE_CHANGED then
 		self:do_state_changed( params )
@@ -326,11 +327,14 @@ function Continuous:state_began( next_state, params )
 	elseif next_state == Continuous.STATE_RECOGNIZED then
 		self:do_state_recognized( params )
 
+	elseif next_state == Continuous.STATE_SOFT_RESET then
+		self:do_state_soft_reset( params )
+
 	elseif next_state == Continuous.STATE_CANCELLED then
 		self:do_state_cancelled( params )
 
 	elseif next_state == Continuous.STATE_FAILED then
-		-- either cancelled or recognized
+		-- for either cancelled or recognized
 		self:do_state_cancelled( params )
 
 	else
@@ -346,16 +350,20 @@ function Continuous:do_state_changed( params )
 	params = params or {}
 	if params.notify==nil then params.notify=true end
 	--==--
+
 	self:setState( Continuous.STATE_CHANGED )
-	self:_dispatchStateNotification( params.notify )
+	self:_dispatchStateNotification( params )
 	self:_dispatchChangedEvent()
 end
 
 function Continuous:state_changed( next_state, params )
-	-- print( "Continuous:state_changed: >> ", next_state )
+	-- print( "Continuous:state_changed: >> ", next_state, self.id )
 
 	if next_state == Continuous.STATE_CHANGED then
 		self:do_state_changed( params )
+
+	elseif next_state == Continuous.STATE_SOFT_RESET then
+		self:do_state_soft_reset( params )
 
 	elseif next_state == Continuous.STATE_CANCELLED then
 		self:do_state_cancelled( params )
@@ -364,7 +372,7 @@ function Continuous:state_changed( next_state, params )
 		self:do_state_recognized( params )
 
 	elseif next_state == Continuous.STATE_FAILED then
-		-- either cancelled or recognized
+		-- for either cancelled or recognized
 		self:do_state_cancelled( params )
 
 	else
@@ -380,8 +388,9 @@ function Continuous:do_state_recognized( params )
 	params = params or {}
 	if params.notify==nil then params.notify=true end
 	--==--
+
 	self:setState( Continuous.STATE_RECOGNIZED )
-	self:_dispatchStateNotification( params.notify )
+	self:_dispatchStateNotification( params )
 	self:_dispatchRecognizedEvent()
 end
 
@@ -393,14 +402,15 @@ function Continuous:do_state_cancelled( params )
 	params = params or {}
 	if params.notify==nil then params.notify=true end
 	--==--
+
 	self:setState( Continuous.STATE_CANCELLED )
-	self:_dispatchStateNotification( params.notify )
+	self:_dispatchStateNotification( params )
 	self:_dispatchRecognizedEvent()
 
 end
 
 function Continuous:state_cancelled( next_state, params )
-	-- print( "Continuous:state_cancelled: >> ", next_state )
+	-- print( "Continuous:state_cancelled: >> ", next_state, self.id )
 
 	if next_state == Continuous.STATE_POSSIBLE then
 		self:do_state_possible( params )
@@ -409,6 +419,41 @@ function Continuous:state_cancelled( next_state, params )
 		pwarn( sfmt( "Continuous:state_cancelled unknown transition '%s'", tstr( next_state )))
 	end
 end
+
+
+--== State Canceled ==--
+
+function Continuous:do_state_soft_reset( params )
+	-- print( "Continuous:do_state_soft_reset" )
+	params = params or {}
+	if params.notify==nil then params.notify=true end
+	--==--
+	self._multitouch_queue = {}
+
+	self:setState( Continuous.STATE_SOFT_RESET )
+	self:_dispatchStateNotification( params )
+	-- end current Touch Event
+	self:_dispatchRecognizedEvent()
+
+end
+
+function Continuous:state_soft_reset( next_state, params )
+	-- print( "Continuous:state_soft_reset: >> ", next_state, self.id )
+
+	if next_state == Continuous.STATE_POSSIBLE then
+		self:do_state_possible( params )
+
+	elseif next_state == Continuous.STATE_BEGAN then
+		self:do_state_began( params )
+
+	elseif next_state == Continuous.STATE_FAILED then
+		self:do_state_failed( params )
+
+	else
+		pwarn( sfmt( "Continuous:state_soft_reset unknown transition '%s'", tstr( next_state )))
+	end
+end
+
 
 
 

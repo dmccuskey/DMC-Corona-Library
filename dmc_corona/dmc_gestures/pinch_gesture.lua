@@ -347,6 +347,7 @@ end
 --======================================================--
 --== Test Methods
 
+--[[
 function PinchGesture:_startTestTouchEvent( event )
 	-- print("PinchGesture:_startTestTouchEvent")
 	local offset = 30
@@ -376,6 +377,7 @@ function PinchGesture:_endTestTouchEvent( event )
 		self:touch( evt )
 	end)
 end
+--]]
 
 
 
@@ -395,25 +397,20 @@ function PinchGesture:touch( event )
 
 	local is_touch_ok = ( touch_count==2 )
 
-
 	if phase=='began' then
-		local touches = self._touches
-		local t_max = self._max_touches
 
-		self:_startFailTimer()
-		self._gesture_attempt=true
+		if state==Continuous.STATE_POSSIBLE then
+			local touches = self._touches
+			if is_touch_ok then
+					self._touch_dist = self:_calculateTouchDistance( touches )
+					self:_addMultitouchToQueue( Continuous.BEGAN )
+			end
 
-		if is_touch_ok then
-			self._touch_dist = self:_calculateTouchDistance( touches )
-			self:_addMultitouchToQueue( Continuous.BEGAN )
-			self:_startGestureTimer()
-		elseif touch_count>t_max then
-			self:gotoState( PinchGesture.STATE_FAILED )
-		end
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
+			if not is_touch_ok then
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
 
-		if self._test_mode and not self._test_evt then
-			-- add extra touch, for testing
-			self:_startTestTouchEvent( event )
 		end
 
 	elseif phase=='moved' then
@@ -427,32 +424,48 @@ function PinchGesture:touch( event )
 					self:gotoState( Continuous.STATE_BEGAN, event )
 				end
 			end
+
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
 			if is_touch_ok then
 				self:gotoState( Continuous.STATE_CHANGED, event )
 			else
-				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
 			end
+
+		elseif state==Continuous.STATE_SOFT_RESET then
+			if is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.BEGAN )
+				self:gotoState( Continuous.STATE_BEGAN, event )
+			end
+
 		end
 
 	elseif phase=='cancelled' then
+		-- @TODO: think about this, merge with 'ended' ?
 		self:gotoState( PinchGesture.STATE_FAILED  )
 
 	else -- ended
-
-		if is_touch_ok then
-			self:gotoState( Continuous.STATE_CHANGED, event )
-		else
-			if state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
-				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+		if state==Continuous.STATE_POSSIBLE then
+			if touch_count==0 then
+				self:gotoState( Continuous.STATE_FAILED )
+			elseif is_touch_ok then
+				self:gotoState( Continuous.STATE_BEGAN, event )
 			else
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
+
+		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
+			if touch_count==0 then
+				self:gotoState( Continuous.STATE_RECOGNIZED, event )
+			elseif not is_touch_ok then
+				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+			end
+
+		elseif state==Continuous.STATE_SOFT_RESET then
+			if touch_count==0 then
 				self:gotoState( Continuous.STATE_FAILED )
 			end
-		end
 
-		if self._test_mode and self._test_evt then
-			-- remove extra touch, for testing
-			self:_endTestTouchEvent( event )
 		end
 
 	end

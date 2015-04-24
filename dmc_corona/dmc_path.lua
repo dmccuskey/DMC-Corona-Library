@@ -1,5 +1,5 @@
 --====================================================================--
--- dmc_corona/dmc_patch.lua
+-- dmc_corona/dmc_path.lua
 --
 -- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
@@ -251,15 +251,29 @@ end
 function Utils.buildRequire( parts, sep )
 	assert( type(parts)=='table' )
 	if sep==nil then sep='.' end
-	return Utils._concatPath{ dir=parts.dir, path=parts.path, name=parts.name, sep=sep, isAbs=parts.isAbs }
+	return Utils._concatPath{
+		dir=parts.dir,
+		path=parts.path,
+		name=parts.name,
+		sep=sep,
+		isAbs=parts.isAbs
+	}
 end
 
 function Utils.buildPath( parts, sep )
 	assert( type(parts)=='table' )
 	-- @TODO: do separator
 	if sep==nil then sep='/' end
-	return Utils._concatPath{ dir=parts.dir, path=parts.path, name=parts.filename, sep=sep, isAbs=parts.isAbs }
+	return Utils._concatPath{
+		dir=parts.dir,
+		path=parts.path,
+		name=parts.filename,
+		sep=sep,
+		isAbs=parts.isAbs
+	}
 end
+
+
 
 
 return Utils
