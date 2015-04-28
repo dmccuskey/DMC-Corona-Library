@@ -40,7 +40,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -48,13 +48,13 @@ local VERSION = "0.2.0"
 --== Imports
 
 
-local Objects = require 'lua_objects'
+local Class = require 'lua_class'
 
 
 -- Check imports
 -- TODO: work on this
-assert( Objects, "lua_error: requires lua_objects" )
-if checkModule then checkModule( Objects, '1.1.2' ) end
+assert( Class, "lua_error: requires lua_class" )
+if checkModule then checkModule( Class, '1.1.2' ) end
 
 
 
@@ -62,8 +62,7 @@ if checkModule then checkModule( Objects, '1.1.2' ) end
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+-- none
 
 
 
@@ -75,7 +74,7 @@ local newClass = Objects.newClass
 
 local function try( funcs )
 	local try_f, catch_f, finally_f = funcs[1], funcs[2], funcs[3]
-	assert( try_f, "lua_error: missing function for try()" )
+	assert( try_f, "lua-error: missing function for try()" )
 	--==--
 	local status, result = pcall(try_f)
 	if not status and catch_f then

@@ -41,7 +41,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.5.1"
+local VERSION = "1.5.2"
 
 
 
@@ -59,12 +59,11 @@ if not has_json then json = nil end
 
 
 local sfind = string.find
+local sgmatch = string.gmatch 
 local sgsub = string.gsub
 local tconcat = table.concat
 local tinsert = table.insert
 local tremove = table.remove
-
-local PLATFORM_NAME = system.getInfo( 'platformName' )
 
 
 
@@ -115,15 +114,6 @@ function Utils.split( str, sep )
 end
 
 
-function Utils.getSystemSeparator()
-	-- print( "Utils.getSystemSeparator")
-	if PLATFORM_NAME == 'Win' then
-		return '\\'
-	else
-		return '/'
-	end
-end
-
 function Utils.propertyIn( list, property )
 	for i = 1, #list do
 		if list[i] == property then return true end
@@ -132,12 +122,30 @@ function Utils.propertyIn( list, property )
 end
 
 
--- takes Lua module dot to system path
+function Utils.guessPathPlatform( path )
+	-- print( "Utils.guessPathPlatform", path )
+	local win, ios = 0, 0
+	for match in sgmatch( path, '\\' ) do
+		win=win+1
+	end
+	for match in sgmatch( path, '/' ) do
+		ios=ios+1
+	end
+
+	if win>ios then
+		return '\\'
+	else
+		return '/'
+	end
+end
+
+
+-- takes System Path to Lua module dot
 -- eg, lib.dmc_lua.lua_object >> lib/dmc_lua/lua_object
 --
 function Utils.sysPathToRequirePath( sys_path )
 	-- print( "sysPathToRequirePath", sys_path )
-	local sys_tbl = Utils.split( sys_path, Utils.getSystemSeparator() )
+	local sys_tbl = Utils.split( sys_path, Utils.guessPathPlatform( sys_path ) )
 	-- clean off any dots
 	for i=#sys_tbl, 1, -1 do
 		if sys_tbl[i]=='.' then
@@ -146,23 +154,6 @@ function Utils.sysPathToRequirePath( sys_path )
 	end
 	return tconcat( sys_tbl, '.' )
 end
-
--- takes Lua module dot to system path
--- eg, lib.dmc_lua.lua_object >> lib/dmc_lua/lua_object
---
-function Utils.cleanSystemPath( sys_path )
-	-- print( "cleanSystemPath", sys_path )
-	local sep = Utils.getSystemSeparator()
-	local sys_tbl = Utils.split( sys_path, sep )
-	-- clean off any dots
-	for i=#sys_tbl, 1, -1 do
-		if sys_tbl[i]=='.' then
-			tremove( sys_tbl, i )
-		end
-	end
-	return tconcat( sys_tbl, sep )
-end
-
 
 
 
@@ -435,7 +426,7 @@ local DMC_CORONA_DEFAULT_SECTION = 'dmc_corona'
 local THIRD_LIBS = {}
 
 --- add 'lib/dmc' location
-tinsert( THIRD_LIBS, tconcat( {'lib','dmc_lua'}, Utils.getSystemSeparator() ) )
+tinsert( THIRD_LIBS, tconcat( {'lib','dmc_lua'}, '.' ) )
 
 local REQ_STACK = {}
 
@@ -477,8 +468,6 @@ local function newRequireFunction( module_name )
 	-- print( "dmc_require: ", module_name )
 	assert( type(module_name)=='string', "dmc_require: expected string module name" )
 	--==--
-	local resource_path = system.pathForFile( system.ResourceDirectory ) or ""
-
 	local _paths = _G.__dmc_require.paths
 	local _require = _G.__dmc_require.require
 	local lua_paths = Utils.extend( _paths, {} )
@@ -494,7 +483,6 @@ local function newRequireFunction( module_name )
 		local mod_path = lua_paths[idx]
 		local path = ( mod_path=='' and mod_path or mod_path..'.' ) .. module_name
 
-
 		local has_module, result = pcall( _require, path )
 		if has_module then
 			library = result
@@ -509,11 +497,11 @@ local function newRequireFunction( module_name )
 		else
 			-- we just got error from Lua, so we need to handle it
 
-			if sfind( result, '^module' ) then
+			if sfind( result, "module '.+' not found" ) then
 				-- "module not found"
 				-- pass on this because we could have more places to check
 
-			elseif sfind( result, '^error loading module' ) then
+			elseif sfind( result, "error loading module" ) then
 				-- "error loading module"
 				-- we can't proceed with this error, so
 				-- package up to travel back up call-stack
@@ -523,7 +511,6 @@ local function newRequireFunction( module_name )
 
 			else
 				-- we have some unknown error
-				print("other error")
 				err = wrapError( #REQ_STACK, result, 3 )
 			end
 
@@ -597,13 +584,13 @@ local function setupRequireLoading()
 	-- modify the search paths, also adding 3rd party lib locations
 	for i=1,#path_info do
 		local mod_path, third_path
-		mod_path = path_info[i]
-		-- print( ">s1", sys2reqPath( mod_path ) )
-		tinsert( req_paths, sys2reqPath( mod_path ) )
+		mod_path =  sys2reqPath( path_info[i] )
+		-- print( ">s1", mod_path )
+		tinsert( req_paths, mod_path )
 		for i=1,#THIRD_LIBS do
 			third_path = THIRD_LIBS[i]
-			-- print( ">s2", sys2reqPath( mod_path..'.'..third_path ) )
-			tinsert( req_paths, sys2reqPath( mod_path..'.'..third_path ) )
+			-- print( ">s2", mod_path..'.'..third_path )
+			tinsert( req_paths, mod_path..'.'..third_path )
 		end
 	end
 end

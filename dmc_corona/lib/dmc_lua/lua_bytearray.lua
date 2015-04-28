@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -48,7 +48,7 @@ local VERSION = "0.2.0"
 
 
 local Error = require 'lua_bytearray.exceptions'
-local Objects = require 'lua_objects'
+local Class = require 'lua_class'
 
 local has_pack, PackByteArray = pcall( require, 'lua_bytearray.pack_bytearray' )
 
@@ -58,13 +58,10 @@ local has_pack, PackByteArray = pcall( require, 'lua_bytearray.pack_bytearray' )
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
-local ObjectBase = Objects.ObjectBase
-local Class = Objects.Class
+local ObjectBase = Class.ObjectBase
 
 
-local Parents = { Class }
+local Parents = { Class.Class }
 if has_pack then
 	table.insert( Parents, PackByteArray )
 end

@@ -31,10 +31,12 @@ SOFTWARE.
 --]]
 
 
---- Touch Manager Module
--- @module TouchManager
+--- A Lua module to patch multitouch in Corona SDK.
+--
+-- @module dmc-touchmanager
+--
 -- @usage
--- local TouchMgr = require 'dmc_corona.dmc_touchmanager'
+-- local TouchMgr = require 'dmc_touchmanager'
 -- local o = createDisplayObject( color )
 -- TouchMgr.register( o )
 

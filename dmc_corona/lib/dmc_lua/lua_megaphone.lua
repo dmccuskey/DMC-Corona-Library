@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 
 
 
@@ -48,7 +48,6 @@ local VERSION = "1.1.0"
 
 
 local Objects = require 'lua_objects'
-local LuaEventsMixin = require 'lua_events_mix'
 
 
 
@@ -56,11 +55,7 @@ local LuaEventsMixin = require 'lua_events_mix'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
-local Class = Objects.Class
-
-local EventsMix = LuaEventsMixin.EventsMix
+local ObjectBase = Objects.ObjectBase
 
 local singleton = nil
 
@@ -71,7 +66,7 @@ local singleton = nil
 --====================================================================--
 
 
-local Megaphone = newClass( { Class, EventsMix }, { name="Lua Megaphone" } )
+local Megaphone = newClass( ObjectBase, { name="Lua Megaphone" } )
 
 --== Event Constants ==--
 
@@ -81,10 +76,11 @@ Megaphone.EVENT = 'megaphone_event'
 --======================================================--
 -- Start: Setup Lua Objects
 
+--[[
 function Megaphone:__new__( ... )
 	-- print( "Megaphone:__new__" )
-	EventsMix.__init__( self, ... )
 end
+--]]
 
 --[[
 function Megaphone:__destroy__( ... )

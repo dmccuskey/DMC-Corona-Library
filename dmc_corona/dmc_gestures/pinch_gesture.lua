@@ -31,13 +31,6 @@ SOFTWARE.
 --]]
 
 
---- Pinch Gesture Module
--- @module PinchGesture
--- @usage local Gesture = require 'dmc_gestures'
--- local view = display.newRect( 100, 100, 200, 200 )
--- local g = Gesture.newPinchGesture( view )
--- g:addEventListener( g.EVENT, gHandler )
-
 
 --====================================================================--
 --== DMC Corona Library : Pinch Gesture
@@ -91,9 +84,22 @@ local tstr = tostring
 --- Pinch Gesture Recognizer Class.
 -- gestures to recognize pinch motions
 --
--- @type PinchGesture
+-- **Inherits from:**
 --
+-- * @{Gesture.Gesture}
+-- * @{Gesture.Continuous}
+--
+-- @classmod Gesture.Pinch
+--
+-- @usage local Gesture = require 'dmc_gestures'
+-- local view = display.newRect( 100, 100, 200, 200 )
+-- local g = Gesture.newPinchGesture( view )
+-- g:addEventListener( g.EVENT, gHandler )
+
 local PinchGesture = newClass( Continuous, { name="Pinch Gesture" } )
+
+--- Class Constants.
+-- @section
 
 --== Class Constants
 
@@ -175,30 +181,11 @@ end
 --== Public Methods
 
 
+--======================================================--
+-- Getters/Setters
+
 --- Getters and Setters
 -- @section getters-setters
-
-
---- the gesture's id (string).
--- this is useful to differentiate between
--- different gestures attached to the same view object
---
--- @function .id
--- @usage print( gesture.id )
--- @usage gesture.id = "myid"
-
---- the gesture's target view (Display Object).
---
--- @function .view
--- @usage print( gesture.view )
--- @usage gesture.view = DisplayObject
-
---- the gesture's delegate (object/table)
---
--- @function .delegate
--- @usage print( gesture.delegate )
--- @usage gesture.delegate = DisplayObject
-
 
 
 --- whether to reset internal scale after pinch gesture is finished (boolean).

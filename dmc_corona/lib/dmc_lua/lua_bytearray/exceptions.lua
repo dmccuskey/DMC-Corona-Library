@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -47,7 +47,7 @@ local VERSION = "0.2.0"
 --== Imports
 
 
-local Objects = require 'lua_objects'
+local Objects = require 'lua_class'
 local Error = require 'lua_error'
 
 
@@ -56,8 +56,7 @@ local Error = require 'lua_error'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+-- none
 
 
 

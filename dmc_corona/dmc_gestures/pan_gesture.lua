@@ -31,13 +31,6 @@ SOFTWARE.
 --]]
 
 
---- Pan Gesture Module
--- @module PanGesture
--- @usage local Gesture = require 'dmc_gestures'
--- local view = display.newRect( 100, 100, 200, 200 )
--- local g = Gesture.newPanGesture( view )
--- g:addEventListener( g.EVENT, gHandler )
-
 
 --====================================================================--
 --== DMC Corona Library : Pan Gesture
@@ -86,11 +79,25 @@ local tdelay = timer.performWithDelay
 
 
 --- Pan Gesture Recognizer Class.
--- gestures to recognize drag and pan motions
+-- gestures to recognize drag and pan motions.
 --
--- @type PanGesture
+-- **Inherits from:**
 --
+-- * @{Gesture.Gesture}
+-- * @{Gesture.Continuous}
+--
+-- @classmod Gesture.Pan
+--
+-- @usage local Gesture = require 'dmc_gestures'
+-- local view = display.newRect( 100, 100, 200, 200 )
+-- local g = Gesture.newPanGesture( view )
+-- g:addEventListener( g.EVENT, gHandler )
+
+
 local PanGesture = newClass( Continuous, { name="Pan Gesture" } )
+
+--- Class Constants.
+-- @section
 
 --== Class Constants
 
@@ -164,41 +171,11 @@ end
 --== Public Methods
 
 
+--======================================================--
+-- Getters/Setters
+
 --- Getters and Setters
 -- @section getters-setters
-
-
---======================================================--
--- START: bogus methods, copied from super class
-
---- the gesture's id (string).
--- this is useful to differentiate between
--- different gestures attached to the same view object
---
--- @function .id
--- @usage print( gesture.id )
--- @usage gesture.id = "myid"
---
-function PanGesture.__gs_id() end
-
---- the gesture's target view (Display Object).
---
--- @function .view
--- @usage print( gesture.view )
--- @usage gesture.view = DisplayObject
---
-function PanGesture.__gs_view() end
-
---- the gesture's delegate (object/table)
---
--- @function .delegate
--- @usage print( gesture.delegate )
--- @usage gesture.delegate = DisplayObject
---
-function PanGesture.__gs_delegate() end
-
--- END: bogus methods, copied from super class
---======================================================--
 
 
 --- the distance a touch must move to count as the start of a pan (number).
@@ -217,7 +194,7 @@ function PanGesture.__setters:threshold( value )
 end
 
 
---- the minimum number of touches to recognize (number).
+--- minimum number of touches required for gesture (int).
 --
 -- @function .touches
 -- @usage print( gesture.touches )
@@ -233,7 +210,7 @@ function PanGesture.__setters:touches( value )
 end
 
 
---- the maximum number of touches to recognize (number).
+--- the maximum number of touches to recognize (int).
 --
 -- @function .max_touches
 -- @usage print( gesture.max_touches )

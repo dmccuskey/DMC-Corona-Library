@@ -31,14 +31,6 @@ SOFTWARE.
 --]]
 
 
---- Long Press Gesture Module
--- @module LongPressGesture
--- @usage local Gesture = require 'dmc_gestures'
--- local view = display.newRect( 100, 100, 200, 200 )
--- local g = Gesture.newLongPressGesture( view )
--- g:addEventListener( g.EVENT, gHandler )
-
-
 
 --====================================================================--
 --== DMC Corona Library : Long Press Gesture
@@ -86,11 +78,16 @@ local tdelay = timer.performWithDelay
 --====================================================================--
 
 
---- Tap Gesture Recognizer Class.
--- gestures to recognize tap motions
+--- Long-Press Gesture Recognizer Class.
+-- gestures to recognize long presses, multiple touches and taps.
 --
--- @type LongPressGesture
+-- **Inherits from:**
 --
+-- * @{Gesture.Gesture}
+-- * @{Gesture.Continuous}
+--
+-- @classmod Gesture.LongPress
+
 local LongPressGesture = newClass( Continuous, { name="Long Press Gesture" } )
 
 --== Class Constants
@@ -175,40 +172,6 @@ end
 -- @section getters-setters
 
 
---======================================================--
--- START: bogus methods, copied from super class
-
---- the id (string).
--- this is useful to differentiate between
--- different gestures attached to the same view object
---
--- @function .id
--- @usage print( gesture.id )
--- @usage gesture.id = "myid"
---
-function LongPressGesture.__gs_id() end
-
---- the target view (Display Object).
---
--- @function .view
--- @usage print( gesture.view )
--- @usage gesture.view = DisplayObject
---
-function LongPressGesture.__gs_view() end
-
---- a gesture delegate (object/table)
---
--- @function .delegate
--- @usage print( gesture.delegate )
--- @usage gesture.delegate = DisplayObject
---
-function LongPressGesture.__gs_delegate() end
-
--- END: bogus methods, copied from super class
---======================================================--
-
-
-
 --- the maximum finger-movement allowed (number).
 -- the limit of movement for a gesture to be recognized, radius in pixels.
 -- value must be greater than zero. default is 10.
@@ -216,7 +179,7 @@ function LongPressGesture.__gs_delegate() end
 -- @function .accuracy
 -- @usage print( gesture.accuracy )
 -- @usage gesture.accuracy = 10
---
+
 function LongPressGesture.__getters:accuracy()
 	return self._min_accuracy
 end
@@ -233,7 +196,7 @@ end
 -- @function .duration
 -- @usage print( gesture.duration )
 -- @usage gesture.duration = 400
---
+
 function LongPressGesture.__getters:duration()
 	return self._min_duration
 end
@@ -251,7 +214,7 @@ end
 -- @function .taps
 -- @usage print( gesture.taps )
 -- @usage gesture.taps = 2
---
+
 function LongPressGesture.__getters:taps()
 	return self._req_taps
 end
@@ -269,7 +232,7 @@ end
 -- @function .touches
 -- @usage print( gesture.touches )
 -- @usage gesture.touches = 2
---
+
 function LongPressGesture.__getters:touches()
 	return self._req_touches
 end

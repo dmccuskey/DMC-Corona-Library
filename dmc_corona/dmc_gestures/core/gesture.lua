@@ -83,6 +83,16 @@ local tstr = tostring
 --====================================================================--
 
 
+--- Gesture Recognizer Base Class.
+-- Base class for all Gesture Recognizers.
+--
+-- **Inherits from:**
+--
+-- * DMC.ObjectBase
+-- * DMC.StatesMix
+--
+-- @classmod Gesture.Gesture
+
 local Gesture = newClass(
 	{ ObjectBase, StatesMix }, { name="Gesture Base Class" }
 )
@@ -100,9 +110,13 @@ Gesture.STATE_RECOGNIZED = 'state_recognized'
 
 --== Event Constants
 
+--- EVENT Name
 Gesture.EVENT = 'gesture-event'
 
+--- GESTURE Event
 Gesture.GESTURE = 'recognized-gesture-event'
+
+--- STATE Event
 Gesture.STATE = 'state-changed-event'
 
 
@@ -112,8 +126,6 @@ Gesture.STATE = 'state-changed-event'
 function Gesture:__init__( params )
 	-- print( "Gesture:__init__", params )
 	params = params or {}
-	-- params.id = params.id
-	-- params.delegate = params.delegate
 
 	self:superCall( StatesMix, '__init__', params )
 	self:superCall( ObjectBase, '__init__', params )
@@ -197,6 +209,19 @@ end
 --======================================================--
 -- Getters/Setters
 
+--- Getters and Setters
+-- @section getters-setters
+
+
+--== .id
+
+--- the id (string).
+-- this is useful to differentiate between
+-- different gestures attached to the same view object
+--
+-- @function .id
+-- @usage print( gesture.id )
+-- @usage gesture.id = "myid"
 
 function Gesture.__getters:id()
 	return self._id
@@ -206,7 +231,13 @@ function Gesture.__setters:id( value )
 	self._id = value
 end
 
--- delegate
+--== .delegate
+
+--- a gesture delegate (object/table)
+--
+-- @function .delegate
+-- @usage print( gesture.delegate )
+-- @usage gesture.delegate = { shouldRecognizeWith=<func> }
 
 function Gesture.__getters:delegate()
 	return self._delegate
@@ -224,6 +255,13 @@ function Gesture.__setters:gesture_mgr( value )
 	self._gesture_mgr = value
 end
 
+--== .view
+
+--- the target view (Display Object).
+--
+-- @function .view
+-- @usage print( gesture.view )
+-- @usage gesture.view = DisplayObject
 
 function Gesture.__getters:view()
 	return self._view
@@ -454,7 +492,6 @@ function Gesture:_removeTouchEvent( event )
 	-- print( "Gesture:_removeTouchEvent" )
 	self._touches[ tstr(event.id) ] = nil
 end
-
 
 
 

@@ -75,7 +75,19 @@ local tstr = tostring
 --====================================================================--
 
 
+--- Continous Gesture Recognizer Base Class.
+-- Base class for all Continuous Gesture Recognizers.
+--
+-- **Inherits from:**
+--
+-- * @{Gesture.Gesture}
+--
+-- @classmod Gesture.Continuous
+
 local Continuous = newClass( Gesture, { name="Continuous" } )
+
+--- Class Constants.
+-- @section
 
 --== Class Constants
 
@@ -90,10 +102,18 @@ Continuous.STATE_SOFT_RESET = 'state_soft_reset'
 
 --== Event Constants
 
+--- BEGAN Event
 Continuous.BEGAN = 'began'
+
+--- CHANGED Event
 Continuous.CHANGED = 'changed'
+
+--- ENDED Event
 Continuous.ENDED = 'ended'
+
+--- RECOGNIZED Event
 Continuous.RECOGNIZED = Continuous.ENDED
+
 
 --======================================================--
 -- Start: Setup DMC Objects
@@ -140,6 +160,8 @@ end
 --== Public Methods
 
 
+-- none
+
 
 
 --====================================================================--
@@ -158,10 +180,10 @@ function Continuous:_addMultitouchToQueue( phase )
 end
 
 
---- calculate the "middle" of touch points in this gesture
+-- calculate the "middle" of touch points in this gesture
 -- @param table of touches
 -- @return Coordinate table of coordinates
---
+
 function Continuous:_calculateCentroid( touches )
 	-- print("Continuous:_calculateCentroid" )
 	local cnt=0
@@ -297,6 +319,9 @@ function Continuous:state_possible( next_state, params )
 
 	elseif next_state == Continuous.STATE_POSSIBLE then
 		self:do_state_possible( params )
+
+	elseif next_state == Continuous.STATE_SOFT_RESET then
+		self:do_state_soft_reset( params )
 
 	else
 		pwarn( sfmt( "Continuous:state_possible unknown transition '%s'", tstr( next_state )))

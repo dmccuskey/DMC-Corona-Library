@@ -31,7 +31,9 @@ SOFTWARE.
 --]]
 
 --- A Lua module which creates Gesture Recognizers.
+--
 -- @module dmc-gestures
+--
 -- @usage local Gesture = require 'dmc_gestures'
 -- local view = display.newRect( 100, 100, 200, 200 )
 -- local g = Gesture.newPanGesture( view )
@@ -182,25 +184,22 @@ function Gesture._loadLongPressGestureSupport( params )
 	Gesture.LongPress=LongPress
 end
 
----
-
---- Optional parameters for newLongPressGesture()
--- @string id a name for the gesture, available in events
--- @object delegate a delegate object to control this gesture
--- @int touches minimum number of taps, default 1
--- @int max_touches maximum number of taps, default 1
--- @int threshold movement required to recognize the tap, default 10
--- @table newLongPressParams
-
-
 --- Create a Long Press Gesture Recognizer.
--- creates recognizers which watch for drag/pan gestures
+-- creates recognizers which watch for Long Press gestures
 --
 -- @object view Corona Display object
--- @tparam[opt] table params @{newLongPressParams}
--- @treturn @{Widget.LongPress} a long-press gesture object
--- @usage local g = Gesture.newLongPressGesture( view )
+-- @tparam[opt] table params
+-- @object[opt] params.delegate a delegate object to control this gesture
+-- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
+-- @int[opt=1] params.max_touches maximum number of touches required for gesture. This defaults to `params.touches`.
+-- @int[opt=10] params.threshold movement required to recognize the tap.
+-- @int[opt=1] params.touches minimum number of touches required for gesture.
 --
+-- @return @{Gesture.LongPress} a Long-Press Gesture Recognizer
+--
+-- @usage local g = Gesture.newLongPressGesture( view )
+-- @usage local g = Gesture.newLongPressGesture( view, {id='my-longpress', touches=2}  )
+
 function Gesture.newLongPressGesture( view, params )
 	-- print( "Gesture.newLongPressGesture", view )
 	params = params or {}
@@ -224,25 +223,22 @@ function Gesture._loadPanGestureSupport( params )
 	Gesture.Pan=PanGesture
 end
 
----
-
---- Optional parameters for newPanGesture()
--- @string id a name for the gesture, available in events
--- @object delegate a delegate object to control this gesture
--- @int touches minimum number of taps, default 1
--- @int max_touches maximum number of taps, default 1
--- @int threshold movement required to recognize the tap, default 10
--- @table newPanParams
-
-
 --- Create a Pan Gesture Recognizer.
--- creates recognizers which watch for drag/pan gestures
+-- creates recognizers which watch for Drag/Pan gestures.
 --
 -- @object view Corona Display object
--- @tparam[opt] table params @{newPanParams}
--- @treturn PanGesture a pan gesture object
--- @usage local g = Gesture.newPanGesture( view )
+-- @tparam[opt] table params
+-- @object[opt] params.delegate a delegate object to control this gesture
+-- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
+-- @int[opt=1] params.max_touches maximum number of touches required for gesture. This defaults to `params.touches`.
+-- @int[opt=10] params.threshold movement required to recognize the tap.
+-- @int[opt=1] params.touches minimum number of touches required for gesture.
 --
+-- @return @{Gesture.Pan} a Pan Gesture Recognizer
+--
+-- @usage local g = Gesture.newPanGesture( view )
+-- @usage local g = Gesture.newPanGesture( view, {id='my-pan', touches=2} )
+
 function Gesture.newPanGesture( view, params )
 	-- print( "Gesture.newPanGesture", view )
 	params = params or {}
@@ -266,24 +262,20 @@ function Gesture._loadPinchGestureSupport( params )
 	Gesture.Pinch=newPinchGesture
 end
 
-
---- Optional parameters for newPinchGesture()
--- @string id a name for the gesture, available in events
--- @object delegate a delegate object to control this gesture
--- @bool reset_scale reset scale to 1.0 after pinch, default true
--- @int threshold touch movement required to recognize the gesture, default 5
--- @int time_limit max time allowed to recognize the gesture, default 500ms
--- @table newPinchParams
-
-
 --- Create a Pinch Gesture Recognizer.
--- creates recognizers which watch for pinch gestures, eg for zoom
+-- creates recognizers which watch for Pinch/Zoom gestures.
 --
 -- @object view Corona Display object
--- @tparam[opt] table params @{newPinchParams}
--- @treturn PinchGesture a pan gesture object
--- @usage local g = Gesture.newPinchGesture( view )
+-- @tparam[opt] table params
+-- @object[opt] params.delegate a delegate object to control this gesture
+-- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
+-- @int[opt=5] params.threshold movement required to recognize the gesture.
 --
+-- @return @{Gesture.Pinch} a Pinch Gesture Recognizer
+--
+-- @usage local g = Gesture.newPinchGesture( view )
+-- @usage local g = Gesture.newPinchGesture( view, { id="my-pinch", threshold=10 } )
+
 function Gesture.newPinchGesture( view, params )
 	-- print( "Gesture.newPinchGesture", view )
 	params = params or {}
@@ -307,23 +299,23 @@ function Gesture._loadTapGestureSupport( params )
 	Gesture.Tap=TapGesture
 end
 
---- Optional parameters for newTapGesture()
--- @string id a name for the gesture, available in events
--- @object delegate a delegate object to control this gesture
--- @int accuracy the maximum movement allowed between taps, default 10
--- @int taps the minimum number of taps required, default 1
--- @int time maximum time between taps, default 300 ms
--- @int touches minimum number of touches required, default 1
--- @table newTapParams
-
 --- Create a Tap Gesture Recognizer.
 -- creates recognizers which watch for tap-type gestures
 --
 -- @object view Corona Display object
--- @tparam[opt] table params @{newTapParams}
--- @treturn TapGesture a tap gesture object
--- @usage local g = Gesture.newTapGesture( view )
+-- @tparam[opt] table params
+-- @int[opt=10] params.accuracy the maximum movement allowed between taps.
+-- @object[opt] params.delegate a delegate object to control this gesture
+-- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
+-- @int[opt=1] params.taps minimum number of taps required for gesture.
+-- @int[opt=300] params.time maximum time between taps.
+-- @int[opt=1] params.touches minimum number of touches required for gesture.
 --
+-- @return @{Gesture.Tap} a Tap Gesture Recognizer
+--
+-- @usage local g = Gesture.newTapGesture( view )
+-- @usage local g = Gesture.newTapGesture( view, { id="my-tap", threshold=10 } )
+
 function Gesture.newTapGesture( view, params )
 	-- print( "Gesture.newTapGesture", view )
 	params = params or {}

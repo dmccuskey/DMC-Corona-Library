@@ -47,7 +47,7 @@ local VERSION = "0.1.1"
 --== Imports
 
 
-local Objects = require 'lua_objects'
+local Class = require 'lua_class'
 
 
 
@@ -55,16 +55,12 @@ local Objects = require 'lua_objects'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
-local Class = Objects.Class
-
 -- local control of development functionality
 local LOCAL_DEBUG = false
 
 local tinsert = table.insert
 
-local Promise, Deferred, Failure -- forward declaration
+local Promise, Deferred, Failure -- forward declarations
 
 
 

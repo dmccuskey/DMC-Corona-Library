@@ -31,13 +31,6 @@ SOFTWARE.
 --]]
 
 
---- Tap Gesture Module
--- @module TapGesture
--- @usage local Gesture = require 'dmc_gestures'
--- local view = display.newRect( 100, 100, 200, 200 )
--- local g = Gesture.newTapGesture( view )
--- g:addEventListener( g.EVENT, gHandler )
-
 
 --====================================================================--
 --== DMC Corona Library : Tap Gesture
@@ -86,9 +79,21 @@ local mabs = math.abs
 --- Tap Gesture Recognizer Class.
 -- gestures to recognize tap motions
 --
--- @type TapGesture
+-- **Inherits from:**
 --
+-- * @{Gesture.Gesture}
+--
+-- @classmod Gesture.Tap
+--
+-- @usage local Gesture = require 'dmc_gestures'
+-- local view = display.newRect( 100, 100, 200, 200 )
+-- local g = Gesture.newTapGesture( view )
+-- g:addEventListener( g.EVENT, gHandler )
+
 local TapGesture = newClass( Gesture, { name="Tap Gesture" } )
+
+--- Class Constants.
+-- @section
 
 --== Class Constants
 
@@ -163,42 +168,11 @@ end
 --== Public Methods
 
 
+--======================================================--
+-- Getters/Setters
+
 --- Getters and Setters
 -- @section getters-setters
-
-
---======================================================--
--- START: bogus methods, copied from super class
-
---- the id (string).
--- this is useful to differentiate between
--- different gestures attached to the same view object
---
--- @function .id
--- @usage print( gesture.id )
--- @usage gesture.id = "myid"
---
-function TapGesture.__gs_id() end
-
---- the target view (Display Object).
---
--- @function .view
--- @usage print( gesture.view )
--- @usage gesture.view = DisplayObject
---
-function TapGesture.__gs_view() end
-
---- a gesture delegate (object/table)
---
--- @function .delegate
--- @usage print( gesture.delegate )
--- @usage gesture.delegate = DisplayObject
---
-function TapGesture.__gs_delegate() end
-
--- END: bogus methods, copied from super class
---======================================================--
-
 
 
 --- the maximum movement allowed between taps, radius (number).
