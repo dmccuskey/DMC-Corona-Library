@@ -59,14 +59,23 @@ require 'pack'
 
 
 --====================================================================--
+--== Setup, Constants
+
+
+local spack = string.pack
+local sunpack = string.unpack
+
+
+
+--====================================================================--
 --== Pack Byte Array Class
 --====================================================================--
 
 
 local ByteArray = {}
 
-ByteArray.ENDIAN_LITTLE = 'endian_little'
-ByteArray.ENDIAN_BIG = 'endian_big'
+ByteArray.ENDIAN_LITTLE = 'endian-little'
+ByteArray.ENDIAN_BIG = 'endian-big'
 
 
 
@@ -76,12 +85,12 @@ ByteArray.ENDIAN_BIG = 'endian_big'
 
 function ByteArray:readDouble()
 	self:_checkAvailable(8)
-	local _, val = string.unpack(self:readBuf(8), self:_getLC("d"))
+	local _, val = sunpack(self:readBuf(8), self:_getLC('d'))
 	return val
 end
 
 function ByteArray:writeDouble( double )
-	local str = string.pack( self:_getLC("d"), double )
+	local str = spack( self:_getLC('d'), double )
 	self:writeBuf( str )
 	return self
 end
@@ -89,12 +98,12 @@ end
 
 function ByteArray:readFloat()
 	self:_checkAvailable(4)
-	local _, val = string.unpack(self:readBuf(4), self:_getLC("f"))
+	local _, val = sunpack(self:readBuf(4), self:_getLC('f'))
 	return val
 end
 
 function ByteArray:writeFloat( float )
-	local str = string.pack( self:_getLC("f"), float)
+	local str = spack( self:_getLC('f'), float)
 	self:writeBuf( str )
 	return self
 end
@@ -102,12 +111,12 @@ end
 
 function ByteArray:readInt()
 	self:_checkAvailable(4)
-	local _, val = string.unpack(self:readBuf(4), self:_getLC("i"))
+	local _, val = sunpack(self:readBuf(4), self:_getLC('i'))
 	return val
 end
 
 function ByteArray:writeInt( int )
-	local str = string.pack( self:_getLC("i"), int )
+	local str = spack( self:_getLC('i'), int )
 	self:writeBuf( str )
 	return self
 end
@@ -115,12 +124,12 @@ end
 
 function ByteArray:readLong()
 	self:_checkAvailable(8)
-	local _, val = string.unpack(self:readBuf(8), self:_getLC("l"))
+	local _, val = sunpack(self:readBuf(8), self:_getLC('l'))
 	return val
 end
 
 function ByteArray:writeLong( long )
-	local str = string.pack( self:_getLC("l"), long )
+	local str = spack( self:_getLC('l'), long )
 	self:writeBuf( str )
 	return self
 end
@@ -141,12 +150,12 @@ function ByteArray:readStringBytes( len )
 	assert( len , "Need a length of the string!")
 	if len == 0 then return "" end
 	self:_checkAvailable( len )
-	local __, __v = string.unpack(self:readBuf( len ), self:_getLC( "A".. len ))
+	local __, __v = sunpack(self:readBuf( len ), self:_getLC( 'A'.. len ))
 	return __v
 end
 
 function ByteArray:writeStringBytes(__string)
-	local __s = string.pack(self:_getLC("A"), __string)
+	local __s = spack(self:_getLC('A'), __string)
 	self:writeBuf(__s)
 	return self
 end
@@ -160,7 +169,7 @@ end
 ByteArray.readStringUShort = ByteArray.readStringUnsignedShort
 
 function ByteArray:writeStringUnsignedShort( ustr )
-	local str = string.pack(self:_getLC("P"),  ustr )
+	local str = spack(self:_getLC('P'),  ustr )
 	self:writeBuf( str )
 	return self
 end
@@ -171,12 +180,12 @@ ByteArray.writeStringUShort = ByteArray.writeStringUnsignedShort
 
 function ByteArray:readShort()
 	self:_checkAvailable(2)
-	local _, val = string.unpack(self:readBuf(2), self:_getLC("h"))
+	local _, val = sunpack(self:readBuf(2), self:_getLC('h'))
 	return val
 end
 
 function ByteArray:writeShort( short )
-	local str = string.pack( self:_getLC("h"), short )
+	local str = spack( self:_getLC('h'), short )
 	self:writeBuf( str )
 	return self
 end
@@ -184,14 +193,14 @@ end
 
 function ByteArray:readUnsignedByte()
 	self:_checkAvailable(1)
-	local _, val = string.unpack(self:readChar(), "b")
+	local _, val = sunpack(self:readChar(), 'b')
 	return val
 end
 
 ByteArray.readUByte = ByteArray.readUnsignedByte
 
 function ByteArray:writeUnsignedByte( ubyte )
-	local str = string.pack("b", ubyte )
+	local str = spack('b', ubyte )
 	self:writeBuf( str )
 	return self
 end
@@ -199,16 +208,16 @@ end
 ByteArray.writeUByte = ByteArray.writeUnsignedByte
 
 
-function ByteArray:readUInt()
+function ByteArray:readUnsignedInt()
 	self:_checkAvailable(4)
-	local _, val = string.unpack(self:readBuf(4), self:_getLC("I"))
+	local _, val = sunpack(self:readBuf(4), self:_getLC('I'))
 	return val
 end
 
 ByteArray.readUInt = ByteArray.readUnsignedInt
 
 function ByteArray:writeUInt( uint )
-	local str = string.pack(self:_getLC("I"), uint )
+	local str = spack(self:_getLC('I'), uint )
 	self:writeBuf( str )
 	return self
 end
@@ -218,14 +227,14 @@ ByteArray.writeUInt = ByteArray.writeUnsignedInt
 
 function ByteArray:readUnsignedLong()
 	self:_checkAvailable(4)
-	local _, val = string.unpack(self:readBuf(4), self:_getLC("L"))
+	local _, val = sunpack(self:readBuf(4), self:_getLC('L'))
 	return val
 end
 
 ByteArray.readULong = ByteArray.readUnsignedLong
 
 function ByteArray:writeUnsignedLong( ulong )
-	local str = string.pack( self:_getLC("L"), ulong )
+	local str = spack( self:_getLC('L'), ulong )
 	self:writeBuf( str )
 	return self
 end
@@ -235,14 +244,14 @@ ByteArray.writeULong = ByteArray.writeUnsignedLong
 
 function ByteArray:readUnsignedShort()
 	self:_checkAvailable(2)
-	local _, val = string.unpack(self:readBuf(2), self:_getLC("H"))
+	local _, val = sunpack(self:readBuf(2), self:_getLC('H'))
 	return val
 end
 
 ByteArray.readUShort = ByteArray.readUnsignedShort
 
 function ByteArray:writeUnsignedShort( ushort )
-	local str = string.pack(self:_getLC("H"), ushort )
+	local str = spack(self:_getLC('H'), ushort )
 	self:writeBuf( str )
 	return self
 end

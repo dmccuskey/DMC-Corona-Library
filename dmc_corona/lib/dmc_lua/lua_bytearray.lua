@@ -197,7 +197,7 @@ function ByteArray.__getters:position()
 end
 
 function ByteArray.__setters:position( pos )
-	assert( type(pos)=='number', "position value must be integer")
+	assert( type(pos)=='number', "position value must be integer" )
 	assert( pos >= 1 and pos <= self.length + 1 )
 	--==--
 	self._pos = pos
@@ -216,7 +216,7 @@ end
 
 
 function ByteArray:search( str )
-	assert( type(str)=='string', "search value must be string")
+	assert( type(str)=='string', "search value must be string" )
 	--==--
 	return string.find( self._buf, str )
 end
