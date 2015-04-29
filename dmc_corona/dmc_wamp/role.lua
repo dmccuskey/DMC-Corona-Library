@@ -55,8 +55,8 @@ local VERSION = "1.0.0"
 --== Imports
 
 
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
+local Objects = require 'lib.dmc_lua.lua_objects'
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 local WErrors = require 'dmc_wamp.exception'
 
@@ -66,8 +66,9 @@ local WErrors = require 'dmc_wamp.exception'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+local pairs = pairs
+local rawget = rawget
+local type = type
 
 
 

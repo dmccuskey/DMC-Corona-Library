@@ -48,7 +48,7 @@ local VERSION = "0.2.0"
 
 
 local ByteArray = require 'lib.dmc_lua.lua_bytearray'
-local Objects = require 'dmc_objects'
+local Objects = require 'lib.dmc_lua.lua_objects'
 
 
 
@@ -56,8 +56,6 @@ local Objects = require 'dmc_objects'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
 
 

@@ -81,8 +81,9 @@ local FutureMix = WFutureMixin.FutureMix
 local newClass = Objects.newClass
 local Class = Objects.Class
 
+local assert = assert
 local tpop = table.pop
-
+local unpack = unpack
 
 
 --====================================================================--

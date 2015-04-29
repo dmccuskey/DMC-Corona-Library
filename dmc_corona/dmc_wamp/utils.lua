@@ -62,6 +62,8 @@ local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 local mrandom = math.random
+local sformat = string.format
+local sgsub = string.gsub
 
 math.randomseed( os.time() )
 
@@ -114,7 +116,7 @@ end
 --
 function WUtils.decodeLuaTable( encoded_json )
 	-- print( "WUtils.decodeLuaTable", encoded_json )
-	return string.gsub( encoded_json, '"__HACK__":"__PAD__"', '' )
+	return sgsub( encoded_json, '"__HACK__":"__PAD__"', '' )
 end
 
 
@@ -134,7 +136,7 @@ This is an issue for data correctness and certain Internet protocols (WAMP)
 --
 function WUtils.encodeLuaInteger( integer )
 	-- print( "WUtils.encodeLuaInteger", integer )
-	return string.format("<<<%.0f>>>", integer )
+	return sformat("<<<%.0f>>>", integer )
 end
 
 -- decodeLuaInteger( integer )
@@ -144,7 +146,7 @@ end
 --
 function WUtils.decodeLuaInteger( encoded_json )
 	-- print( "WUtils.decodeLuaTable", encoded_json )
-	return string.gsub( encoded_json, '"<<<(.-)>>>"', '%1' )
+	return sgsub( encoded_json, '"<<<(.-)>>>"', '%1' )
 end
 
 

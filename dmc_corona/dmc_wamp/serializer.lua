@@ -66,8 +66,9 @@ local WUtils = require 'dmc_wamp.utils'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+local tostring = tostring
+local jdecode = json.decode
+local jencode = json.encode
 
 local LOCAL_DEBUG = false
 
@@ -150,7 +151,7 @@ JsonObjSerializer.BINARY = false
 --
 function JsonObjSerializer:serialize( msg )
 	-- print( "JsonObjSerializer:serialize", msg )
-	local encoded_json = json.encode( msg )
+	local encoded_json = jencode( msg )
 	encoded_json = WUtils.decodeLuaTable( encoded_json )
 	encoded_json = WUtils.decodeLuaInteger( encoded_json )
 	return encoded_json
@@ -160,7 +161,7 @@ end
 --
 function JsonObjSerializer:unserialize( payload )
 	-- print( "JsonObjSerializer:unserialize", payload )
-	return json.decode( payload )
+	return jdecode( payload )
 end
 
 

@@ -69,11 +69,16 @@ local SHA1 = require 'lib.sha1'
 
 Patch.addPatch( 'string-format' )
 
+local assert = assert
+local ipairs = ipairs
 local mbase64_encode = mime.b64
 local mrandom = math.random
 local schar = string.char
+local slower = string.lower
+local smatch = string.match
 local tconcat = table.concat
 local tinsert = table.insert
+local type = type
 
 local HANDSHAKE_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
@@ -106,9 +111,9 @@ local function createHttpRequest( params )
 	local proto_header, key
 	local req_t
 
-	if type( protos ) == "string" then
+	if type(protos) == 'string' then
 		proto_header = protos
-	elseif type( protos ) == "table" then
+	elseif type(protos) == 'table' then
 		proto_header = tconcat( protos, "," )
 	end
 
@@ -152,13 +157,13 @@ local function createHttpResponseHash( response )
 	--==--
 	local resp_hash = {}
 	for i,v in ipairs( response ) do
-		local key, value = string.match( v, '^([%w-%p]+): (.+)$' )
+		local key, value = smatch( v, '^([%w-%p]+): (.+)$' )
 		if key and value then
-			key = string.lower( key )
+			key = slower( key )
 			if key == 'sec-websocket-accept' then
 				resp_hash[ key ] = value
 			else
-				resp_hash[ key ] = string.lower( value )
+				resp_hash[ key ] = slower( value )
 			end
 		end
 	end
@@ -182,7 +187,7 @@ local function checkHttpResponse( response, key )
 	--==--
 
 	-- check for http result code - 101
-	if string.match( response[1], '^HTTP/1.1%s+101' ) == nil then
+	if smatch( response[1], '^HTTP/1.1%s+101' ) == nil then
 		return false
 	end
 

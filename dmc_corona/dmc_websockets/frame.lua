@@ -60,7 +60,7 @@ local VERSION = "1.2.0"
 local bit = require 'lib.dmc_lua.bit'
 local ByteArray = require 'lib.dmc_lua.lua_bytearray'
 local Error = require 'dmc_websockets.exception'
-local Utils = require 'dmc_utils'
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 

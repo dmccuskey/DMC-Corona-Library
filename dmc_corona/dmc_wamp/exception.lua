@@ -62,8 +62,8 @@ local Objects = require 'lib.dmc_lua.lua_objects'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+local assert = assert
+local type = type
 
 
 

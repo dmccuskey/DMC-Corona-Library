@@ -39,16 +39,17 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.0"
+local VERSION = "1.3.0"
 
 
 
 --====================================================================--
 --== Imports
 
-local Objects = require 'dmc_objects'
+
+local Objects = require 'lib.dmc_lua.lua_objects'
 local socket = require 'socket'
-local Utils = require 'dmc_utils'
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -56,8 +57,6 @@ local Utils = require 'dmc_utils'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
 
 local tconcat = table.concat
@@ -100,7 +99,7 @@ TCPSocket.WRITE = 'write_event'
 
 
 --======================================================--
--- Start: Setup DMC Objects
+-- Start: Setup Lua Objects
 
 function TCPSocket:__init__( params )
 	-- print( "TCPSocket:__init__" )
@@ -139,7 +138,7 @@ function TCPSocket:__undoInitComplete__()
 	self:superCall( '__undoInitComplete__' )
 end
 
--- END: Setup DMC Objects
+-- END: Setup Lua Objects
 --======================================================--
 
 

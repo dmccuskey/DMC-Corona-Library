@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -127,14 +127,12 @@ local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEF
 --== Imports
 
 
-
-local Objects = require 'dmc_objects'
-local Utils = require 'dmc_utils'
-
+local Objects = require 'lib.dmc_lua.lua_objects'
 local socket = require 'socket'
+local Utils = require 'lib.dmc_lua.lua_utils'
 
-local tcp_socket = require 'dmc_sockets.tcp'
-local atcp_socket = require 'dmc_sockets.async_tcp'
+local TCPSocket = require 'dmc_sockets.tcp'
+local ATCPSocket = require 'dmc_sockets.async_tcp'
 
 
 
@@ -142,8 +140,6 @@ local atcp_socket = require 'dmc_sockets.async_tcp'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
 
 local Singleton = nil
@@ -175,7 +171,7 @@ Sockets.DEFAULT = Sockets.MEDIUM
 
 
 --======================================================--
---== Start: Setup DMC Objects
+--== Start: Setup Lua Objects
 
 function Sockets:__init__( params )
 	-- print( "Sockets:__init__" )
@@ -236,7 +232,7 @@ function Sockets:__undoInitComplete__()
 	self:superCall( '__undoInitComplete__' )
 end
 
--- END: Setup DMC Objects
+-- END: Setup Lua Objects
 --====================================================================--
 
 
@@ -301,11 +297,11 @@ function Sockets:create( s_type, params )
 
 	if s_type == Sockets.TCP then
 		params.master = self
-		return tcp_socket:new( params )
+		return TCPSocket:new( params )
 
 	elseif s_type == Sockets.ATCP then
 		params.master = self
-		return atcp_socket:new( params )
+		return ATCPSocket:new( params )
 
 	elseif s_type == Sockets.UDP then
 		error( "Sockets:create, UDP is not yet available" )

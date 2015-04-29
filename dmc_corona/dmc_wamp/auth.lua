@@ -53,9 +53,11 @@ local VERSION = "0.1.0"
 --== Imports
 
 
+local assert = assert
 local crypto = require 'crypto'
 local mime = require 'mime'
 local mbase64_encode = mime.b64
+local type = type
 
 
 

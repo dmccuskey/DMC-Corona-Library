@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.3.1"
+local VERSION = "0.4.0"
 
 
 
@@ -47,12 +47,10 @@ local VERSION = "0.3.1"
 --== Imports
 
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lib.dmc_lua.lua_objects'
 local socket = require 'socket'
-local TCPSocket = require 'dmc_sockets.tcp'
 local SSLParams = require 'dmc_sockets.ssl_params'
-
-local ssl
+local TCPSocket = require 'dmc_sockets.tcp'
 
 
 
@@ -60,12 +58,11 @@ local ssl
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
-
 local tconcat = table.concat
 local tinsert = table.insert
 local tremove = table.remove
+
+local ssl
 
 local LOCAL_DEBUG = false
 
@@ -91,7 +88,7 @@ local ATCPSocket = newClass( TCPSocket, { name="Async TCP Socket" } )
 
 
 --======================================================--
--- Start: Setup DMC Objects
+-- Start: Setup Lua Objects
 
 function ATCPSocket:__init__( params )
 	-- print( "ATCPSocket:__init__" )
@@ -122,7 +119,7 @@ function ATCPSocket:__initComplete__()
 	self.ssl_params = self._ssl_params -- use setter
 end
 
--- END: Setup DMC Objects
+-- END: Setup Lua Objects
 --======================================================--
 
 

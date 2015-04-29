@@ -67,8 +67,10 @@ local WUtils = require 'dmc_wamp.utils'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
+local ipairs = ipairs
+local pairs = pairs
+local type = type
+local sgmatch = string.gmatch
 
 
 -- strict URI check allowing empty URI components
@@ -135,7 +137,7 @@ local function check_or_raise_uri( params )
 
 	-- print( pat, params.value, string.find( params.value, pat )  )
 	length = 0
-	for word in string.gmatch( params.value, pat ) do
+	for word in sgmatch( params.value, pat ) do
 		length = length + #word
 	end
 
