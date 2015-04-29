@@ -1,7 +1,7 @@
 --====================================================================--
--- dmc_netstream.lua
+-- dmc_corona/dmc_netstream.lua
 --
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_netstream.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.3.0"
+local VERSION = "0.4.0"
 
 
 
@@ -127,11 +127,11 @@ local dmc_netstream_data = Utils.extend( dmc_lib_data.dmc_netstream, DMC_NETSTRE
 
 local UrlLib = require 'socket.url'
 
-local Objects = require 'dmc_objects'
+local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'dmc_patch'
 local Sockets = require 'dmc_sockets'
 local StatesMixModule = require 'dmc_states_mix'
-local Utils = require 'dmc_utils'
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -141,13 +141,13 @@ local Utils = require 'dmc_utils'
 
 Patch.addPatch( 'string-format' )
 
-local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
-
 local StatesMix = StatesMixModule.StatesMix
 
 local tconcat = table.concat
 local tinsert = table.insert
+local type = type
+local pairs = pairs
 
 local NetStream -- forward
 local netstream_table = {}
@@ -247,16 +247,14 @@ NetStream.ERROR = 'netstream_error_event'
 
 
 --======================================================--
--- Start: Setup DMC Objects
+-- Start: Setup Lua Objects
 
 function NetStream:__init__( params )
 	-- print( "NetStream:__init__", params )
 	params = params or {}
-	self:superCall( StatesMix, '__init__', params )
-	self:superCall( ObjectBase, '__init__', params )
+	StatesMix.__init__( self, params )
+	ObjectBase.__init__( self, params )
 	--==--
-
-	-- Utils.print( params )
 
 	--== Create Properties ==--
 
@@ -283,7 +281,7 @@ end
 
 function NetStream:__initComplete__()
 	-- print( "NetStream:__initComplete__" )
-	self:superCall( '__initComplete__' )
+	ObjectBase.__initComplete__( self )
 	--==--
 
 	local url_parts = UrlLib.parse( self._url )
@@ -318,7 +316,6 @@ end
 
 function NetStream:__undoInitComplete__()
 	-- print( "NetStream:__undoInitComplete__" )
-
 	local o
 
 	o = self._sock
@@ -326,10 +323,10 @@ function NetStream:__undoInitComplete__()
 	self._sock = nil
 
 	--==--
-	self:superCall( '__undoInitComplete__' )
+	ObjectBase.__undoInitComplete__( self )
 end
 
--- END: Setup DMC Objects
+-- END: Setup Lua Objects
 --======================================================--
 
 
