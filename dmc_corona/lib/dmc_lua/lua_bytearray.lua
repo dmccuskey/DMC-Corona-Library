@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.3.0"
+local VERSION = "0.4.0"
 
 
 
@@ -60,29 +60,40 @@ local has_pack, PackByteArray = pcall( require, 'lua_bytearray.pack_bytearray' )
 
 local ObjectBase = Class.ObjectBase
 
+local assert = assert
+local iwrite = io.write
+local mceil = math.ceil
+local sbyte = string.byte
+local schar = string.char
+local sfind = string.find
+local sformat = string.format
+local ssub = string.sub
+local tinsert = table.insert
+local type = type
 
 local Parents = { Class.Class }
 if has_pack then
-	table.insert( Parents, PackByteArray )
+	tinsert( Parents, PackByteArray )
 end
 
-
-local Utils = {}
 
 
 --====================================================================--
 --== Support Functions
 
 
+local Utils = {}
+
+
 -- hexDump()
 -- pretty-print data in hex table
 --
 function Utils.hexDump( buf )
-	for i=1,math.ceil(#buf/16) * 16 do
-		if (i-1) % 16 == 0 then io.write(string.format('%08X  ', i-1)) end
-		io.write( i > #buf and '   ' or string.format('%02X ', buf:byte(i)) )
-		if i %  8 == 0 then io.write(' ') end
-		if i % 16 == 0 then io.write( buf:sub(i-16+1, i):gsub('%c','.'), '\n' ) end
+	for i=1,mceil(#buf/16) * 16 do
+		if (i-1) % 16 == 0 then iwrite(sformat('%08X  ', i-1)) end
+		iwrite( i > #buf and '   ' or sformat('%02X ', buf:byte(i)) )
+		if i %  8 == 0 then iwrite(' ') end
+		if i % 16 == 0 then iwrite( buf:sub(i-16+1, i):gsub('%c','.'), '\n' ) end
 	end
 end
 
@@ -132,7 +143,7 @@ function ByteArray.getBytes( buffer, index, length )
 		idx_end = index + length - 1
 	end
 
-	return string.sub( buffer, index, idx_end )
+	return ssub( buffer, index, idx_end )
 end
 
 function ByteArray.putBytes( buffer, bytes, index )
@@ -153,14 +164,14 @@ function ByteArray.putBytes( buffer, bytes, index )
 	if index == 1 and byte_len >= buf_len then
 		result = bytes
 	elseif index == 1 and byte_len < buf_len then
-		buf_end = string.sub( buffer, byte_len+1 )
+		buf_end = ssub( buffer, byte_len+1 )
 		result = bytes .. buf_end
 	elseif index <= buf_len and buf_len < (index + byte_len) then
-		buf_start = string.sub( buffer, 1, index-1 )
+		buf_start = ssub( buffer, 1, index-1 )
 		result = buf_start .. bytes
 	else
-		buf_start = string.sub( buffer, 1, index-1 )
-		buf_end = string.sub( buffer, index+byte_len )
+		buf_start = ssub( buffer, 1, index-1 )
+		buf_end = ssub( buffer, index+byte_len )
 		result = buf_start .. bytes .. buf_end
 	end
 
@@ -218,7 +229,7 @@ end
 function ByteArray:search( str )
 	assert( type(str)=='string', "search value must be string" )
 	--==--
-	return string.find( self._buf, str )
+	return sfind( self._buf, str )
 end
 
 
@@ -240,14 +251,14 @@ end
 
 -- byte is number from 0<>255
 function ByteArray:readByte()
-	return string.byte( self:readChar() )
+	return sbyte( self:readChar() )
 end
 
 function ByteArray:writeByte( byte )
 	assert( type(byte)=='number', "not valid byte" )
 	assert( byte>=0 and byte<=255, "not valid byte" )
 	--==--
-	self:writeChar( string.char(byte) )
+	self:writeChar( schar(byte) )
 end
 
 

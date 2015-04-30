@@ -133,7 +133,6 @@ local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 
 local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'lib.dmc_lua.lua_patch'
-local StatesMixin = require 'lib.dmc_lua.lua_states_mix'
 local Utils = require 'lib.dmc_lua.lua_utils'
 local WebSocket = require 'dmc_websockets'
 
@@ -150,7 +149,8 @@ local WTypes = require 'dmc_wamp.types'
 
 Patch.addPatch( 'print-output' )
 
-local StatesMix = StatesMixin.StatesMix
+local assert = assert
+local type = type
 
 -- local control of development functionality
 local LOCAL_DEBUG = dmc_wamp_data.debug_active~=nil and dmc_wamp_data.debug_active or false
@@ -162,7 +162,7 @@ local LOCAL_DEBUG = dmc_wamp_data.debug_active~=nil and dmc_wamp_data.debug_acti
 --====================================================================--
 
 
-local Wamp = newClass( { WebSocket, StatesMix }, { name="WAMP Connector" } )
+local Wamp = newClass( WebSocket, {name="WAMP Connector"} )
 
 --== Class Constants ==--
 
@@ -200,8 +200,7 @@ Wamp.ONPROGRESS = 'wamp_on_progress_event'
 function Wamp:__init__( params )
 	-- print( "Wamp:__init__" )
 	params = params or {}
-	self:superCall( WebSocket, '__init__', params )
-	self:superCall( StatesMix, '__init__', params )
+	self:superCall( '__init__', params )
 	--==--
 
 	--== Sanity Check ==--
@@ -245,7 +244,7 @@ end
 
 function Wamp:__initComplete__()
 	-- print( "Wamp:__initComplete__" )
-	self:superCall( WebSocket, '__initComplete__' )
+	self:superCall( '__initComplete__' )
 
 	self._session_handler = self:createCallback( self._wampSessionEvent_handler )
 	self._serializer = WSerializerFactory.create( 'json' )

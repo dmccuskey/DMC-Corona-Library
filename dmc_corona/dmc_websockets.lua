@@ -255,15 +255,18 @@ WebSocket.ONCLOSE = 'onclose'
 function WebSocket:__init__( params )
 	-- print( "WebSocket:__init__" )
 	params = params or {}
+	if params.auto_connect==nil then params.auto_connect=true end
+	if params.auto_reconnect==nil then params.auto_reconnect=false end
+
 	self:superCall( ObjectBase, '__init__', params )
 	self:superCall( StatesMix, '__init__', params )
 	--==--
 
 	--== Sanity Check ==--
 
-	if self.is_instance then
-		assert( params.uri, "WebSocket: requires parameter 'uri'" )
-	end
+	if self.is_class then return end
+
+	assert( params.uri, "WebSocket: requires parameter 'uri'" )
 
 	--== Create Properties ==--
 
@@ -272,8 +275,8 @@ function WebSocket:__init__( params )
 	self._query = params.query
 	self._protocols = params.protocols
 
-	self._auto_connect = params.auto_connect == nil and true or params.auto_connect
-	self._auto_reconnect = params.auto_reconnect or false
+	self._auto_connect = params.auto_connect
+	self._auto_reconnect = params.auto_reconnect
 
 	self._msg_queue = {}
 	self._msg_queue_handler = nil
@@ -300,7 +303,6 @@ function WebSocket:__init__( params )
 	self._ba = nil -- our Byte Array, buffer
 	self._socket = nil
 	self._ssl_params = params.ssl_params
-
 
 	-- set first state
 	self:setState( WebSocket.STATE_CREATE )
@@ -629,7 +631,6 @@ function WebSocket:_receiveFrame()
 	until err or self:getState() == WebSocket.STATE_CLOSED
 
 	--== handle error
-
 	if not err then
 		-- pass, WebSocket.STATE_CLOSED
 
