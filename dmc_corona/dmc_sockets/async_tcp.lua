@@ -237,6 +237,8 @@ function ATCPSocket:connect( host, port, params )
 					end
 
 					self._socket:settimeout( 0 ) -- need to re-set for wrapped socket
+					self._socket:setoption( 'keepalive', true )
+					self._socket:setoption( 'tcp-nodelay', true )
 
 				end
 

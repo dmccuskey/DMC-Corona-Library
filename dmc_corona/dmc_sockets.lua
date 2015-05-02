@@ -127,9 +127,9 @@ local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEF
 --== Imports
 
 
-local Objects = require 'lib.dmc_lua.lua_objects'
+local Objects = require 'lua_objects'
 local socket = require 'socket'
-local Utils = require 'lib.dmc_lua.lua_utils'
+local Utils = require 'lua_utils'
 
 local TCPSocket = require 'dmc_sockets.tcp'
 local ATCPSocket = require 'dmc_sockets.async_tcp'
@@ -141,6 +141,14 @@ local ATCPSocket = require 'dmc_sockets.async_tcp'
 
 
 local ObjectBase = Objects.ObjectBase
+
+local ipairs = ipairs
+local mfloor = math.floor
+local sselect = socket.select
+local tinsert = table.insert
+local tonumber = tonumber
+local tostring = tostring
+local type = type
 
 local Singleton = nil
 
@@ -163,9 +171,9 @@ Sockets.ATCP = 'atcp'
 
 -- throttle socket checks, milliseconds delay
 Sockets.OFF = 0
-Sockets.LOW = math.floor( 1000/30 )  -- ie, 30 FPS
-Sockets.MEDIUM = math.floor( 1000/15 )  -- ie, 15 FPS
-Sockets.HIGH = math.floor( 1000/1 )  -- ie, 1 FPS
+Sockets.LOW = mfloor( 1000/30 )  -- ie, 30 FPS
+Sockets.MEDIUM = mfloor( 1000/15 )  -- ie, 15 FPS
+Sockets.HIGH = mfloor( 1000/1 )  -- ie, 1 FPS
 
 Sockets.DEFAULT = Sockets.MEDIUM
 
@@ -402,7 +410,7 @@ function Sockets:_addSocket( sock )
 	self._raw_socks[ key ] = sock
 
 	-- save raw socket in list
-	table.insert( self._raw_socks_list, raw_sock )
+	tinsert( self._raw_socks_list, raw_sock )
 
 	if #self._raw_socks_list then
 		self.check_is_active = true
@@ -435,7 +443,7 @@ end
 function Sockets:_checkConnections()
 	-- print( "Sockets:_checkConnections" )
 
-	local s_read, s_write, err = socket.select( self._check_read, self._check_write, Sockets.NO_BLOCK )
+	local s_read, s_write, err = sselect( self._check_read, self._check_write, Sockets.NO_BLOCK )
 
 	if err ~= nil then return end
 

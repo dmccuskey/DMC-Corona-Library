@@ -100,7 +100,7 @@ function Endpoint:__new__( params )
 	params = params or {}
 	self:superCall( '__new__', params )
 	--==--
-	assert( params.obj )
+	-- assert( params.obj )
 	assert( params.fn )
 	assert( params.procedure )
 
@@ -1082,7 +1082,7 @@ function Session:register( endpoint, params )
 	end
 
 	local function _register( obj, endpoint, procedure, options )
-		-- print( "_register" )
+		-- print( "_register", obj, endpoint, procedure, options )
 		local request, msg
 
 		request = WUtils.id()
