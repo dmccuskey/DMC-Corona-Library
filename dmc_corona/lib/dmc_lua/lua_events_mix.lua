@@ -50,7 +50,9 @@ local VERSION = "0.2.2"
 local Events
 local Utils = {} -- make copying from Utils easier
 
+local assert = assert
 local sfmt = string.format
+local type = type
 
 
 
@@ -101,7 +103,7 @@ local function _createDmcEvent( obj, e_type, data, params )
 	--==--
 	local e
 
-	if params.merge and type( data ) == 'table' then
+	if params.merge and type( data )=='table' then
 		e = data
 		e.name = obj.EVENT
 		e.type = e_type
@@ -127,10 +129,15 @@ local function _patch( obj )
 
 	-- add properties
 	Events.__init__( obj )
-	obj.EVENT = Events.EVENT -- generic event name
+
+	if obj.EVENT==nil then
+		obj.EVENT = Events.EVENT -- generic event name
+	end
 
 	-- add methods
 	obj.dispatchEvent = Events.dispatchEvent
+	obj.dispatchRawEvent = Events.dispatchRawEvent
+
 	obj.addEventListener = Events.addEventListener
 	obj.removeEventListener = Events.removeEventListener
 
@@ -200,7 +207,7 @@ function Events.createCallback( self, method )
 end
 
 function Events.setDebug( self, value )
-	assert( type(value) == 'boolean', "setDebug requires boolean" )
+	assert( type( value )=='boolean', "setDebug requires boolean" )
 	self.__debug_on = value
 end
 
@@ -222,7 +229,7 @@ end
 
 function Events.dispatchRawEvent( self, event )
 	-- print( "Events.dispatchRawEvent", event )
-	assert( type(event)=='table', "wrong type for event" )
+	assert( type( event )=='table', "wrong type for event" )
 	assert( event.name, "event must have property 'name'")
 	--==--
 	self:_dispatchEvent( event )
@@ -234,12 +241,12 @@ end
 --
 function Events.addEventListener( self, e_name, listener )
 	-- print( "Events.addEventListener", e_name, listener )
-	assert( type(e_name)=='string', sfmt( "Events.addEventListener event name should be a string, received '%s'", tostring(e_name)) )
+	assert( type( e_name )=='string', sfmt( "Events.addEventListener event name should be a string, received '%s'", tostring(e_name)) )
 	assert( type(listener)=='function' or type(listener)=='table', sfmt( "Events.addEventListener callback should be function or object, received '%s'", tostring(listener) ))
 
 	-- Sanity Check
 
-	if not e_name or type(e_name)~='string' then
+	if not e_name or type( e_name )~='string' then
 		error( "ERROR addEventListener: event name must be string", 2 )
 	end
 	if not listener and not Utils.propertyIn( {'function','table'}, type(listener) ) then
@@ -299,11 +306,11 @@ function Events:_dispatchEvent( event )
 	if not e_name or not self.__event_listeners[ e_name ] then return end
 
 	listeners = self.__event_listeners[ e_name ]
-	if type(listeners)~='table' then return end
+	if type( listeners )~='table' then return end
 
 	for k, callback in pairs( listeners ) do
 
-		if type( callback ) == 'function' then
+		if type( callback )=='function' then
 			-- have function
 		 	callback( event )
 

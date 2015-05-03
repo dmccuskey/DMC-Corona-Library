@@ -738,7 +738,7 @@ end
 -- contentToLocal( x_content, y_content )
 --
 function ComponentBase:contentToLocal( ... )
-	self.view:contentToLocal( ... )
+	return self.view:contentToLocal( ... )
 end
 
 
@@ -766,7 +766,7 @@ end
 -- localToContent( x, y )
 --
 function ComponentBase:localToContent( ... )
-	self.view:localToContent( ... )
+	return self.view:localToContent( ... )
 end
 
 -- removeEventListener( eventName, listener )
