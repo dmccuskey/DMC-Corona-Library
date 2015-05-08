@@ -419,8 +419,8 @@ function Kolor._translateColor( c_tbl )
 	elseif arg1Type=='table' and arg1.type=='gradient' then
 		-- gradient RGB
 		tmp = arg1
-		tmp.color1 = Kolor._COLOR_FUNC( tmp.color1 )
-		tmp.color2 = Kolor._COLOR_FUNC( tmp.color2 )
+		tmp.color1 = Kolor.translateColor( tmp.color1 )
+		tmp.color2 = Kolor.translateColor( tmp.color2 )
 		color = tmp
 
 	elseif arg1Type=='string' and arg1:sub(1,1)=='#' then
@@ -432,7 +432,7 @@ function Kolor._translateColor( c_tbl )
 		color = Kolor.getNamedColor( arg1 )
 
 	else
-		error( sfmt("ERROR dmc_kolor: unknown RGB color type '%s'", type( arg1 ) ))
+		error( sfmt("ERROR dmc-kolor: unknown RGB color type '%s'", type( arg1 ) ))
 	end
 
 	-- print( unpack( color ) )
