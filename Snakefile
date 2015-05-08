@@ -68,7 +68,8 @@ module_config = {
 			"dmc_websockets/exception.lua",
 			"dmc_websockets/frame.lua",
 			"dmc_websockets/handshake.lua",
-			"dmc_websockets/message.lua"
+			"dmc_websockets/message.lua",
+			"lib/sha1.lua"
 		],
 		"requires": [
 			"dmc-corona-boot",
