@@ -404,6 +404,14 @@ local function blessObject( inheritance, params )
 end
 
 
+local function unblessObject( o )
+	setmetatable( o, nil )
+	o.__parents=nil
+	o.__is_dmc = nil
+	o.__setters = nil
+	o.__getters=nil
+end
+
 
 local function newClass( inheritance, params )
 	inheritance = inheritance or {}
@@ -475,6 +483,7 @@ end
 --
 function ClassBase:__dtor__()
 	self:__destroy__()
+	-- unblessObject( self )
 end
 
 

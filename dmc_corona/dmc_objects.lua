@@ -147,8 +147,6 @@ local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
 --== Setup, Constants
 
 
--- setup some aliases to make code cleaner
-local newClass = Objects.newClass
 local Class = Objects.Class
 local registerCtorName = Objects.registerCtorName
 local registerDtorName = Objects.registerDtorName
@@ -173,130 +171,12 @@ end
 
 
 
-
---====================================================================--
---== Object Base Class
---====================================================================--
-
-
-local ObjectBase = newClass( { Class, EventsMix }, { name="Object Class" } )
-
-
-
---======================================================--
---== Constructor / Destructor
-
-
--- __new__()
--- this method drives the construction flow for DMC-style objects
--- typically, you won't override this
---
-function ObjectBase:__new__( ... )
-
-	--== Do setup sequence ==--
-
-	self:__init__( ... )
-
-	-- skip these if a Class object (ie, NOT an instance)
-	if rawget( self, '__is_class' ) == false then
-		self:__initComplete__()
-	end
-
-	return self
-end
-
-
--- __destroy__()
--- this method drives the destruction flow for DMC-style objects
--- typically, you won't override this
---
-function ObjectBase:__destroy__()
-
-	--== Do teardown sequence ==--
-
-	-- skip these if a Class object (ie, NOT an instance)
-	if rawget( self, '__is_class' ) == false then
-		self:__undoInitComplete__()
-	end
-
-	self:__undoInit__()
-end
-
-
-
---======================================================--
--- Start: Setup Lua Objects
-
--- __init__
--- initialize the object
---
-function ObjectBase:__init__( ... )
-	--[[
-	there is no __init__ on Class
-	-- self:superCall( Class, '__init__', ... )
-	--]]
-	self:superCall( EventsMix, '__init__', ... )
-	--==--
-end
-
--- __undoInit__
--- remove items added during __init__
---
-function ObjectBase:__undoInit__()
-	self:superCall( EventsMix, '__undoInit__' )
-	--[[
-	there is no __undoInit__ on Class
-	-- self:superCall( Class, '__undoInit__' )
-	--]]
-end
-
-
--- __initComplete__
--- any setup after object is done with __init__
---
-function ObjectBase:__initComplete__()
-end
-
--- __undoInitComplete__()
--- remove any items added during __initComplete__
---
-function ObjectBase:__undoInitComplete__()
-end
-
--- END: Setup Lua Objects
---======================================================--
-
-
-
---====================================================================--
---== Public Methods
-
-
--- none
-
-
-
---====================================================================--
---== Private Methods
-
-
-
---====================================================================--
---== Event Handlers
-
--- none
-
-
-
-
-
-
 --====================================================================--
 --== Component Base Class
 --====================================================================--
 
 
-local ComponentBase = newClass( ObjectBase, { name="Component" } )
+local ComponentBase = newClass( Objects.ObjectBase, { name="Component" } )
 
 
 --== Class Constants ==--
@@ -351,6 +231,7 @@ function ComponentBase:__destroy__()
 	end
 
 	self:__undoInit__()
+
 end
 
 
@@ -454,7 +335,7 @@ function ComponentBase:_unsetView()
 
 		if view.__dmc_ref then view.__dmc_ref = nil end
 
-		if view.numChildren ~= nil then
+		if view.numChildren~=0 then
 			for i = view.numChildren, 1, -1 do
 				local o = view[i]
 				o.parent:remove( o )
@@ -967,7 +848,6 @@ end
 
 
 -- simply add to current exports
-Objects.ObjectBase = ObjectBase
 Objects.ComponentBase = ComponentBase
 Objects.PhysicsComponentBase = PhysicsComponentBase
 

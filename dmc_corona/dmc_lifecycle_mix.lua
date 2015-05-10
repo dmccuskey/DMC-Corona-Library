@@ -47,9 +47,9 @@ local VERSION = "0.1.0"
 --== Setup, Constants
 
 
-local tinsert = table.insert
-local tremove = table.remove
+local tinsert, tremove = table.insert, table.remove
 local sfmt = string.format
+local assert, type = assert, type
 
 local Utils
 local Lifecycle
@@ -137,7 +137,9 @@ end
 
 function Lifecycle.__undoInit__( self )
 	-- print( "Lifecycle.__undoInit__" )
-	Lifecycle.resetLifecycle( self )
+	self:__stopUpdate()
+	self.__enterFrame_f = nil
+	self.__setters.onUpdate = nil
 end
 
 -- END: Mixin Setup for Lua Objects
@@ -172,14 +174,16 @@ end
 
 function Lifecycle.onUpdate( self, func )
 	-- print( 'Lifecycle.onUpdate', func )
-	assert( func==nil or type(func)=='function' )
+	local t = type(func)
+	assert( t=='nil' or t=='function' )
 	--==--
 	self.__onUpdate = func
 end
 
 function Lifecycle.__setters.onProperty( self, func )
 	-- print( 'Lifecycle.onProperty', func )
-	assert( func==nil or type(func)=='function' )
+	local t = type(func)
+	assert( t=='nil' or t=='function' )
 	--==--
 	self.__onProperty = func
 end
@@ -202,6 +206,12 @@ function Lifecycle.__dispatchInvalidateNotification__( self, prop, value )
 	if self.__onProperty then self.__onProperty( e ) end
 end
 
+
+function Lifecycle.__stopUpdate( self )
+	Runtime:removeEventListener( 'enterFrame', self.__enterFrame_f )
+	self.__pending_update = false
+end
+
 function Lifecycle.__invalidateNextFrame__( self )
 	-- print("Lifecycle.__invalidateNextFrame__")
 	if self.__pending_update == true then return end
@@ -210,7 +220,6 @@ function Lifecycle.__invalidateNextFrame__( self )
 end
 
 function Lifecycle.__enterFrame__( self )
-	-- print("Lifecycle.__enterFrame__")
 	self:__validate__()
 end
 
@@ -223,8 +232,7 @@ function Lifecycle.__validate__( self )
 			self.__onUpdate({name=self.EVENT, type=self.LIFECYCLE_UPDATED, target=self})
 		end
 	end
-	Runtime:removeEventListener( 'enterFrame', self.__enterFrame_f )
-	self.__pending_update = false
+	self:__stopUpdate()
 end
 
 function Lifecycle.__commitProperties__( self )
