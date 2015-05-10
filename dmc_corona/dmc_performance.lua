@@ -1,37 +1,39 @@
 --====================================================================--
--- dmc_performance.lua
+-- dmc_corona/dmc_performance.lua
 --
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_performance.lua
+-- Documentation: http://docs.davidmccuskey.com/
 --====================================================================--
+
 
 --[[
 
-Copyright (C) 2011-2013 David McCuskey. All Rights Reserved.
+The MIT License (MIT)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in the
-Software without restriction, including without limitation the rights to use, copy,
-modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-and to permit persons to whom the Software is furnished to do so, subject to the
-following conditions:
+Copyright (c) 2011-2015 David McCuskey
 
-The above copyright notice and this permission notice shall be included in all copies
-or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 --]]
 
 
-
 --====================================================================--
--- DMC Corona Library : DMC Performance
+--== DMC Corona Library : DMC Performance
 --====================================================================--
 
 
@@ -42,17 +44,32 @@ local VERSION = "1.1.0"
 
 
 --====================================================================--
--- DMC Corona Library Config
+--== DMC Corona Library Config
 --====================================================================--
 
 
 --====================================================================--
--- Support Functions
+--== Support Functions
+
 
 local Utils = {} -- make copying from dmc_utils easier
 
+
+--== Start: copy from lua_utils ==--
+
+-- extend()
+-- Copy key/values from one table to another
+-- Will deep copy any value from first table which is itself a table.
+--
+-- @param fromTable the table (object) from which to take key/value pairs
+-- @param toTable the table (object) in which to copy key/value pairs
+-- @return table the table (object) that received the copied items
+--
 function Utils.extend( fromTable, toTable )
 
+	if not fromTable or not toTable then
+		error( "table can't be nil" )
+	end
 	function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
@@ -76,58 +93,86 @@ function Utils.extend( fromTable, toTable )
 	return _extend( fromTable, toTable )
 end
 
+--== End: copy from lua_utils ==--
+
 
 --====================================================================--
--- Configuration
+--== Configuration
 
-local dmc_lib_data, dmc_lib_info
 
--- boot dmc_library with boot script or
+local dmc_lib_data
+
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 	_G.__dmc_corona = {
 		dmc_corona={},
 	}
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
 
 
-
---====================================================================--
--- DMC Performance
---====================================================================--
 
 
 --====================================================================--
--- Configuration
+--== DMC Performance
+--====================================================================--
+
+
+--====================================================================--
+--== Configuration
+
 
 dmc_lib_data.dmc_performance = dmc_lib_data.dmc_performance or {}
 
 local DMC_PERFORMANCE_DEFAULTS = {
+	output_markers = 'false',
 	memory_active = 'false'
 }
 
 local dmc_performance_data = Utils.extend( dmc_lib_data.dmc_performance, DMC_PERFORMANCE_DEFAULTS )
 
 
+
 --====================================================================--
--- Setup, Constants
+--== Imports
+
+
+-- none
+
+
+
+--====================================================================--
+--== Setup, Constants
+
+
+local collectgarbage = collectgarbage
+local mabs, mfloor = math.abs, math.floor
+local sysinfo, systimer = system.getInfo, system.getTimer
+local sformat = string.format
+local tcancel, tdelay = timer.cancel, timer.performWithDelay
+local tonumber, tostring, type = tonumber, tostring, type
 
 local Perf = {}
+local firstTimeMarker = nil
+local lastTimeMarker = nil
+local timeMarks = {}
+local memoryWatcherCallback = nil
+
 
 
 --====================================================================--
--- Support Methods
+--== Support Functions
+
 
 local function castValue( v )
 	local ret = nil
 
-	if v == 'true' then
+	if v=='true' then
 		ret = true
-	elseif v == 'false' then
+	elseif v=='false' then
 		ret = false
 	else
 		ret = tonumber( v )
@@ -137,39 +182,40 @@ local function castValue( v )
 end
 
 
+local function markerOutput( str, params )
+	params = params or {}
+	if params.prefix==nil then params.prefix="MARK    " end
+	print( sformat( "%s: %s", params.prefix, str ) )
+end
+
+
 
 --====================================================================--
 -- Performance Module
 --====================================================================--
 
 
---====================================================================--
---== Time Marker ==--
+--======================================================--
+-- Time Marker
 
-local firstTimeMarker = nil
-local lastTimeMarker = nil
-local timeMarks = {}
-
-local function calculateTime()
-
-end
 function Perf.markTime( marker, params )
-	local t = system.getTimer()
+	params = params or {}
+	if params.reset==true then lastTimeMarker = nil end
+	if params.print==nil then params.print = true end
+	--==--
+	local t = systimer()
 	local precision = 100000
 	local delta = 0
-	params = params or {}
-	if params.reset == true then lastTimeMarker = nil end
-	if params.print == nil then params.print = true end
 
-	if firstTimeMarker == nil then
-		print( "MARK    : ".."Application Started: ".." (T:"..tostring(t)..")" )
+	if firstTimeMarker==nil and dmc_performance_data.output_markers then
+		markerOutput( sformat( "Application Started:  (T:%s)", tostring(t) ) )
 		firstTimeMarker = t
 	end
-	if lastTimeMarker == nil then lastTimeMarker = t end
+	if lastTimeMarker==nil then lastTimeMarker = t end
 
-	if params.print then
-		delta = math.floor((t-lastTimeMarker)*precision)/precision
-		print( "MARK    : "..marker, tostring(delta).." (T:"..tostring(t)..")" )
+	if params.print and dmc_performance_data.output_markers then
+		delta = mfloor((t-lastTimeMarker)*precision)/precision
+		markerOutput( sformat( "%s:  %s  (T:%s)", marker, tostring(delta), tostring(t) ) )
 	end
 
 	lastTimeMarker = t
@@ -179,28 +225,27 @@ end
 function Perf.markTimeDiff( marker1, marker2 )
 	local precision = 100000
 	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
-	local delta = math.floor((t1-t2 )*precision)/precision
+	local delta = mfloor((t1-t2 )*precision)/precision
 
-	print( "MARK <d>: ".. marker1.."<=>"..marker2.." <d> ".. tostring( math.abs(delta)) )
+	if dmc_performance_data.output_markers then
+		markerOutput( sformat( "%s <=> %s  <d> %s", marker1, marker2, tostring(mabs(delta)) ), {prefix="MARK <d>"} )
+	end
 end
 
 
---====================================================================--
---== Memory Monitor ==--
 
-local memoryWatcherCallback = nil
+--======================================================--
+-- Memory Monitor
+
 
 -- Memory Monitor function
 
 function Perf.memoryMonitor()
-
 	collectgarbage()
+	local memory = collectgarbage( 'count' )
+	local texture = sysinfo( 'textureMemoryUsed' ) / 1048576
 
-	local memory = collectgarbage("count")
-	local texture = system.getInfo( "textureMemoryUsed" ) / 1048576
-
-	print( "M: " .. memory, " T: " .. texture )
-
+	print( sformat( "M: %s  T: %s", tostring(memory), tostring(texture) ) )
 end
 
 
@@ -213,29 +258,29 @@ end
 -- if number, start memory watching every Number of milliseconds
 --
 function Perf.watchMemory( value )
-	print( "Perf.watchMemory", value )
+	-- print( "Perf.watchMemory", value )
 	local f
 
-	if value == true then
+	if value==true then
 		-- setup constant, frame rate memory watch
 
-		Runtime:addEventListener( "enterFrame", Perf.memoryMonitor )
+		Runtime:addEventListener( 'enterFrame', Perf.memoryMonitor )
 
 		memoryWatcherCallback = function()
-			Runtime:removeEventListener( "enterFrame", Perf.memoryMonitor )
+			Runtime:removeEventListener( 'enterFrame', Perf.memoryMonitor )
 			memoryWatcherCallback = nil
 		end
 
-	elseif type( value ) == "number" and value > 0 then
+	elseif type(value)=='number' and value > 0 then
 
-		local timer = timer.performWithDelay( value, Perf.memoryMonitor, 0 )
+		local timer = tdelay( value, Perf.memoryMonitor, 0 )
 
 		memoryWatcherCallback = function()
-			timer.cancel( timer )
+			tcancel( timer )
 			memoryWatcherCallback = nil
 		end
 
-	elseif value == false and memoryWatcherCallback ~= nil then
+	elseif value==false and memoryWatcherCallback ~= nil then
 		-- stop watching memory
 		memoryWatcherCallback()
 	end
