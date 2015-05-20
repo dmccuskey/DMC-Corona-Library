@@ -1,4 +1,4 @@
-**Note: _Version 2.0 of DMC Corona Lib is close to being released so I would think about using that version intead. Right now those changes are in branch `dmc_corona-2.x`_**
+**Note: _Version 2.0 of DMC Corona Lib is close to being released so I would think about using that version instead. Right now those changes are in branch `dmc_corona-2.x`_**
 
 **All of the individual dmc modules have been moved to their own repos. Current examples can be found there too.** 
 
