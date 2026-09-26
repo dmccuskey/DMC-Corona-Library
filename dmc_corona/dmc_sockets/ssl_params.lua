@@ -84,10 +84,20 @@ SSLParams.MODES = {
 }
 
 -- secure protocols
+-- 'any' negotiates the highest version both sides support;
+-- current servers and OpenSSL 3 refuse TLS 1.0 and SSLv3
+SSLParams.ANY = 'any'
+SSLParams.TLS_V1_3 = 'tlsv1_3'
+SSLParams.TLS_V1_2 = 'tlsv1_2'
+SSLParams.TLS_V1_1 = 'tlsv1_1'
 SSLParams.TLS_V1 = 'tlsv1'
 SSLParams.SSL_V3 = 'sslv3'
 
 SSLParams.PROTOCOLS = {
+	SSLParams.ANY,
+	SSLParams.TLS_V1_3,
+	SSLParams.TLS_V1_2,
+	SSLParams.TLS_V1_1,
 	SSLParams.TLS_V1,
 	SSLParams.SSL_V3
 }
@@ -122,7 +132,7 @@ function SSLParams:__new__( params )
 	-- save args
 	self._mode = self.CLIENT
 	self._options = self.ALL
-	self._protocol = self.TLS_V1
+	self._protocol = self.ANY
 	self._verify = self.NONE
 
 	if params then self:update( params ) end

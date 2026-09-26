@@ -240,11 +240,12 @@ end
 
 -- Memory Monitor function
 
-function Perf.memoryMonitor()
+function Perf.memoryMonitor( param )
 	collectgarbage()
 	local memory = collectgarbage( 'count' )
 	local texture = sysinfo( 'textureMemoryUsed' ) / 1048576
 
+	if type(param)=='string' then print(param) end
 	print( sformat( "M: %s  T: %s", tostring(memory), tostring(texture) ) )
 end
 

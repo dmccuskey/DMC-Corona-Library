@@ -49,7 +49,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.3.1"
+local VERSION = "1.4.0"
 
 
 
@@ -151,6 +151,7 @@ local ws_error = require 'dmc_websockets.exception'
 local ws_frame = require 'dmc_websockets.frame'
 local ws_handshake = require 'dmc_websockets.handshake'
 local ws_message = require 'dmc_websockets.message'
+local ws_utf8 = require 'dmc_websockets.utf8'
 
 
 
@@ -207,7 +208,7 @@ local LOCAL_DEBUG = false
 local WebSocket = newClass( { ObjectBase, StatesMix }, {name="DMC WebSocket"} )
 
 -- version for the the group of WebSocket files
-WebSocket.VERSION = '1.2.0'
+WebSocket.VERSION = VERSION
 WebSocket.USER_AGENT = 'dmc_websockets/'..WebSocket.VERSION
 
 --== Message Type Constants
@@ -487,11 +488,11 @@ function WebSocket:_handleHttpRespose()
 	local _, e_pos = ba:search( '\r\n\r\n' )
 	if e_pos == nil then return end
 
-	ba.pos = 1
+	ba.position = 1
 	local h_str = ba:readBuf( e_pos )
 
 	-- process header
-	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key ) then
+	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key, self._protocols ) then
 		self:gotoState( WebSocket.STATE_CONNECTED )
 
 	else
@@ -509,7 +510,8 @@ end
 function WebSocket:_createNewFrame()
 	self._current_frame = {
 		data = {},
-		type = ''
+		type = '',
+		utf8 = nil -- validator, text messages only
 	}
 end
 function WebSocket:_insertFrameData( data, ftype )
@@ -526,11 +528,30 @@ function WebSocket:_insertFrameData( data, ftype )
 		return nil
 	end
 
-	if ftype then frame.type = ftype end
+	if ftype then
+		frame.type = ftype
+		if ftype == WebSocket.TEXT then
+			frame.utf8 = ws_utf8.newValidator()
+		end
+	end
 	tinsert( frame.data, data )
 
 	return data
 end
+-- check text as it arrives, so invalid UTF-8 fails fast
+--
+function WebSocket:_validateFrameText( data, fin )
+	local validator = self._current_frame.utf8
+	if not validator then return end
+
+	if not validator:feed( data ) or ( fin and not validator:isComplete() ) then
+		local close = ws_frame.close.INVALID_DATA
+		error( ProtocolError{
+			code=close.code, reason=close.reason,
+			message="Invalid UTF-8 in text message" } )
+	end
+end
+
 function WebSocket:_processCurrentFrame()
 	local frame = self._current_frame
 	frame.data = tconcat( frame.data, '' )
@@ -565,12 +586,11 @@ function WebSocket:_receiveFrame()
 
 		if fcode == ws_types.continuation then
 			if not self:_insertFrameData( data ) then
-				self:_close{
-					code=ws_close.PROTO_ERR.code,
-					reason=ws_close.PROTO_ERR.reason,
-				}
-				return
+				error( ProtocolError{
+					code=ws_close.PROTO_ERR.code, reason=ws_close.PROTO_ERR.reason,
+					message="Continuation frame without a message to continue" } )
 			end
+			self:_validateFrameText( data, fin )
 			if fin then
 				local msg = self:_processCurrentFrame()
 				self:_onMessage( msg )
@@ -578,12 +598,11 @@ function WebSocket:_receiveFrame()
 
 		elseif fcode == ws_types.text or fcode == ws_types.binary then
 			if not self:_insertFrameData( data, ftype ) then
-				self:_close{
-					code=ws_close.PROTO_ERR.code,
-					reason=ws_close.PROTO_ERR.reason,
-				}
-				return
+				error( ProtocolError{
+					code=ws_close.PROTO_ERR.code, reason=ws_close.PROTO_ERR.reason,
+					message="New message started before previous one finished" } )
 			end
+			self:_validateFrameText( data, fin )
 			if fin then
 				local msg = self:_processCurrentFrame()
 				self:_onMessage( msg )
@@ -616,7 +635,7 @@ function WebSocket:_receiveFrame()
 	local err = nil
 	repeat
 
-		local position = self._ba.pos -- save in case of errors
+		local position = self._ba.position -- save in case of errors
 		try{
 			function()
 				handleWSFrame( ws_frame.receiveFrame( self._ba ) )
@@ -624,7 +643,7 @@ function WebSocket:_receiveFrame()
 			catch{
 				function(e)
 					err=e
-					self._ba.pos = position
+					self._ba.position = position
 				end
 			}
 		}

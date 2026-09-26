@@ -72,9 +72,14 @@ local LOCAL_DEBUG = false
 --== Support Functions
 
 
+-- use the Corona plugins, or plain luasec outside Corona
+--
 local function loadSSL()
-	local openssl = require 'plugin.openssl'
-	ssl = require 'plugin_luasec_ssl'
+	local success = pcall( function()
+		local openssl = require 'plugin.openssl'
+		ssl = require 'plugin_luasec_ssl'
+	end )
+	if not success then ssl = require 'ssl' end
 end
 
 
@@ -104,6 +109,11 @@ function ATCPSocket:__init__( params )
 	self._coroutine_queue = {}
 
 	self._read_in_process = false
+
+	-- data not yet accepted by the OS, sent on later frames
+	-- list of { data=<string>, index=<next byte>, callback=<func> }
+	self._write_queue = {}
+	self._write_handler = nil
 
 	self._ssl_params = params.ssl_params
 
@@ -220,6 +230,9 @@ function ATCPSocket:connect( host, port, params )
 
 					if sock then
 						self._socket = sock
+						-- send the host name (SNI); servers behind
+						-- shared hosts and CDNs reject handshakes without it
+						if sock.sni then sock:sni( host ) end
 					else
 						evt.isError = true
 						evt.emsg = emsg
@@ -236,9 +249,9 @@ function ATCPSocket:connect( host, port, params )
 						return
 					end
 
-					self._socket:settimeout( 0 ) -- need to re-set for wrapped socket
-					self._socket:setoption( 'keepalive', true )
-					self._socket:setoption( 'tcp-nodelay', true )
+					-- need to re-set for wrapped socket. socket options
+					-- were set on the plain socket; wrapped ones have no setoption()
+					self._socket:settimeout( 0 )
 
 				end
 
@@ -274,18 +287,23 @@ function ATCPSocket:connect( host, port, params )
 end
 
 
+-- send()
+-- a non-blocking send may only write part of the data, so anything
+-- left over is queued and written on following frames. callback is
+-- called when all of the data has been sent, or on error.
+--
 function ATCPSocket:send( data, callback )
 	-- print( 'ATCPSocket:send', #data, callback )
+	tinsert( self._write_queue, { data=data, index=1, callback=callback } )
+	self:_processWriteQueue()
+end
 
-	-- TODO: error handling
-	local bytes, emsg, index = self._socket:send( data )
-	local evt = {}
 
-	-- print( 'sent', bytes, emsg )
-	evt.isError = nil
-	evt.emsg = nil
-
-	if callback then callback( evt ) end
+function ATCPSocket:close()
+	-- print( 'ATCPSocket:close' )
+	self:_stopWriteHandler()
+	self._write_queue = {}
+	self:superCall( 'close' )
 end
 
 
@@ -448,6 +466,59 @@ end
 
 --====================================================================--
 --== Private Methods
+
+
+function ATCPSocket:_processWriteQueue()
+	-- print( 'ATCPSocket:_processWriteQueue', #self._write_queue )
+	local queue = self._write_queue
+
+	while #queue > 0 do
+		local rec = queue[1]
+		local sock = self._socket
+		local last, emsg, partial
+
+		if sock then
+			last, emsg, partial = sock:send( rec.data, rec.index )
+		else
+			emsg = 'closed'
+		end
+
+		if last then
+			-- all sent
+			tremove( queue, 1 )
+			if rec.callback then rec.callback( {} ) end
+
+		elseif emsg == self.ERR_TIMEOUT or emsg == 'wantwrite' then
+			-- OS buffer is full, try again next frame
+			rec.index = ( partial or rec.index-1 ) + 1
+			self:_startWriteHandler()
+			return
+
+		else
+			-- connection error, fail everything waiting
+			self._write_queue = {}
+			self:_stopWriteHandler()
+			for _, r in ipairs( queue ) do
+				if r.callback then r.callback( { isError=true, emsg=emsg } ) end
+			end
+			return
+		end
+	end
+
+	self:_stopWriteHandler()
+end
+
+function ATCPSocket:_startWriteHandler()
+	if self._write_handler then return end
+	self._write_handler = function() self:_processWriteQueue() end
+	Runtime:addEventListener( 'enterFrame', self._write_handler )
+end
+
+function ATCPSocket:_stopWriteHandler()
+	if not self._write_handler then return end
+	Runtime:removeEventListener( 'enterFrame', self._write_handler )
+	self._write_handler = nil
+end
 
 
 function ATCPSocket:_closeSocketDispatch( evt )

@@ -194,6 +194,7 @@ end
 function Gesture:__undoInitComplete__()
 	-- print( "Gesture:__undoInitComplete__" )
 	self:_stopAllTimers()
+	self._gesture_mgr:removeGesture( self )
 	--==--
 	self:superCall( ObjectBase, '__undoInitComplete__' )
 end

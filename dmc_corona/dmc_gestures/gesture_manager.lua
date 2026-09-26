@@ -73,6 +73,8 @@ local ObjectBase = Objects.ObjectBase
 local tinsert = table.insert
 local tremove = table.remove
 
+local Gesture = nil
+
 
 
 --====================================================================--
@@ -128,6 +130,8 @@ function GestureMgr:__init__( params )
 
 	--== Object References ==--
 
+	self.__mgr = nil
+
 	-- reference to our touch manager
 	self._touch_mgr = nil
 
@@ -163,6 +167,15 @@ end
 
 
 --====================================================================--
+--== Static Methods
+
+function GestureMgr.initialize( manager )
+	Gesture = manager
+end
+
+
+
+--====================================================================--
 --== Public Methods
 
 
@@ -192,12 +205,18 @@ function GestureMgr:addGesture( gesture )
 end
 
 function GestureMgr:removeGesture( gesture, params )
+	-- print( "GestureMgr:removeGesture", gesture )
 	params = params or {}
 	if params.reset==nil then params.reset=true end
 	assert( gesture )
 	--==--
-	self._gestures[ gesture ] = nil
-	if params.reset then self:_resetGestures() end
+	local gestures = self._gestures
+	gestures[ gesture ] = nil
+	if Utils.tableLength( gestures )==0 then
+		Gesture.removeGestureManager( self )
+	else
+		if params.reset then self:_resetGestures() end
+	end
 end
 
 

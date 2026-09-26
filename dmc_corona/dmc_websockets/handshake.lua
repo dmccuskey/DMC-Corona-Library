@@ -74,6 +74,7 @@ local ipairs = ipairs
 local mbase64_encode = mime.b64
 local mrandom = math.random
 local schar = string.char
+local sgmatch = string.gmatch
 local slower = string.lower
 local smatch = string.match
 local tconcat = table.concat
@@ -157,11 +158,12 @@ local function createHttpResponseHash( response )
 	--==--
 	local resp_hash = {}
 	for i,v in ipairs( response ) do
-		local key, value = smatch( v, '^([%w-%p]+): (.+)$' )
+		-- whitespace around the value is optional
+		local key, value = smatch( v, '^([^:%s]+):%s*(.-)%s*$' )
 		if key and value then
 			key = slower( key )
-			if key == 'sec-websocket-accept' then
-				resp_hash[ key ] = value
+			if key == 'sec-websocket-accept' or key == 'sec-websocket-protocol' then
+				resp_hash[ key ] = value -- case-sensitive values
 			else
 				resp_hash[ key ] = slower( value )
 			end
@@ -170,16 +172,38 @@ local function createHttpResponseHash( response )
 	return resp_hash
 end
 
+-- true if list contains value
+--
+local function hasTokenIn( list, value )
+	for i=1,#list do
+		if list[i] == value then return true end
+	end
+	return false
+end
+
+-- true if comma-separated header value contains token
+--
+local function hasToken( value, token )
+	for item in sgmatch( value or '', '[^,]+' ) do
+		if smatch( item, '^%s*(.-)%s*$' ) == token then return true end
+	end
+	return false
+end
+
 -- @param response array of lines from http response string
+-- @param key the Sec-WebSocket-Key sent in the request
+-- @param protocols string or table of subprotocols requested, optional
 --
 --[[
 -- requires:
 -- response code 101
 -- upgrade: websocket
--- connection: upgrade
--- sec=websocket-accept:
+-- connection: upgrade (may be one of several tokens)
+-- sec-websocket-accept: matching our key
+-- sec-websocket-protocol: absent, or one we requested
+-- sec-websocket-extensions: absent, we don't offer any
 --]]
-local function checkHttpResponse( response, key )
+local function checkHttpResponse( response, key, protocols )
 	-- print( "handshake:checkHttpResponse" )
 	assert( type(response)=='table', "expected table of response lines" )
 	assert( #response>0, "expected table of response lines" )
@@ -196,10 +220,20 @@ local function checkHttpResponse( response, key )
 
 	if resp_hash.upgrade ~= 'websocket' then
 		return false
-	elseif resp_hash.connection ~= 'upgrade' then
+	elseif not hasToken( resp_hash.connection, 'upgrade' ) then
 		return false
 	elseif resp_hash['sec-websocket-accept'] ~= srvr_key then
 		return false
+	elseif resp_hash['sec-websocket-extensions'] then
+		return false
+	end
+
+	local protocol = resp_hash['sec-websocket-protocol']
+	if protocol then
+		if type( protocols ) == 'string' then protocols = { protocols } end
+		if type( protocols ) ~= 'table' or not hasTokenIn( protocols, protocol ) then
+			return false
+		end
 	end
 
 	return true

@@ -158,13 +158,8 @@ Gesture._GESTURE_MGR = {}
 --== Gesture Static Functions
 
 
-function Gesture.initialize( manager, params )
-	-- print( "Gesture.initialize", manager )
-	params = params or {}
-	if params.mode==nil then params.mode=uiConst.RUN_MODE end
-	--==--
-
-
+function Gesture.initialize()
+	GestureMgr.initialize( Gesture )
 end
 
 
@@ -329,6 +324,15 @@ end
 
 
 
+
+function Gesture.removeGestureManager( mgr )
+	-- print( "Gesture.removeGestureManager", mgr )
+	local view = mgr.view
+	Gesture._removeGestureManager( mgr, view )
+end
+
+
+
 --====================================================================--
 --== Private Functions
 
@@ -360,13 +364,17 @@ function Gesture._getGestureManager( view )
 	return Gesture._GESTURE_MGR[ view ]
 end
 
-function Gesture._removeGestureManager( view )
+function Gesture._removeGestureManager( mgr, view )
+	-- print( "Gesture._removeGestureManager", mgr, view )
+	assert( mgr )
 	assert( view )
 	local o = Gesture._getGestureManager( view )
-	if not o then
-		Gesture._GESTURE_MGR[ view ] = nil
-		o:removeSelf()
-	end
+	assert( o==mgr )
+	if not o then return end
+	TouchMgr.unregisterGestureMgr( o )
+
+	Gesture._GESTURE_MGR[ view ] = nil
+	o:removeSelf()
 end
 
 
@@ -379,6 +387,8 @@ end
 -- none
 
 
+
+Gesture.initialize()
 
 
 return Gesture
