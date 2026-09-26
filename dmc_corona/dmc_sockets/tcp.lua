@@ -258,16 +258,14 @@ function TCPSocket:receive( ... )
 		self._buffer = ssub( buffer, args+1 )
 
 	elseif type( args )=='string' and args == '*l' then
-		local ret = '\r\n'
-		local lret = #ret
-		local beg, _ = sfind( buffer, ret )
+		-- like LuaSocket: a line ends at LF, and a CR before it is
+		-- dropped; the line ending isn't returned
+		local lf = sfind( buffer, '\n', 1, true )
 
-		if beg == 1 then
-			data = ""
-			self._buffer = ssub( buffer, beg+lret )
-		elseif beg then
-			data = ssub( buffer, 1, beg )
-			self._buffer = ssub( buffer, beg+lret )
+		if lf then
+			data = ssub( buffer, 1, lf-1 )
+			if ssub( data, -1 ) == '\r' then data = ssub( data, 1, -2 ) end
+			self._buffer = ssub( buffer, lf+1 )
 		end
 
 	end

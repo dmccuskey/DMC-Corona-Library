@@ -91,6 +91,9 @@ end
 
 local ATCPSocket = newClass( TCPSocket, { name="Async TCP Socket" } )
 
+-- milliseconds to wait when connecting and for '*l' reads
+ATCPSocket.DEFAULT_TIMEOUT = 6000
+
 
 --======================================================--
 -- Start: Setup Lua Objects
@@ -103,7 +106,8 @@ function ATCPSocket:__init__( params )
 
 	--== Create Properties ==--
 
-	self._timeout = 6000
+	-- milliseconds to wait when connecting and for '*l' reads
+	self._timeout = params.timeout or ATCPSocket.DEFAULT_TIMEOUT
 
 	self.__coroutine_queue_active = false
 	self._coroutine_queue = {}
@@ -138,7 +142,16 @@ end
 --== Public Methods
 
 
-function ATCPSocket.__getters:timeout( value )
+-- .timeout
+-- milliseconds to wait when connecting and for '*l' reads
+--
+function ATCPSocket.__getters:timeout()
+	return self._timeout
+end
+
+function ATCPSocket.__setters:timeout( value )
+	assert( type( value )=='number' and value > 0, "ATCPSocket.timeout expected a positive number" )
+	--==--
 	self._timeout = value
 end
 
@@ -434,7 +447,8 @@ function ATCPSocket:receiveUntilNewline( callback )
 
 		if data_list[#data_list] ~= '' then
 			if #data_list > 0 then
-				local str = tconcat( data_list, '\r\n' )
+				-- put the lines back as they arrived, each with its line ending
+				local str = tconcat( data_list, '\r\n' )..'\r\n'
 				self:unreceive( str )
 			end
 			evt.data, evt.emsg = nil, self.ERR_TIMEOUT
@@ -453,8 +467,11 @@ function ATCPSocket:receiveUntilNewline( callback )
 
 	else
 		if #data_list > 0 then
-			local str = tconcat( data_list, '\r\n' )
+			-- put the lines back as they arrived, each with its line ending
+			local str = tconcat( data_list, '\r\n' )..'\r\n'
 			self:unreceive( str )
+			-- the coroutine reads them again, so start its list empty
+			for i = #data_list, 1, -1 do data_list[i] = nil end
 		end
 
 		self:_addCoroutineToQueue( doDataCall )

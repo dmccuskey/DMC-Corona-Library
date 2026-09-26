@@ -116,7 +116,7 @@ dmc_lib_data.dmc_sockets = dmc_lib_data.dmc_sockets or {}
 local DMC_SOCKETS_DEFAULTS = {
 	check_reads=true,
 	check_writes=false,
-	throttle_level=math.floor( 1000/15 ), -- MEDIUM
+	throttle_level=0, -- OFF: check every frame
 }
 
 local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEFAULTS )
@@ -175,7 +175,8 @@ Sockets.LOW = mfloor( 1000/30 )  -- ie, 30 FPS
 Sockets.MEDIUM = mfloor( 1000/15 )  -- ie, 15 FPS
 Sockets.HIGH = mfloor( 1000/1 )  -- ie, 1 FPS
 
-Sockets.DEFAULT = Sockets.MEDIUM
+-- check every frame; the others trade latency for fewer checks
+Sockets.DEFAULT = Sockets.OFF
 
 
 --======================================================--
@@ -197,6 +198,7 @@ function Sockets:__init__( params )
 	self._check_write = nil
 
 	self._socket_check_is_active = false
+	self._throttle = nil -- milliseconds between checks, 0 for every frame
 	self._socket_check_handler = nil
 
 	--== Object References ==--
@@ -261,6 +263,8 @@ function Sockets.__setters:throttle( value )
 		value = Sockets.DEFAULT
 	end
 
+	self._throttle = value
+
 	local f
 
 	if value == self.OFF then
@@ -272,6 +276,11 @@ function Sockets.__setters:throttle( value )
 	-- using setter
 	self._socketCheck_handler = f
 
+end
+
+
+function Sockets.__getters:throttle()
+	return self._throttle
 end
 
 
@@ -470,15 +479,19 @@ end
 --== Event Handlers
 
 
+-- check sockets at most once every `value` milliseconds
+--
 function Sockets:_createSocketCheckHandler( value )
 	-- print("Sockets:_createSocketCheckHandler", value )
-	local timeout = value
+	local interval = value
 	local last_check = system.getTimer()
 
 	local f = function( event )
-		-- local current_time = system.getTimer()
-		-- print( current_time, last_check, timeout )
+		local now = system.getTimer()
+		if now - last_check >= interval then
+			last_check = now
 			self:_checkConnections()
+		end
 	end
 
 	return f
