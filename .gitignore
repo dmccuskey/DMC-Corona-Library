@@ -1,4 +1,4 @@
 *.sublime-project
 *.sublime-workspace
 .snakemake
-docs/api
+.DS_Store
