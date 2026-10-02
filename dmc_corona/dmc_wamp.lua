@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_wamp.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -45,46 +45,13 @@ WAMP support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 
@@ -104,6 +71,8 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
+
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -133,7 +102,6 @@ local dmc_wamp_data = Utils.extend( dmc_lib_data.dmc_wamp, DMC_WAMP_DEFAULTS )
 
 local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'lib.dmc_lua.lua_patch'
-local Utils = require 'lib.dmc_lua.lua_utils'
 local WebSocket = require 'dmc_websockets'
 
 local WError = require 'dmc_wamp.exception'
@@ -147,6 +115,7 @@ local WTypes = require 'dmc_wamp.types'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 Patch.addPatch( 'print-output' )
 
 local assert = assert
@@ -165,6 +134,11 @@ local LOCAL_DEBUG = dmc_wamp_data.debug_active~=nil and dmc_wamp_data.debug_acti
 local Wamp = newClass( WebSocket, {name="WAMP Connector"} )
 
 --== Class Constants ==--
+
+Wamp.VERSION = VERSION
+
+-- raise one in a registered procedure to send the caller an error URI
+Wamp.ApplicationError = WError.ApplicationError
 
 Wamp.DEFAULT_PROTOCOL = { 'wamp.2.json' }
 
@@ -189,6 +163,9 @@ Wamp.ONSUBSCRIBED = 'wamp_on_subscribed_event'
 Wamp.ONPUBLISH = 'wamp_on_publish_event' -- data event from subscripton
 Wamp.ONUNSUBSCRIBED = 'wamp_on_unsubscribed_event'
 Wamp.ONPUBLISHED = 'wamp_on_published_event' -- our publish is ok
+
+Wamp.ONREGISTERED = 'wamp_on_registered_event'
+Wamp.ONUNREGISTERED = 'wamp_on_unregistered_event'
 
 Wamp.ONRESULT = 'wamp_on_result_event'
 Wamp.ONPROGRESS = 'wamp_on_progress_event'
@@ -236,6 +213,7 @@ function Wamp:__init__( params )
 
 	self._session = nil -- a WAMP session object
 	self._session_handler = nil -- ref to event handler function
+	self._disconnect_sent = false -- ONDISCONNECT sent for this connection
 
 	self._serializer = nil -- a serializer object
 
@@ -282,10 +260,20 @@ end
 
 
 -- is_connected, getter, boolean
+-- true while the realm is joined
 --
 function Wamp.__getters:is_connected()
 	-- print( "Wamp.__getters:is_connected" )
-	return ( self._session ~= nil )
+	return ( self._session ~= nil and self._session._session_id ~= nil )
+end
+
+
+-- raises an error unless the realm is joined
+--
+function Wamp:_checkJoined( method )
+	if not self.is_connected then
+		error( "Wamp:" .. method .. " :: the realm isn't joined, wait for ONJOIN", 3 )
+	end
 end
 
 
@@ -304,13 +292,13 @@ function Wamp:call( procedure, handler, params )
 	assert( type(procedure)=='string', "Wamp:call :: incorrect type for procedure" )
 	assert( type(handler)=='function', "Wamp:call :: incorrect type for handler" )
 	--==--
+	self:_checkJoined( 'call' )
 
 	local success_f, progress_f, error_f
 
 	success_f = function( res )
-		assert( res and res.isa and res:isa(WTypes.CallResult) )
-		if res.results and #res.results==1 and not res.kwresults then
-		end
+		-- a result with no arguments comes as nil
+		res = res or WTypes.CallResult:new{}
 		local evt = {
 			is_error=false,
 			name=Wamp.EVENT,
@@ -383,25 +371,72 @@ end
 -- @param handler callback/object to handle Calls
 -- @param params table of various parameters
 --
+-- callback - optional, gets ONREGISTERED: accepted (event.registration)
+-- or refused (event.is_error, event.error)
+--
 function Wamp:register( handler, params )
 	-- print( "Wamp:register", handler )
+	params = params or {}
+	assert( type(handler)=='function', "Wamp:register :: incorrect type for handler" )
+	assert( type(params.procedure)=='string', "Wamp:register :: requires parameter 'procedure'" )
+	--==--
+	self:_checkJoined( 'register' )
+
 	if params.pkeys or params.disclose_caller then
-		params.options = Types.RegisterOptions:new( params )
+		params.options = WTypes.RegisterOptions:new( params )
 	end
-	-- @TODO: check session
-	return self._session:register( handler, params )
+
+	local callback = params.callback
+	local def = self._session:register( handler, params )
+
+	def:addCallbacks(
+		function( reg )
+			if callback then
+				callback{ is_error=false, name=Wamp.EVENT, type=Wamp.ONREGISTERED, registration=reg }
+			end
+		end,
+		function( err )
+			if callback then
+				callback{ is_error=true, name=Wamp.EVENT, type=Wamp.ONREGISTERED, error=err }
+			else
+				print( "Wamp:register :: '" .. params.procedure .. "' refused: " .. tostring( err and err.error or err ) )
+			end
+		end
+	)
+
+	return def
 end
 
 -- unregister()
 -- @param handler callback/object to handle Calls (same item as register())
 -- @param params table of various parameters
 --
+-- callback - optional, gets ONUNREGISTERED (with event.is_error on failure)
+--
 function Wamp:unregister( handler, params )
 	-- print( "Wamp:unregister", handler )
+	params = params or {}
+	assert( type(handler)=='function', "Wamp:unregister :: incorrect type for handler" )
+	--==--
+	self:_checkJoined( 'unregister' )
+
+	local callback = params.callback
 
 	try{
 		function()
-			self._session:unregister( handler, params )
+			local def = self._session:unregister( handler, params )
+			def:addCallbacks(
+				function()
+					if callback then
+						callback{ is_error=false, name=Wamp.EVENT, type=Wamp.ONUNREGISTERED }
+					end
+				end,
+				function( err )
+					if callback then
+						callback{ is_error=true, name=Wamp.EVENT, type=Wamp.ONUNREGISTERED, error=err }
+					end
+				end
+			)
 		end,
 
 		catch{
@@ -442,16 +477,20 @@ function Wamp:publish( topic, params )
 	assert( type(topic)=='string', "Wamp:call :: incorrect type for topic" )
 	--==--
 
-	params.options.acknowledge=true -- activate WAMP callbacks
+	self:_checkJoined( 'publish' )
 
 	local success_f, error_f
 	local handler = params.callback
 
-	success_f = function( sub )
+	-- with a callback, ask the router to acknowledge the publication
+	if handler then params.options.acknowledge = true end
+
+	success_f = function( pub )
 		local evt = {
 			is_error=false,
 			name=Wamp.EVENT,
-			type=Wamp.ONPUBLISHED
+			type=Wamp.ONPUBLISHED,
+			publication=pub
 		}
 		if handler then handler( evt ) end
 	end
@@ -469,7 +508,7 @@ function Wamp:publish( topic, params )
 	try{
 		function()
 			local def = self._session:publish( topic, params )
-			def:addCallbacks( success_f, error_f )
+			if def then def:addCallbacks( success_f, error_f ) end
 			return def
 		end,
 
@@ -514,6 +553,8 @@ function Wamp:subscribe( topic, handler, params )
 	assert( type(handler)=='function', "Wamp:call :: incorrect type for handler" )
 	--==--
 
+	self:_checkJoined( 'subscribe' )
+
 	local def, decorate_f, success_f, error_f
 
 	decorate_f = function( evt )
@@ -545,8 +586,6 @@ function Wamp:subscribe( topic, handler, params )
 		}
 		handler( evt )
 	end
-
-	-- @TOD: check session
 
 	def = self._session:subscribe( topic, decorate_f, params )
 	def:addCallbacks( success_f, error_f )
@@ -618,14 +657,16 @@ function Wamp:leave( reason, message )
 	else
 		session:leave{
 			reason=reason,
-			log_message=message
+			message=message
 		}
 	end
 end
 
-function Wamp:close( reason, message )
-	-- print( "Wamp:close", reason, message )
-	self:_wamp_close( reason, message )
+-- closes the connection without leaving the realm first
+--
+function Wamp:close()
+	-- print( "Wamp:close" )
+	self:_wamp_close()
 	self:superCall( 'close' )
 end
 
@@ -635,20 +676,36 @@ end
 --== Private Methods
 
 
-function Wamp:_wamp_close( reason, message )
+-- ends the session (if any) and sends ONDISCONNECT, once per connection
+-- params - from dmc-websockets' close or error: code, reason
+--
+function Wamp:_wamp_close( params )
 	-- print( "Wamp:_wamp_close" )
+	params = params or {}
 	local session = self._session
-	local had_session = ( session~=nil )
+	local details
 
-	-- @TODO: check with no session
 	if session then
-		session:onClose( message, was_clean )
+		session:onClose( params.reason )
+		details = session._close_details
 		self._session = nil
 	end
 
-	if had_session then
-		self:dispatchEvent( Wamp.ONDISCONNECT, { reason=reason, message=message }, {merge=true} )
+	if self._disconnect_sent then return end
+	self._disconnect_sent = true
+
+	local evt = { code=params.code }
+	if details then
+		-- the session ended: leave(), the router's GOODBYE or ABORT,
+		-- or the connection was lost while joined
+		evt.reason, evt.message = details.reason, details.message
+	else
+		-- never joined: the router couldn't be reached, or closed the
+		-- connection first
+		evt.reason = 'wamp.close.transport_lost'
+		evt.message = params.reason
 	end
+	self:dispatchEvent( Wamp.ONDISCONNECT, evt, {merge=true} )
 
 end
 
@@ -667,6 +724,9 @@ function Wamp:_onOpen()
 	o = WProtocol.Session{ config=self._config }
 	o:addEventListener( o.EVENT, self._session_handler )
 	self._session = o
+	self._disconnect_sent = false
+
+	self:dispatchEvent( Wamp.ONCONNECT )
 
 	try{
 		function()
@@ -705,6 +765,9 @@ end
 function Wamp:_onMessage( message )
 	-- print( "Wamp:_onMessage", message )
 
+	-- the session ended (eg, close()); frames already received are dropped
+	if not self._session then return end
+
 	try{
 		function()
 			local msg = self._serializer:unserialize( message.data )
@@ -740,6 +803,14 @@ function Wamp:_onClose( params )
 	self:_wamp_close( params )
 end
 
+-- coming from websockets: the connection failed or was failed
+-- ONERROR, then the session ends (ONDISCONNECT)
+function Wamp:_onError( params )
+	-- print( "Wamp:_onError" )
+	self:superCall( '_onError', params )
+	self:_wamp_close( params )
+end
+
 
 
 --====================================================================--
@@ -751,11 +822,8 @@ function Wamp:_wampSessionEvent_handler( event )
 	local e_type = event.type
 	local session = event.target
 
-	if e_type == session.ONCONNECT then
-		self:dispatchEvent( Wamp.ONCONNECT )
-
-	elseif e_type == session.ONJOIN then
-		self:dispatchEvent( Wamp.ONJOIN )
+	if e_type == session.ONJOIN then
+		self:dispatchEvent( Wamp.ONJOIN, { details=event.details }, {merge=true} )
 
 	elseif e_type == session.ONCHALLENGE then
 		assert( event.challenge )

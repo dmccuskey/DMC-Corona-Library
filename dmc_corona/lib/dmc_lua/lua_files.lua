@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_files.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-files
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -47,14 +47,11 @@ local VERSION = "0.2.0"
 --== Imports
 
 
-local Error = require 'lua_error' -- try/catch
 local Utils = require 'lua_utils'
 
+-- only fileExists() and remove() use lfs
 local ok, lfs = pcall( require, 'lfs' )
-if not ok then
-	print( "WARNING: lua_files missing lfs module" )
-	lfs = nil
-end
+if not ok then lfs = nil end
 
 local ok, json = pcall( require, 'json' )
 if not ok then
@@ -81,107 +78,98 @@ File.DEFAULT_CONFIG_SECTION = 'default'
 --======================================================--
 -- fileExists()
 
+-- true for a file, false for a folder or a missing path
+-- without lfs: true when the path can be opened for reading
+--
 function File.fileExists( file_path )
 	-- print( "File.fileExists", file_path )
-	local fh, exists
-	try{
-		function()
-			fh = assert( io.open( file_path, 'r' ) )
-			io.close( fh )
-			exists = true
-		end,
-		catch{
-			function()
-				exists = false
-			end
-		}
-	}
-	return exists
+	if lfs then
+		return lfs.attributes( file_path, 'mode' ) == 'file'
+	end
+	local fh = io.open( file_path, 'r' )
+	if not fh then return false end
+	io.close( fh )
+	return true
 end
 
 
 --======================================================--
 -- remove()
 
+-- a symbolic link is removed itself, never followed
+local function getPathMode( path )
+	local attributes = lfs.symlinkattributes or lfs.attributes
+	local mode = attributes( path, 'mode' )
+	if mode == 'link' then mode = 'file' end
+	return mode
+end
+
 -- item is a path
 function File._removeFile( f_path, f_options )
-	assert( os.remove( f_path ) )
+	local ok, msg = os.remove( f_path )
+	if not ok then error( msg, 0 ) end
 end
 
-function File._removeDir( dir_path, dir_options )
-	assert( lsf ~= nil, 'Lua File System (lfs) not loaded' )
-	--==--
-
-	for f_name in lfs.dir( dir_path ) do
-		if f_name == '.' or f_name == '..' then
-			-- skip system files
-		else
-			local f_path = dir_path .. '/' .. f_name
-			local f_mode = lfs.attributes( f_path, 'mode' )
-
-			if f_mode == 'directory' then
-				File._removeDir( f_path, dir_options )
-				if dir_options.rm_dir == true then
-					File._removeFile( f_path, dir_options )
-				end
-			elseif f_mode == 'file' then
-				File._removeFile( f_path, dir_options )
-			end
-
-		end -- if f_name
-	end
-end
-
-
--- name could be :
--- user data
--- string of file
--- string of directory names
--- table of files
--- table of dir names
-
--- @param  items  name of file to remove, string or table of strings, if directory
--- @param  options
---   dir -- directory, system.DocumentsDirectory, system.TemporaryDirectory, etc
+-- removes everything in the folder; its subfolders too
+-- unless f_options.rm_dir is false (then they are emptied)
 --
--- if name -- name and dir, removes files in directory
-function File.remove( items, options )
-	-- print( "File.remove" )
-	options = options or {}
-	if options.base_dir == nil then options.base_dir = system.DocumentsDirectory end
-	if options.rm_dir == nil then options.rm_dir = true end
+function File._removeDir( dir_path, dir_options )
+	assert( lfs ~= nil, 'Lua File System (lfs) not loaded' )
+	--==--
+	local rm_dir = not ( dir_options and dir_options.rm_dir == false )
 
-	local f_type, f_path, f_mode
-	local opts
+	-- collect first: removing entries while lfs.dir() walks them
+	-- isn't safe on every platform
+	local names = {}
+	for f_name in lfs.dir( dir_path ) do
+		if f_name ~= '.' and f_name ~= '..' then
+			table.insert( names, f_name )
+		end
+	end
 
-	f_type = type( items )
-
-	-- if items is Corona system directory
-	if f_type == 'userdata' then
-		f_path = system.pathForFile( '', items )
-		File._removeDir( f_path, options )
-
-	-- if items is name of a directory
-	elseif f_type == 'string' then
-		f_path = system.pathForFile( items, options.base_dir )
-		f_mode = lfs.attributes( f_path, 'mode' )
+	for _, f_name in ipairs( names ) do
+		local f_path = dir_path .. '/' .. f_name
+		local f_mode = getPathMode( f_path )
 
 		if f_mode == 'directory' then
-			rm_dir( f_path, options )
-			if options.rm_dir == true then
-				File._removeFile( f_path, options )
-			end
-
-		elseif f_mode == 'file' then
-			File._removeFile( f_path, options )
+			File._removeDir( f_path, dir_options )
+			if rm_dir then File._removeFile( f_path, dir_options ) end
+		elseif f_mode ~= nil then
+			File._removeFile( f_path, dir_options )
 		end
-
-
-	-- if items is list of names
-	elseif f_type == 'table' then
-
 	end
+end
 
+
+-- @param  paths  a path, file or folder, or a list of paths
+-- @param  options
+--   rm_dir -- false keeps the folders, emptied (default true)
+--
+-- a missing path is skipped; a path that can't be removed raises
+-- the error from os.remove()
+--
+function File.remove( paths, options )
+	-- print( "File.remove" )
+	assert( lfs ~= nil, 'Lua File System (lfs) not loaded' )
+	--==--
+
+	if type( paths ) == 'table' then
+		for _, path in ipairs( paths ) do
+			File.remove( path, options )
+		end
+		return
+	end
+	assert( type( paths ) == 'string', "expected a path or a list of paths" )
+
+	local f_mode = getPathMode( paths )
+	if f_mode == 'directory' then
+		File._removeDir( paths, options )
+		if not ( options and options.rm_dir == false ) then
+			File._removeFile( paths, options )
+		end
+	elseif f_mode ~= nil then
+		File._removeFile( paths, options )
+	end
 end
 
 
@@ -226,9 +214,8 @@ end
 
 function File.readFile( file_path, options )
 	options = options or {}
-	options.lines = options.lines == nil and true or options.lines
 	--==--
-	if options.lines == true then
+	if options.lines == nil or options.lines == true then
 		return File.readFileLines( file_path, options )
 	else
 		return File.readFileContents( file_path, options )
@@ -260,7 +247,7 @@ end
 function File.convertJsonToLua( json_str )
 	assert( json ~= nil, 'JSON library not loaded' )
 	assert( type(json_str)=='string' )
-	assert( #json_str > 0 )
+	assert( #json_str > 0, "JSON string is empty" )
 	--==--
 	local data = json.decode( json_str )
 	assert( data~=nil, "Error reading JSON file, probably malformed data" )
@@ -272,7 +259,9 @@ function File.readJSONFile( file_path, options )
 	-- print( "File.readJSONFile", file_path )
 	options = options or {}
 	--==--
-	return File.convertJsonToLua( File.readFileContents( file_path, options ) )
+	local contents = File.readFileContents( file_path, options )
+	assert( #contents > 0, "JSON file is empty: " .. tostring( file_path ) )
+	return File.convertJsonToLua( contents )
 end
 
 -- @param file_path full file-path string to location
@@ -280,7 +269,7 @@ end
 --
 function File.writeJSONFile( file_path, lua_data, options )
 	-- print( "File.writeJSONFile", file_path )
-	return File.writeFile( file_path, File.convertLuaToJson( lua_data ), options )
+	return File.saveFile( file_path, File.convertLuaToJson( lua_data ) )
 end
 
 
@@ -307,7 +296,7 @@ function File.processSectionLine( line )
 	assert( type(line)=='string', "expected string as parameter" )
 	assert( #line > 0 )
 	--==--
-	local key = line:match( "%[([%u_]+)%]" )
+	local key = line:match( "^%[(%u[%w_]*)%]" )
 	assert( type(key) ~= 'nil', "key not found in line: "..tostring(line) )
 	return string.lower( key ) -- use only lowercase inside of module
 end
@@ -318,14 +307,12 @@ function File.processKeyLine( line )
 	assert( #line > 0 )
 	--==--
 
-	-- split up line into key/value
-	local raw_key, raw_val = line:match( "([%u_:]+)%s*=%s*(.-)%s*$" )
-
-	-- split up key parts
-	local keys = {}
-	for k in string.gmatch( raw_key, "([^:]+)") do
-		table.insert( keys, #keys+1, k )
+	-- split up line into key/value, KEY:TYPE = value or KEY = value
+	local key_name, key_type, raw_val = line:match( "^(%u[%w_]*)%s*:%s*(%w+)%s*=%s*(.-)%s*$" )
+	if key_name == nil then
+		key_name, raw_val = line:match( "^(%u[%w_]*)%s*=%s*(.-)%s*$" )
 	end
+	assert( key_name ~= nil, "expected KEY = value in line: "..tostring(line) )
 
 	-- trim off quotes, make sure balanced
 	local q1, q2, trim
@@ -333,16 +320,16 @@ function File.processKeyLine( line )
 	assert( q1 == q2, "quotes must match" )
 
 	-- process key and value
-	local key_name, key_type = unpack( keys )
 	key_name = File.processKeyName( key_name )
 	key_type = File.processKeyType( key_type )
 
 	-- get final value
-	if key_type and Utils.propertyIn( KEY_TYPES, key_type ) then
-		local method = 'castTo_'..key_type
-		key_value = File[method]( trim )
-	else
+	local key_value
+	if key_type == nil then
 		key_value = File.castTo_string( trim )
+	else
+		assert( Utils.propertyIn( KEY_TYPES, key_type ), "unknown type '"..key_type.."' in line: "..tostring(line) )
+		key_value = File[ 'castTo_'..key_type ]( trim )
 	end
 
 	return key_name, key_value
@@ -366,11 +353,13 @@ function File.processKeyType( name )
 end
 
 
+-- 'true' or 'false', any case
 function File.castTo_boolean( value )
 	assert( type(value)=='string' )
 	--==--
-	if value == 'true' then return true
-	else return false end
+	local lower = string.lower( value )
+	assert( lower == 'true' or lower == 'false', "expected true or false, got '"..value.."'" )
+	return lower == 'true'
 end
 File.castTo_bool = File.castTo_boolean
 
@@ -381,7 +370,7 @@ function File.castTo_integer( value )
 	assert( type(value)=='string' )
 	--==--
 	local num = tonumber( value )
-	assert( type(num) == 'number' )
+	assert( type(num) == 'number' and num == math.floor( num ), "expected a whole number, got '"..value.."'" )
 	return num
 end
 File.castTo_int = File.castTo_integer
@@ -394,7 +383,7 @@ end
 function File.castTo_path( value )
 	assert( type(value)=='string' )
 	--==--
-	return string.gsub( value, '[/\\]', "." )
+	return ( string.gsub( value, '[/\\]', "." ) )
 end
 function File.castTo_string( value )
 	assert( type(value)~='nil' and type(value)~='table' )

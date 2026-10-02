@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_wamp/exception.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -62,6 +62,7 @@ local Objects = require 'lib.dmc_lua.lua_objects'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 local assert = assert
 local type = type
 
@@ -78,14 +79,12 @@ Base class for all exceptions related to WAMP
 
 local WAMPError = newClass( Error, {name="WAMP Error Base"} )
 
-function WAMPError:__new__( reason )
+function WAMPError:__new__( reason, params )
 	-- print( "WAMPError:__new__" )
-	local p = {
-		reason or "unknown reason"
-	}
-	self:superCall( '__new__', p )
+	reason = reason or "unknown reason"
+	self:superCall( '__new__', reason, params )
 	--==--
-	self.reason = p.reason
+	self.reason = reason
 end
 
 
@@ -132,14 +131,10 @@ the WAMP session was lost or is not connected
 local TransportLost = newClass( WAMPError, {name="Transport Lost Error"} )
 
 
-function TransportLost:__new__( reason )
+function TransportLost:__new__( reason, params )
 	-- print( "TransportLost:__new__" )
-	local p = {
-		reason="WAMP transport lost"
-	}
-	self:superCall( '__new__', p )
+	self:superCall( '__new__', reason or "WAMP transport lost", params )
 end
-
 
 
 
@@ -255,24 +250,36 @@ exclusion of (any) *Callee* providing the procedure (WAMP AP).
 --]]
 ApplicationError.NO_ELIGIBLE_CALLEE = "wamp.error.no_eligible_callee"
 
+--[[
+A registered procedure raised an error (AutobahnPython's default URI for
+an exception in a callee).
+--]]
+ApplicationError.RUNTIME_ERROR = "wamp.error.runtime_error"
 
--- TODO: integrate with Exception Class
+
+-- an error from the other peer, or raised by a registered procedure
 --
 -- params.error - The URI of the error that occurred, eg `wamp.error.not_authorized`
+-- params.args - optional array, the error's arguments
+-- params.kwargs - optional table, the error's keyword arguments
+-- the message is the first argument, if it's a string, or else the URI
 --
 function ApplicationError:__new__( params )
 	-- print( "ApplicationError:__new__" )
 	params = params or {}
-	self:superCall( '__new__', p )
+	if self.is_class then return end
+	assert( type( params.error ) == 'string', "ApplicationError: requires parameter 'error' (URI)" )
+	local args = params.args
+	local msg = params.error
+	if type( args ) == 'table' and type( args[1] ) == 'string' then
+		msg = args[1]
+	end
+	self:superCall( '__new__', msg )
 	--==--
-	assert( type( params.error ) == 'string' )
-
 	self.error = params.error
-	self.params = params
+	self.args = args
+	self.kwargs = params.kwargs
 end
-
-
-
 
 
 
@@ -283,7 +290,7 @@ end
 
 local function ProtocolErrorFactory( reason )
 	-- print( "ProtocolErrorFactory", reason )
-	return ProtocolError{ reason=reason }
+	return ProtocolError( reason )
 end
 
 

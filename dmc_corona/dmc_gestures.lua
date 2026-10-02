@@ -1,7 +1,7 @@
 --===================================================================--
 -- dmc_corona/dmc_gestures.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --===================================================================--
 
 --[[
@@ -47,46 +47,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "2.0.0"
+local VERSION = "2.1.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 
@@ -106,6 +73,8 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
+
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -144,6 +113,8 @@ local TouchMgr = require 'dmc_touchmanager'
 
 
 local Gesture = {}
+
+Gesture.VERSION = VERSION
 
 
 --[[
@@ -184,11 +155,12 @@ end
 --
 -- @object view Corona Display object
 -- @tparam[opt] table params
+-- @int[opt=10] params.accuracy the maximum movement allowed before the press is recognized.
 -- @object[opt] params.delegate a delegate object to control this gesture
+-- @int[opt=500] params.duration how long the press must be held, in milliseconds.
 -- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
--- @int[opt=1] params.max_touches maximum number of touches required for gesture. This defaults to `params.touches`.
--- @int[opt=10] params.threshold movement required to recognize the tap.
--- @int[opt=1] params.touches minimum number of touches required for gesture.
+-- @int[opt=0] params.taps number of taps required before the press.
+-- @int[opt=1] params.touches number of touches required for gesture.
 --
 -- @return @{Gesture.LongPress} a Long-Press Gesture Recognizer
 --
@@ -199,6 +171,7 @@ function Gesture.newLongPressGesture( view, params )
 	-- print( "Gesture.newLongPressGesture", view )
 	params = params or {}
 	params.view = view
+	if params.debug_on==nil then params.debug_on=dmc_gesture_data.debug_active end
 	--==--
 	if not Gesture.LongPress then Gesture._loadLongPressGestureSupport() end
 	local o = Gesture.LongPress:new( params )
@@ -238,6 +211,7 @@ function Gesture.newPanGesture( view, params )
 	-- print( "Gesture.newPanGesture", view )
 	params = params or {}
 	params.view = view
+	if params.debug_on==nil then params.debug_on=dmc_gesture_data.debug_active end
 	--==--
 	if not Gesture.Pan then Gesture._loadPanGestureSupport() end
 	local o = Gesture.Pan:new( params )
@@ -275,6 +249,7 @@ function Gesture.newPinchGesture( view, params )
 	-- print( "Gesture.newPinchGesture", view )
 	params = params or {}
 	params.view = view
+	if params.debug_on==nil then params.debug_on=dmc_gesture_data.debug_active end
 	--==--
 	if not Gesture.Pinch then Gesture._loadPinchGestureSupport() end
 	local o = Gesture.Pinch:new( params )
@@ -302,19 +277,19 @@ end
 -- @int[opt=10] params.accuracy the maximum movement allowed between taps.
 -- @object[opt] params.delegate a delegate object to control this gesture
 -- @string[opt=nil] params.id an id for this gesture, used to differentiate gestures. value is available in an `Event`.
--- @int[opt=1] params.taps minimum number of taps required for gesture.
--- @int[opt=300] params.time maximum time between taps.
--- @int[opt=1] params.touches minimum number of touches required for gesture.
+-- @int[opt=1] params.taps number of taps required for gesture.
+-- @int[opt=1] params.touches number of touches required for gesture.
 --
 -- @return @{Gesture.Tap} a Tap Gesture Recognizer
 --
 -- @usage local g = Gesture.newTapGesture( view )
--- @usage local g = Gesture.newTapGesture( view, { id="my-tap", threshold=10 } )
+-- @usage local g = Gesture.newTapGesture( view, { id="my-tap", taps=2 } )
 
 function Gesture.newTapGesture( view, params )
 	-- print( "Gesture.newTapGesture", view )
 	params = params or {}
 	params.view = view
+	if params.debug_on==nil then params.debug_on=dmc_gesture_data.debug_active end
 	--==--
 	if not Gesture.Tap then Gesture._loadTapGestureSupport() end
 	local o = Gesture.Tap:new( params )
@@ -354,6 +329,11 @@ function Gesture._addGestureManager( view )
 		o = GestureMgr:new{ view=view }
 		Gesture._GESTURE_MGR[ view ] = o
 		TouchMgr.registerGestureMgr( o )
+		-- a view removed with its gestures takes them along
+		o.finalize_f = function( event )
+			Gesture._removeViewGestures( o )
+		end
+		view:addEventListener( 'finalize', o.finalize_f )
 	end
 	return o
 end
@@ -372,11 +352,25 @@ function Gesture._removeGestureManager( mgr, view )
 	assert( o==mgr )
 	if not o then return end
 	TouchMgr.unregisterGestureMgr( o )
+	view:removeEventListener( 'finalize', o.finalize_f )
+	o.finalize_f = nil
 
 	Gesture._GESTURE_MGR[ view ] = nil
 	o:removeSelf()
 end
 
+
+
+
+-- remove all of a manager's gestures; the last one
+-- removes the manager
+--
+function Gesture._removeViewGestures( mgr )
+	-- print( "Gesture._removeViewGestures", mgr )
+	local list = {}
+	for g in pairs( mgr._gestures ) do list[#list+1] = g end
+	for _, g in ipairs( list ) do g:removeSelf() end
+end
 
 
 

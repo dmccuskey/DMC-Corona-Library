@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_bytearray/pack_bytearray.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-bytearray
 --====================================================================--
 
 --[[
@@ -46,7 +46,7 @@ https://github.com/zrong/lua/blob/master/lib/zrong/zr/utils/ByteArray.lua
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -64,6 +64,10 @@ require 'pack'
 
 local spack = string.pack
 local sunpack = string.unpack
+
+-- sizes of C long and unsigned long on this platform (4 or 8)
+local LONG_SIZE = #spack( 'l', 0 )
+local ULONG_SIZE = #spack( 'L', 0 )
 
 
 
@@ -123,8 +127,8 @@ end
 
 
 function ByteArray:readLong()
-	self:_checkAvailable(8)
-	local _, val = sunpack(self:readBuf(8), self:_getLC('l'))
+	self:_checkAvailable( LONG_SIZE )
+	local _, val = sunpack(self:readBuf( LONG_SIZE ), self:_getLC('l'))
 	return val
 end
 
@@ -216,7 +220,7 @@ end
 
 ByteArray.readUInt = ByteArray.readUnsignedInt
 
-function ByteArray:writeUInt( uint )
+function ByteArray:writeUnsignedInt( uint )
 	local str = spack(self:_getLC('I'), uint )
 	self:writeBuf( str )
 	return self
@@ -226,8 +230,8 @@ ByteArray.writeUInt = ByteArray.writeUnsignedInt
 
 
 function ByteArray:readUnsignedLong()
-	self:_checkAvailable(4)
-	local _, val = sunpack(self:readBuf(4), self:_getLC('L'))
+	self:_checkAvailable( ULONG_SIZE )
+	local _, val = sunpack(self:readBuf( ULONG_SIZE ), self:_getLC('L'))
 	return val
 end
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_bytearray/exceptions.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-bytearray
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.3.0"
+local VERSION = "0.4.0"
 
 
 
@@ -47,7 +47,7 @@ local VERSION = "0.3.0"
 --== Imports
 
 
-local Objects = require 'lua_class'
+local Class = require 'lua_class'
 local Error = require 'lua_error'
 
 
@@ -70,8 +70,7 @@ local Error = require 'lua_error'
 	for a read, eg, 2 bytes available and requesting 10 bytes.
 --]]
 
-local BufferError = newClass( Error )
-BufferError.NAME = "Buffer Error"
+local BufferError = Class.newClass( Error, { name="Buffer Error" } )
 
 
 

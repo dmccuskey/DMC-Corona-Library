@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_e4x.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-e4x
 --====================================================================--
 
 --[[
@@ -33,72 +33,19 @@ SOFTWARE.
 
 
 --====================================================================--
---== DMC Corona Library : DMC States Mix
+--== DMC Corona Library : DMC E4X
 --====================================================================--
 
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from Utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
-
-
-
---====================================================================--
---== Configuration
 
 
 local dmc_lib_data
@@ -117,8 +64,18 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== DMC States Mix
+--== DMC E4X
 --====================================================================--
+
+
+
+--====================================================================--
+--== Imports
+
+
+local LuaE4X = require 'lib.dmc_lua.lua_e4x'
+local Utils = require 'lib.dmc_lua.lua_utils'
+
 
 
 --====================================================================--
@@ -128,6 +85,7 @@ dmc_lib_data = _G.__dmc_corona
 dmc_lib_data.dmc_e4x = dmc_lib_data.dmc_e4x or {}
 
 local DMC_E4X_DEFAULTS = {
+	-- none
 }
 
 local dmc_e4x_data = Utils.extend( dmc_lib_data.dmc_e4x, DMC_E4X_DEFAULTS )
@@ -135,12 +93,19 @@ local dmc_e4x_data = Utils.extend( dmc_lib_data.dmc_e4x, DMC_E4X_DEFAULTS )
 
 
 --====================================================================--
---== Imports
+--== E4X Module
+--====================================================================--
 
 
-local E4X = require 'lib.dmc_lua.lua_e4x'
+-- a copy of lua-e4x's module, so VERSION isn't added to the
+-- shared one, which other modules get from 'lib.dmc_lua.lua_e4x'
+--
+local E4X = {}
+for k, v in pairs( LuaE4X ) do E4X[ k ] = v end
+
+E4X.VERSION = VERSION
+
 
 
 
 return E4X
-

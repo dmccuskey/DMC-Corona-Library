@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_wamp/types.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -62,6 +62,7 @@ local Utils = require 'lib.dmc_lua.lua_utils'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 local assert = assert
 local type = type
 

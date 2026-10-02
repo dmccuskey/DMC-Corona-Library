@@ -1,8 +1,7 @@
 --====================================================================--
--- dmc_trajectory.lua
+-- dmc_corona/dmc_trajectory.lua
 --
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_trajectory.lua
+-- Documentation: https://github.com/dmccuskey/dmc-trajectory
 --====================================================================--
 
 --[[
@@ -37,7 +36,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 
 
 
@@ -47,70 +46,18 @@ local VERSION = "1.1.0"
 
 
 --====================================================================--
--- Support Functions
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
---====================================================================--
 -- Configuration
 
-local dmc_lib_data, dmc_lib_info
-
--- boot dmc_library with boot script or
--- setup basic defaults if it doesn't exist
+-- boot dmc_corona with boot script, if it's there
+-- dmc-trajectory has no settings
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
-	_G.__dmc_corona = {
-		dmc_corona={},
-	}
-end
-
-dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
+pcall( function() require( 'dmc_corona_boot' ) end )
 
 
 
 --====================================================================--
 -- DMC Trajectory
 --====================================================================--
-
-
---====================================================================--
--- Configuration
-
-dmc_lib_data.dmc_trajectory = dmc_lib_data.dmc_trajectory or {}
-
-local DMC_TRAJECTORY_DEFAULTS = {
-}
-
-local dmc_trajectory_data = Utils.extend( dmc_lib_data.dmc_trajectory, DMC_TRAJECTORY_DEFAULTS )
-
 
 
 --====================================================================--
@@ -131,6 +78,7 @@ local function createAngleIterator( Vx, Vy, params )
 	--print( "createAngleIterator" )
 	local func, f1, f2
 	local xP, yP -- previous
+	local aP -- previous angle
 	local adjust
 
 	params = params == nil and {} or params
@@ -138,10 +86,11 @@ local function createAngleIterator( Vx, Vy, params )
 
 
 	-- adjust for direction that object is facing, if necessary
+	-- straight up and down (Vx 0) counts as moving right
 	if dir == "right" then
-		if Vx > 0 then adjust = 0 else adjust = 180 end
+		if Vx >= 0 then adjust = 0 else adjust = 180 end
 	else
-		if Vx > 0 then adjust = 180 else adjust = 0 end
+		if Vx >= 0 then adjust = 180 else adjust = 0 end
 	end
 
 
@@ -155,7 +104,8 @@ local function createAngleIterator( Vx, Vy, params )
 
 		-- return negative to compensate for difference
 		-- in physics angles and Corona angles
-		return ( - math.atan( Vy / Vx ) * r2d ) + adjust
+		aP = ( - math.atan( Vy / Vx ) * r2d ) + adjust
+		return aP
 	end
 
 	-- this will do all of the rest of the calculations
@@ -167,9 +117,13 @@ local function createAngleIterator( Vx, Vy, params )
 
 		xP, yP = x, y -- save for next calc
 
+		-- no movement since the last frame: keep the angle
+		if xD == 0 and yD == 0 then return aP end
+
 		-- return negative to compensate for difference
 		-- in physics angles and Corona angles
-		return ( - math.atan( yD / xD ) * r2d ) + adjust
+		aP = ( - math.atan( yD / xD ) * r2d ) + adjust
+		return aP
 	end
 
 	func = f1
@@ -220,7 +174,17 @@ local function performTransition( obj, ballistic, transition )
 
 	-- create the iterator to control the transition
 
+	-- a removed display object loses its parent (Solar2D keeps its methods)
+	local inScene = obj.parent ~= nil
+
 	positionIterator = function( event )
+
+		-- the object was removed: stop, without the callback
+		if inScene and obj.parent == nil then
+			Runtime:removeEventListener( "enterFrame", positionIterator )
+			positionIterator = nil ; angleIterator = nil
+			return
+		end
 
 		-- save time at which transition started
 		if Ts == 0 then Ts = event.time end
@@ -286,6 +250,36 @@ end
 --====================================================================--
 
 local Trajectory = {}
+
+Trajectory.VERSION = VERSION
+
+
+-- checkPoint()
+-- raises an error at the caller's caller unless p is an x,y table
+--
+local function checkPoint( p, name )
+	if type( p ) ~= 'table' or type( p[1] ) ~= 'number' or type( p[2] ) ~= 'number' then
+		error( "dmc_trajectory: " .. name .. " must be a table { x, y }", 4 )
+	end
+end
+
+-- checkParams()
+-- raises an error at the caller's caller unless params can make a trajectory
+--
+local function checkParams( params )
+	if type( params ) ~= 'table' then
+		error( "dmc_trajectory: params must be a table", 3 )
+	end
+	checkPoint( params.pBegin, 'pBegin' )
+	checkPoint( params.pEnd, 'pEnd' )
+	if type( params.height ) ~= 'number' or params.height < 0 then
+		error( "dmc_trajectory: height must be a number, 0 or more", 3 )
+	end
+	-- no time in the air: the x speed would be infinite
+	if params.height == 0 and params.pBegin[2] == params.pEnd[2] then
+		error( "dmc_trajectory: points at the same height need a height above 0", 3 )
+	end
+end
 
 
 -- t_Given_Vy_pB_pE()
@@ -381,6 +375,7 @@ end
 -- height (int): top of trajectory in pixels, measured from the highest of the points
 --
 function Trajectory.calculate( params )
+	checkParams( params )
 
 	local pB, pE, Yd = params.pBegin, params.pEnd, params.height
 
@@ -418,6 +413,13 @@ end
 -- onComplete (function): function to call at end of transition
 --
 function Trajectory.move( obj, params )
+	if type( obj ) ~= 'table' then
+		error( "dmc_trajectory: obj must be a display object", 2 )
+	end
+	checkParams( params )
+	if type( params.time ) ~= 'number' or params.time < 0 then
+		error( "dmc_trajectory: time must be a number of milliseconds, 0 or more", 2 )
+	end
 
 	local ballisticParams, transitionParams
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/gesture_manager.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -78,6 +78,29 @@ local Gesture = nil
 
 
 --====================================================================--
+--== Support Functions
+
+
+-- a gesture which recognizes fails the others, removing
+-- them from the active list, so touches are handed out from
+-- a copy of it, last first, and only to those still active
+
+local function stillActive( gestures )
+	local list = {}
+	for j=#gestures, 1, -1 do tinsert( list, gestures[j] ) end
+	return list
+end
+
+local function isActive( gestures, gesture )
+	for _, g in ipairs( gestures ) do
+		if g==gesture then return true end
+	end
+	return false
+end
+
+
+
+--====================================================================--
 --== Gesture Manager Class
 --====================================================================--
 
@@ -139,13 +162,17 @@ function GestureMgr:__init__( params )
 	self._view = params.view
 
 end
---[[
 function GestureMgr:__undoInit__()
 	-- print( "GestureMgr:__undoInit__" )
+	self:_stopEnterFrame()
+	self._gestures = {}
+	self._active = {}
+	self._queue = {}
+	self._quarantine = nil
+	self._view = nil
 	--==--
 	self:superCall( '__undoInit__' )
 end
---]]
 
 --[[
 function GestureMgr:__initComplete__()
@@ -304,9 +331,8 @@ end
 function GestureMgr:_processQueue( queue, gestures )
 	-- print("GestureMgr:_processQueue", #queue )
 	for i=1,#queue do
-		for j=#gestures, 1, -1 do
-			local g = gestures[j]
-			if g then g:touch( queue[i] ) end
+		for _, g in ipairs( stillActive( gestures ) ) do
+			if isActive( gestures, g ) then g:touch( queue[i] ) end
 		end
 	end
 end
@@ -418,9 +444,10 @@ function GestureMgr:_processQuarantine( quarantine, gestures )
 
 	-- send touches to Gestures
 	for i=1,#queue do
-		for j=#gestures, 1, -1 do
-			local g = gestures[j]
-			if g:shouldReceiveTouch() then
+		for _, g in ipairs( stillActive( gestures ) ) do
+			if not isActive( gestures, g ) then
+				-- failed by another one
+			elseif g:shouldReceiveTouch() then
 				g:touch( queue[i] )
 			else
 				self:_removeActiveGesture( g )

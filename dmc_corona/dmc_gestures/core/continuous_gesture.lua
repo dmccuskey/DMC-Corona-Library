@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/core/continous_gesture.lua
 --
--- Documentation:
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -56,6 +56,7 @@ local VERSION = "0.1.0"
 local Objects = require 'dmc_objects'
 
 local Gesture = require 'dmc_gestures.core.gesture'
+local Constants = require 'dmc_gestures.gesture_constants'
 
 
 --====================================================================--
@@ -66,6 +67,7 @@ local newClass = Objects.newClass
 
 local sfmt = string.format
 local tinsert = table.insert
+local tremove = table.remove
 local tstr = tostring
 
 
@@ -118,15 +120,19 @@ Continuous.RECOGNIZED = Continuous.ENDED
 --======================================================--
 -- Start: Setup DMC Objects
 
---[[
 function Continuous:__init__( params )
 	-- print( "Continuous:__init__", params )
 	params = params or {}
 	self:superCall( '__init__', params )
 	--==--
 	--== Create Properties ==--
+
+	-- whether 'began' was sent, so 'ended' may be
+	self._began_sent = false
+	-- recent values, for velocity
+	self._velocity_samples = {}
+	self._velocity_last = { 0, 0 }
 end
---]]
 --[[
 function Continuous:__undoInit__()
 	-- print( "Continuous:__undoInit__" )
@@ -168,33 +174,37 @@ end
 --== Private Methods
 
 
+function Continuous:_do_reset()
+	-- print( "Continuous:_do_reset" )
+	Gesture._do_reset( self )
+	self._began_sent = false
+	self._velocity_samples = {}
+	self._velocity_last = { 0, 0 }
+end
+
+
 --======================================================--
 -- Multitouch Event
 
 
-function Continuous:_addMultitouchToQueue( phase )
+function Continuous:_addMultitouchToQueue( phase, time )
 	-- print("Continuous:_addMultitouchToQueue", phase, self.id )
-	local me = self:_createMultitouchEvent({phase=phase})
-	self._multitouch_evt = me
-	tinsert( self._multitouch_queue, me )
-end
-
-
--- calculate the "middle" of touch points in this gesture
--- @param table of touches
--- @return Coordinate table of coordinates
-
-function Continuous:_calculateCentroid( touches )
-	-- print("Continuous:_calculateCentroid" )
-	local cnt=0
-	local x,y = 0,0
-	for _, te in pairs( touches ) do
-		x=x+te.x ; y=y+te.y
-		cnt=cnt+1
+	local queue = self._multitouch_queue
+	local first = queue[1]
+	-- one 'began' per gesture, at the start of the queue
+	if not first then
+		phase = Continuous.BEGAN
+	elseif phase==Continuous.BEGAN then
+		phase = Continuous.CHANGED
 	end
-	return {x=x/cnt,y=y/cnt}
+	local me = self:_createMultitouchEvent({phase=phase, time=time})
+	-- every event of a gesture starts where its first did
+	if first then
+		me.xStart, me.yStart = first.xStart, first.yStart
+	end
+	self._multitouch_evt = me
+	tinsert( queue, me )
 end
-
 
 -- this one goes to the Gesture consumer (who created gesture)
 function Continuous:_createMultitouchEvent( params )
@@ -253,6 +263,55 @@ end
 
 
 --======================================================--
+-- Velocity
+
+-- a sample of the gesture's values (e.g. x and y), at time;
+-- one without movement isn't kept, so a gesture held still
+-- before it ends has no velocity
+function Continuous:_addVelocitySample( time, a, b )
+	-- print("Continuous:_addVelocitySample", time, a, b )
+	b = b or 0
+	local samples = self._velocity_samples
+	local last = samples[#samples]
+	if last and last.a==a and last.b==b then return end
+	tinsert( samples, { t=time, a=a, b=b } )
+end
+
+-- the change per second of the sampled values, over the
+-- last VELOCITY_TIME ms of movement; none when there was no
+-- movement for that long before time. Samples closer than
+-- VELOCITY_MIN_TIME (touches moving in the same frame) keep
+-- the last velocity
+-- @return velocity of the first value, and of the second
+function Continuous:_calculateVelocity( time )
+	-- print("Continuous:_calculateVelocity", time )
+	local samples = self._velocity_samples
+	local last = samples[#samples]
+	if not last or time-last.t>Constants.VELOCITY_TIME then
+		self._velocity_last = { 0, 0 }
+		return 0, 0
+	end
+	while samples[1].t<last.t-Constants.VELOCITY_TIME do
+		tremove( samples, 1 )
+	end
+	local first = samples[1]
+	local dt = last.t-first.t
+	if dt<Constants.VELOCITY_MIN_TIME then
+		return self._velocity_last[1], self._velocity_last[2]
+	end
+	dt = dt/1000
+	local va, vb = ( last.a-first.a )/dt, ( last.b-first.b )/dt
+	self._velocity_last = { va, vb }
+	return va, vb
+end
+
+-- override: sample the event's values and set its velocity
+function Continuous:_addVelocity( me )
+	-- print("Continuous:_addVelocity", me )
+end
+
+
+--======================================================--
 -- Event Dispatch
 
 -- this one goes to the Gesture consumer (who created gesture)
@@ -261,25 +320,38 @@ end
 function Continuous:_dispatchBeganEvent()
 	-- print("Continuous:_dispatchBeganEvent" )
 	local queue = self._multitouch_queue
+	self._velocity_samples = {}
+	self._velocity_last = { 0, 0 }
+	self._began_sent = true
 	for i=1,#queue do
 		local me = queue[i]
+		self:_addVelocity( me )
 		self:dispatchEvent( self.GESTURE, me, {merge=true} )
 	end
 end
 
 -- this one goes to the Gesture consumer (who created gesture)
-function Continuous:_dispatchChangedEvent()
+function Continuous:_dispatchChangedEvent( params )
 	-- print("Continuous:_dispatchChangedEvent" )
+	params = params or {}
+	--==--
 	local me = self._multitouch_evt
-	self:_updateMultitouchEvent( me )
+	self:_updateMultitouchEvent( me, {time=params.time} )
+	self:_addVelocity( me )
 	self:dispatchEvent( self.GESTURE, me, {merge=true} )
 end
 
 -- this one goes to the Gesture consumer (who created gesture)
-function Continuous:_dispatchRecognizedEvent()
+-- only a gesture which sent 'began' sends 'ended'
+function Continuous:_dispatchRecognizedEvent( params )
 	-- print("Continuous:_dispatchRecognizedEvent" )
+	params = params or {}
+	--==--
+	if not self._began_sent then return end
+	self._began_sent = false
 	local me = self._multitouch_evt
-	self:_endMultitouchEvent( me )
+	self:_endMultitouchEvent( me, {time=params.time} )
+	self:_addVelocity( me )
 	self:dispatchEvent( self.GESTURE, me, {merge=true} )
 end
 
@@ -322,6 +394,9 @@ function Continuous:state_possible( next_state, params )
 
 	elseif next_state == Continuous.STATE_SOFT_RESET then
 		self:do_state_soft_reset( params )
+	elseif next_state == Continuous.STATE_CANCELLED then
+		-- nothing began, nothing to cancel
+		self:do_state_failed( params )
 
 	else
 		pwarn( sfmt( "Continuous:state_possible unknown transition '%s'", tstr( next_state )))
@@ -337,6 +412,9 @@ function Continuous:do_state_began( params )
 	if params.notify==nil then params.notify=true end
 	--==--
 	self:_stopAllTimers()
+	if #self._multitouch_queue==0 then
+		self:_addMultitouchToQueue( Continuous.BEGAN, params.time )
+	end
 	self:setState( Continuous.STATE_BEGAN )
 	self:_dispatchGestureNotification( params )
 	self:_dispatchStateNotification( params )
@@ -378,7 +456,7 @@ function Continuous:do_state_changed( params )
 
 	self:setState( Continuous.STATE_CHANGED )
 	self:_dispatchStateNotification( params )
-	self:_dispatchChangedEvent()
+	self:_dispatchChangedEvent( params )
 end
 
 function Continuous:state_changed( next_state, params )
@@ -416,7 +494,7 @@ function Continuous:do_state_recognized( params )
 
 	self:setState( Continuous.STATE_RECOGNIZED )
 	self:_dispatchStateNotification( params )
-	self:_dispatchRecognizedEvent()
+	self:_dispatchRecognizedEvent( params )
 end
 
 
@@ -430,7 +508,7 @@ function Continuous:do_state_cancelled( params )
 
 	self:setState( Continuous.STATE_CANCELLED )
 	self:_dispatchStateNotification( params )
-	self:_dispatchRecognizedEvent()
+	self:_dispatchRecognizedEvent( params )
 
 end
 
@@ -458,7 +536,7 @@ function Continuous:do_state_soft_reset( params )
 	self:setState( Continuous.STATE_SOFT_RESET )
 	self:_dispatchStateNotification( params )
 	-- end current Touch Event
-	self:_dispatchRecognizedEvent()
+	self:_dispatchRecognizedEvent( params )
 
 end
 

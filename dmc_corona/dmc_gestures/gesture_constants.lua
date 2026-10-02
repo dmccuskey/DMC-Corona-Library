@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/gesture_constants.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -68,6 +68,11 @@ Constant.FAIL_TIMEOUT = 300
 -- used for several things
 Constant.GESTURE_TIMEOUT = 300
 
+-- velocity is measured over the last movement, this long (ms)
+Constant.VELOCITY_TIME = 100
+-- samples closer than this (ms) are the same moment
+Constant.VELOCITY_MIN_TIME = 10
+
 
 --======================================================--
 -- Long Press Gesture
@@ -113,6 +118,7 @@ Constant.TYPE_TAP = 'tap'
 
 Constant.TAP_ACCURACY = 10
 Constant.TAP_TAPS = 1
+Constant.TAP_TIMEOUT = Constant.GESTURE_TIMEOUT
 Constant.TAP_TOUCHES = 1
 
 

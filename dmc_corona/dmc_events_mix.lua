@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_events_mix.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-events-mixin
 --====================================================================--
 
 --[[
@@ -39,66 +39,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from Utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
-
-
-
---====================================================================--
---== Configuration
 
 
 local dmc_lib_data
@@ -117,8 +64,18 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== DMC States Mix
+--== DMC Events Mix
 --====================================================================--
+
+
+
+--====================================================================--
+--== Imports
+
+
+local LuaEventsMix = require 'lib.dmc_lua.lua_events_mix'
+local Utils = require 'lib.dmc_lua.lua_utils'
+
 
 
 --====================================================================--
@@ -128,6 +85,7 @@ dmc_lib_data = _G.__dmc_corona
 dmc_lib_data.dmc_events_mix = dmc_lib_data.dmc_events_mix or {}
 
 local DMC_EVENTS_MIX_DEFAULTS = {
+	-- none
 }
 
 local dmc_events_mix_data = Utils.extend( dmc_lib_data.dmc_events_mix, DMC_EVENTS_MIX_DEFAULTS )
@@ -135,12 +93,21 @@ local dmc_events_mix_data = Utils.extend( dmc_lib_data.dmc_events_mix, DMC_EVENT
 
 
 --====================================================================--
---== Imports
+--== Events Mix Module
+--====================================================================--
 
 
-local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
+-- a copy of lua-events-mixin's module, so VERSION isn't added to the
+-- shared one, which other modules get from 'lib.dmc_lua.lua_events_mix'.
+-- EventsMix itself is the shared mixin. EventsMixModule.__version is
+-- lua-events-mixin's version
+--
+local EventsMixModule = {}
+for k, v in pairs( LuaEventsMix ) do EventsMixModule[ k ] = v end
+
+EventsMixModule.VERSION = VERSION
+
 
 
 
 return EventsMixModule
-

@@ -1,7 +1,7 @@
 --===================================================================--
 -- dmc_corona/dmc_touchmanager.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-touchmanager
+-- Documentation: https://github.com/dmccuskey/dmc-touchmanager
 --===================================================================--
 
 --[[
@@ -48,7 +48,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "2.0.0"
+local VERSION = "2.1.0"
 
 
 
@@ -59,54 +59,13 @@ local VERSION = "2.0.0"
 
 
 --====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
-
---====================================================================--
 --== Configuration
 
 
-local dmc_lib_data
-
--- boot dmc_corona with boot script or
--- setup basic defaults if it doesn't exist
+-- boot dmc_corona with boot script, if it's there
+-- dmc-touchmanager has no settings
 --
-if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
-	_G.__dmc_corona = {
-		dmc_corona={},
-	}
-end
-
-dmc_lib_data = _G.__dmc_corona
+pcall( function() require( 'dmc_corona_boot' ) end )
 
 
 
@@ -125,21 +84,6 @@ Gesture Manager (g_mgr)
 An object which coordinates one or many Gesture Receivers
 
 --]]
-
-
-
---====================================================================--
---== Configuration
-
-
-dmc_lib_data.dmc_touchmanager = dmc_lib_data.dmc_touchmanager or {}
-
-local DMC_TOUCHMANAGER_DEFAULTS = {
-	default_color_format='dRGBA',
-	-- named_color_file, no default,
-}
-
-local dmc_touchmanager_data = Utils.extend( dmc_lib_data.dmc_touchmanager, DMC_TOUCHMANAGER_DEFAULTS )
 
 
 
@@ -166,77 +110,93 @@ local tremove = table.remove
 --== Support Functions
 
 
--- createMasterTouchHandler()
--- creates touch handler for objects
+-- dispatchToStruct()
+-- sends a touch event to the gesture manager and handlers of a
+-- Touch Object
+-- @return true if the event was handled
+--
+local function dispatchToStruct( struct, event )
+	local response = false
+
+	--== Gesture Manager processes Event first
+
+	local g_mgr = struct.g_mgr
+	if g_mgr then
+		g_mgr:touch( event )
+		response = true -- for Corona
+	end
+
+	--== Send event to other listeners
+
+	if struct:dispatch( event ) then response=true end
+
+	return response
+end
+
+
+-- createMasterTouchHandlers()
+-- creates touch handlers for objects and for Runtime
 -- @param master_data reference to the Touch Manager data object
 --
-local function createMasterTouchHandler( master_data )
+local function createMasterTouchHandlers( master_data )
 
-	return function( event )
-		-- print( "Touch Manager handler", event.phase, event.id )
-		local target = event.target
-		local phase = event.phase
-		local response = false
-
-		--== Get data structure for Touch Object
-
-		local t_obj = master_data.focus[ event.id ]
-		if t_obj then
-			event.target = t_obj
-			event.isFocused = true
-		else
-			t_obj = target
-			event.isFocused = false
+	-- recordPosition()
+	-- keeps the last position of a focused touch, for the
+	-- event unregister() makes up
+	--
+	local function recordPosition( event )
+		local id = event.id
+		if master_data.focus[ id ] then
+			master_data.position[ id ] = {
+				x=event.x, y=event.y,
+				xStart=event.xStart, yStart=event.yStart
+			}
 		end
+	end
 
-		if not t_obj then return false end
-
+	-- a focused touch goes to the object which holds it,
+	-- wherever it arrives; it counts as handled
+	--
+	local function dispatchFocused( event, t_obj )
 		local struct = master_data.object[ t_obj ]
+		if not struct then return false end
+		event.target = t_obj
+		event.isFocused = true
+		dispatchToStruct( struct, event )
+		recordPosition( event )
+		return true
+	end
 
+	local function objectHandler( event )
+		-- print( "Touch Manager handler", event.phase, event.id )
+		local t_obj = master_data.focus[ event.id ]
+		if t_obj then return dispatchFocused( event, t_obj ) end
+
+		t_obj = event.target
+		local struct = t_obj and master_data.object[ t_obj ]
 		if not struct then return false end
 
-		--== Data refs from Touch Structure
-
-		local g_mgr = struct.g_mgr
-
-		--== Gesture Manager processes Event first
-
-		if g_mgr then
-			g_mgr:touch( event )
-			response = true -- for Corona
+		event.isFocused = false
+		local response = dispatchToStruct( struct, event )
+		-- a handler may have set focus, in 'began': then it's
+		-- handled, or Runtime would send it to the object again
+		if master_data.focus[ event.id ] then
+			recordPosition( event )
+			response = true
 		end
-
-		--== Send event to other listeners
-
-		if phase=='began' then
-
-			if g_mgr and g_mgr.shouldDelayBeganTouches then
-				-- pass, TODO
-			else
-				if struct:dispatch( event ) then response=true end
-			end
-
-		elseif phase=='moved' then
-
-			if g_mgr and g_mgr.shouldDelayBeganTouches then
-				-- pass, TODO
-			else
-				if struct:dispatch( event ) then response=true end
-			end
-
-
-		elseif phase=='ended' or phase=='cancelled' then
-
-			if g_mgr and g_mgr.shouldDelayEndedTouches then
-				-- pass, TODO
-			else
-				if struct:dispatch( event ) then response=true end
-			end
-		end
-
 		return response
-	end -- handler func
+	end
 
+	-- Runtime gets the touches no object handled:
+	-- only focused ones are of interest
+	--
+	local function runtimeHandler( event )
+		local t_obj = master_data.focus[ event.id ]
+		if not t_obj then return false end
+		return dispatchFocused( event, t_obj )
+	end
+
+	return objectHandler, runtimeHandler
 end
 
 
@@ -259,37 +219,35 @@ local function createTouchStructure( t_obj )
 
 		--[[
 		.listener
-		a table of objects/functions interested in Touch Events
-		for this display object
-		key and value is the handler item itself
-		}
+		a list of objects/functions interested in Touch Events
+		for this display object, in the order they were registered
 		--]]
 		listener = {},
 
 		--[[
-		these store delayed Touch Events, if g_mgr says to delay
-		@TODO
+		.finalize
+		the object's 'finalize' listener, which forgets the object
+		when it's removed
 		--]]
-		t_began = {},
-		t_moved = {},
-		t_ended = {},
+		finalize = nil,
 
-		_killActiveEvents=function( self, handler, active )
+		_killActiveEvents=function( self, handler, active, position )
 			-- assert( handler and active )
 			local isFunc = (type(handler)=='function')
-			-- create dummy event to end touch
-			local evt = {
-				name='touch',
-				phase='ended',
-				isFocused=true,
-				target=self.t_obj,
-				xStart=0,
-				yStart=0,
-				x=0,
-				y=0
-			}
 			for _, id in ipairs( active ) do
-				evt.id = id
+				-- create dummy event to end touch
+				local pos = position[ id ] or {}
+				local evt = {
+					name='touch',
+					phase='cancelled',
+					id=id,
+					isFocused=true,
+					target=self.t_obj,
+					xStart=pos.xStart or 0,
+					yStart=pos.yStart or 0,
+					x=pos.x or 0,
+					y=pos.y or 0
+				}
 				if isFunc then
 					handler( evt )
 				else
@@ -301,7 +259,10 @@ local function createTouchStructure( t_obj )
 		dispatch=function( self, event )
 			-- assert( event )
 			local response = false
-			for _, handler in pairs( self.listener ) do
+			-- copy, a handler may unregister during the dispatch
+			local list = {}
+			for i, handler in ipairs( self.listener ) do list[ i ] = handler end
+			for _, handler in ipairs( list ) do
 				if type(handler)=='function' then
 					if handler( event ) then response=true end
 				else
@@ -311,18 +272,30 @@ local function createTouchStructure( t_obj )
 			return response
 		end,
 
-		addListener=function( self, handler )
-			-- assert( handler )
-			self.listener[ handler ] = handler
+		hasListener=function( self, handler )
+			for i, h in ipairs( self.listener ) do
+				if h==handler then return i end
+			end
+			return nil
 		end,
 
-		removeListener=function( self, handler, active )
+		isUnused=function( self )
+			return #self.listener==0 and self.g_mgr==nil
+		end,
+
+		addListener=function( self, handler )
 			-- assert( handler )
-			local h = self.listener[ handler ]
-			assert( handler==h, "handlers to not match" )
-			self.listener[ handler ] = nil
+			if self:hasListener( handler ) then return end
+			tinsert( self.listener, handler )
+		end,
+
+		removeListener=function( self, handler, active, position )
+			-- assert( handler )
+			local idx = self:hasListener( handler )
+			if not idx then return nil end
+			tremove( self.listener, idx )
 			if #active>0 then
-				self:_killActiveEvents( handler, active )
+				self:_killActiveEvents( handler, active, position )
 			end
 			return handler
 		end
@@ -336,13 +309,14 @@ end
 local function initialize( manager )
 	-- print( "TouchMgr.initialize", manager )
 
-	local handler = createMasterTouchHandler( manager._DATA )
+	local handler, runtime_handler = createMasterTouchHandlers( manager._DATA )
 	manager._HANDLER = handler
+	manager._RUNTIME_HANDLER = runtime_handler
 
 	-- Touch Manager listens to Global (Runtime) touch events
 	-- for those that "fall through", ie handled by another object
 	--
-	Runtime:addEventListener( 'touch', handler )
+	Runtime:addEventListener( 'touch', runtime_handler )
 
 end
 
@@ -355,13 +329,18 @@ end
 
 local TouchMgr = {}
 
+TouchMgr.VERSION = VERSION
+
 --== Constants ==--
 
--- value is Master Touch Event handler
+-- value is Master Touch Event handler, for objects
 TouchMgr._HANDLER = nil
 
--- holds IDs of objects which have asked for focus
--- for a particular event
+-- value is Master Touch Event handler, for Runtime
+TouchMgr._RUNTIME_HANDLER = nil
+
+-- holds the touch structure of each registered object
+-- keyed by object
 TouchMgr._OBJECT = {}
 
 
@@ -369,9 +348,14 @@ TouchMgr._OBJECT = {}
 -- keyed by event id
 TouchMgr._FOCUS = {}
 
+-- holds the last position of each focused touch
+-- keyed by event id
+TouchMgr._POSITION = {}
+
 TouchMgr._DATA = {
 	object = TouchMgr._OBJECT,
 	focus = TouchMgr._FOCUS,
+	position = TouchMgr._POSITION,
 }
 
 
@@ -427,6 +411,7 @@ end
 
 --- unregister a Display Object and handler.
 -- removes Touch Manager control of touch events for this object.
+-- does nothing if the handler isn't registered for the object.
 --
 -- @param t_obj a Corona-type object
 -- @param[opt] handler the function or object to handle 'touch' events. if missing, will default to t_obj
@@ -435,9 +420,10 @@ function TouchMgr.unregister( t_obj, handler )
 	assert( t_obj, "ERROR: TouchMgr.unregister missing touch object parameter" )
 	if handler==nil then handler=t_obj end
 	--==--
-	local struct = TouchMgr._getRegisteredObjectStruct( t_obj )
+	local struct = TouchMgr._OBJECT[ t_obj ]
+	if not struct or not struct:hasListener( handler ) then return end
 	local active = TouchMgr._getActiveTouches( t_obj )
-	struct:removeListener( handler, active )
+	struct:removeListener( handler, active, TouchMgr._POSITION )
 	TouchMgr._removeRegisteredObjectStruct( t_obj )
 end
 
@@ -466,7 +452,7 @@ function TouchMgr.unsetFocus( t_obj, event_id )
 	assert( t_obj, "ERROR: TouchMgr.unsetFocus missing touch object parameter" )
 	assert( event_id, "ERROR: TouchMgr.unsetFocus missing event id parameter" )
 	--==--
-	local o = TouchMgr._unsetRegisteredTouch( event_id )
+	TouchMgr._unsetRegisteredTouch( event_id )
 end
 
 
@@ -485,28 +471,39 @@ function TouchMgr._getRegisteredObjectStruct( t_obj )
 	local struct = TouchMgr._OBJECT[ t_obj ]
 	if not struct then
 		struct = createTouchStructure( t_obj )
+		struct.finalize = function( event )
+			TouchMgr._forgetObject( t_obj )
+		end
 		TouchMgr._OBJECT[ t_obj ] = struct
 		t_obj:addEventListener( 'touch', TouchMgr._HANDLER )
+		t_obj:addEventListener( 'finalize', struct.finalize )
 	end
 	return struct
 end
 
 -- remove touch struct
--- only removes if there are no listeners
+-- only removes if there are no listeners and no gesture manager;
+-- then releases the object's focused touches
 --
 function TouchMgr._removeRegisteredObjectStruct( t_obj )
 	local struct = TouchMgr._OBJECT[ t_obj ]
 	if not struct then return end
-	local cnt = 0
-	for _, __ in pairs( struct.listener ) do
-		cnt=cnt+1
-		-- print(_, __)
-	end
-	if cnt==0 then
+	if struct:isUnused() then
 		t_obj:removeEventListener( 'touch', TouchMgr._HANDLER )
-		TouchMgr._OBJECT[ t_obj ] = nil
+		t_obj:removeEventListener( 'finalize', struct.finalize )
+		TouchMgr._forgetObject( t_obj )
 	end
 	return struct
+end
+
+-- forget an object: its structure and focused touches
+-- called for a removed object, from its 'finalize' event
+--
+function TouchMgr._forgetObject( t_obj )
+	for _, id in ipairs( TouchMgr._getActiveTouches( t_obj ) ) do
+		TouchMgr._unsetRegisteredTouch( id )
+	end
+	TouchMgr._OBJECT[ t_obj ] = nil
 end
 
 
@@ -515,19 +512,23 @@ end
 
 function TouchMgr._getRegisteredManager( t_obj )
 	-- assert( t_obj )
-	local struct = TouchMgr._getTouchStructure( t_obj )
-	return struct.g_mgr
+	local struct = TouchMgr._OBJECT[ t_obj ]
+	return struct and struct.g_mgr
 end
 
 function TouchMgr._setRegisteredManager( g_mgr )
 	-- assert( g_mgr and g_mgr.view )
 	local struct = TouchMgr._getRegisteredObjectStruct( g_mgr.view )
-	assert( struct.g_mgr==nil )
+	if struct.g_mgr==g_mgr then return end
+	assert( struct.g_mgr==nil, "ERROR: TouchMgr object already has a gesture manager" )
 	g_mgr.touch_manager = TouchMgr
 	struct.g_mgr = g_mgr
 end
 
 function TouchMgr._removeRegisteredManager( g_mgr )
+	local struct = TouchMgr._OBJECT[ g_mgr.view ]
+	if not struct or struct.g_mgr~=g_mgr then return end
+	struct.g_mgr = nil
 	return TouchMgr._removeRegisteredObjectStruct( g_mgr.view )
 end
 
@@ -560,6 +561,7 @@ function TouchMgr._unsetRegisteredTouch( event_id )
 	-- assert( event_id )
 	local o = TouchMgr._FOCUS[ event_id ]
 	TouchMgr._FOCUS[ event_id ] = nil
+	TouchMgr._POSITION[ event_id ] = nil
 	return o
 end
 

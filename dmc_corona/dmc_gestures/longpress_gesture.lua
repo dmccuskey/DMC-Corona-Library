@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/longpress_gesture.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[

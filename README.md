@@ -2,9 +2,11 @@
 
 The DMC libraries for Solar2D (formerly Corona SDK) in one folder: objects, gestures, drag and drop, networking (sockets, WebSockets, WAMP), colors, storage and more.
 
+**Version 2.0, brought fully up to date in 2026.** Every library has been fixed for current Solar2D and has unit tests, and each is documented in its own repository with a Quick Start and reference (dmc-multitouch's documentation is still to come); most come with example apps.
+
 Each library is written and documented in its own repository; this one only collects copies of them, so a project can take all of them in one clone, at versions that work together. It also includes [DMC-Lua-Library](https://github.com/dmccuskey/DMC-Lua-Library), the plain-Lua modules they are built on, and [dmc-corona-boot](https://github.com/dmccuskey/dmc-corona-boot), the loader that lets them find each other.
 
-The current code is on the `dmc_corona-2.x` branch; `master` still holds the old 1.x library.
+The old 1.x library is on the `dmc_corona-1.x` branch.
 
 ## Libraries
 
@@ -21,11 +23,15 @@ Everything is in `dmc_corona/`. Each library's repository has its Quick Start, A
 | `dmc_files` | [dmc-files](https://github.com/dmccuskey/dmc-files) | Read and write text, lines, JSON and config files in one call each |
 | `dmc_gestures` | [dmc-gestures](https://github.com/dmccuskey/dmc-gestures) | Tap, long press, pan and pinch recognizers, modeled on iOS |
 | `dmc_kolor` | [dmc-kolor](https://github.com/dmccuskey/dmc-kolor) | Colors in 0-255, hex and names like "Steel Blue" |
+| `dmc_kompatible` | [dmc-kompatible](https://github.com/dmccuskey/dmc-kompatible) | Run Graphics 1.0 code in Graphics 2.0: colors in 0-255, objects placed by reference points |
 | `dmc_kozy` | [dmc-kozy](https://github.com/dmccuskey/dmc-kozy) | Graphics 1.0 conveniences (0-255 colors, reference points) in Graphics 2.0 code |
 | `dmc_lifecycle_mix` | [dmc-lifecycle-mixin](https://github.com/dmccuskey/dmc-lifecycle-mixin) | Batch property changes: an object redraws once per frame, however many change |
 | `dmc_megaphone` | [dmc-megaphone](https://github.com/dmccuskey/dmc-megaphone) | One shared object that any part of an app can send messages to and listen on |
+| `dmc_mockserver` | [dmc-mockserver](https://github.com/dmccuskey/dmc-mockserver) | Mock a server's API in the app, to build and test before the server exists or without a network |
+| `dmc_multitouch` | [dmc-multitouch](https://github.com/dmccuskey/dmc-multitouch) | Move, pinch and rotate for display objects |
 | `dmc_navigator` | [dmc-navigator](https://github.com/dmccuskey/dmc-navigator) | Stack screens and slide between them, like a phone's navigation controller |
 | `dmc_netstream` | [dmc-netstream](https://github.com/dmccuskey/dmc-netstream) | Receive data from an HTTP server as it arrives |
+| `dmc_nicenet` | [dmc-nicenet](https://github.com/dmccuskey/dmc-nicenet) | A better behaved `network`: requests wait in a queue, a few at a time, by priority |
 | `dmc_objects` | [dmc-objects](https://github.com/dmccuskey/dmc-objects) | Classes for game objects that move, animate and listen like display objects |
 | `dmc_patch` | [dmc-patch](https://github.com/dmccuskey/dmc-patch) | Python-style additions: `%` string formatting, `table.pop()`, `pnotice()`/`pwarn()` |
 | `dmc_path` | [dmc-path](https://github.com/dmccuskey/dmc-path) | Parse and build file paths and `require` strings |
@@ -34,18 +40,19 @@ Everything is in `dmc_corona/`. Each library's repository has its Quick Start, A
 | `dmc_sockets` | [dmc-sockets](https://github.com/dmccuskey/dmc-sockets) | Non-blocking TCP sockets with callbacks or events, and TLS |
 | `dmc_states_mix` | [dmc-states-mixin](https://github.com/dmccuskey/dmc-states-mixin) | Turns any object into a state machine |
 | `dmc_touchmanager` | [dmc-touchmanager](https://github.com/dmccuskey/dmc-touchmanager) | True multi-touch: several touches can hold focus on one display object |
+| `dmc_trajectory` | [dmc-trajectory](https://github.com/dmccuskey/dmc-trajectory) | Parabolic motion: move a display object in an arc, like a thrown ball |
 | `dmc_utils` | [dmc-utils](https://github.com/dmccuskey/dmc-utils) | Small helpers for tables, strings, URLs, audio, the status bar and more |
 | `dmc_wamp` | [dmc-wamp](https://github.com/dmccuskey/dmc-wamp) | A [WAMP](https://wamp-proto.org/) client: remote procedure calls and publish/subscribe |
 | `dmc_websockets` | [dmc-websockets](https://github.com/dmccuskey/dmc-websockets) | A WebSocket client (RFC 6455) |
 | `lib/dmc_lua/` | [DMC-Lua-Library](https://github.com/dmccuskey/DMC-Lua-Library) | The plain-Lua modules the libraries are built on |
 
-These six still have copies here from 2014 that the build doesn't update; they are being brought up to date in their own repositories and will rejoin the build: [dmc-facebook](https://github.com/dmccuskey/dmc-facebook) (a Facebook connector), [dmc-kompatible](https://github.com/dmccuskey/dmc-kompatible) (runs Graphics 1.0 code in Graphics 2.0), [dmc-mockserver](https://github.com/dmccuskey/dmc-mockserver) (mocks a server API in the app), [dmc-multitouch](https://github.com/dmccuskey/dmc-multitouch) (move, pinch and rotate for display objects; no copy here yet), [dmc-nicenet](https://github.com/dmccuskey/dmc-nicenet) (a queue for network requests) and [dmc-trajectory](https://github.com/dmccuskey/dmc-trajectory) (parabolic motion). Until then, the copies of `dmc_facebook`, `dmc_mockserver` and `dmc_nicenet` don't load: they use an API that dmc-objects no longer has.
+[dmc-facebook](https://github.com/dmccuskey/dmc-facebook) (a Facebook connector) isn't included: it was written for a Facebook login flow that has since changed, and is on hold.
 
 ## Quick Start
 
 The following code will get you up and running in about 10 minutes in the Solar2D Simulator on macOS or Windows. It makes a square that you drag with a pan gesture and tap, and a label that counts the taps, told about each one on the megaphone: two libraries from the bundle working together.
 
-Prerequisites: the [Solar2D](https://solar2d.com/) Simulator and a copy of this repository (`git clone -b dmc_corona-2.x https://github.com/dmccuskey/DMC-Corona-Library.git`, or download the ZIP of the `dmc_corona-2.x` branch from GitHub).
+Prerequisites: the [Solar2D](https://solar2d.com/) Simulator and a copy of this repository (`git clone https://github.com/dmccuskey/DMC-Corona-Library.git`, or download the ZIP from GitHub).
 
 ### 1. Copy the Library into Your Project
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/pan_gesture.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -68,6 +68,7 @@ local Constants = require 'dmc_gestures.gesture_constants'
 local newClass = Objects.newClass
 
 local mabs = math.abs
+local msqrt = math.sqrt
 local tcancel = timer.cancel
 local tdelay = timer.performWithDelay
 
@@ -226,7 +227,8 @@ function PanGesture.__setters:max_touches( value )
 end
 
 
---- the velocity of the pan gesture motion (number).
+--- the speed of the pan, in pixels per second, over its last movement (number).
+-- the events have it too, as `velocity`, split into `xVelocity` and `yVelocity`.
 -- Get Only
 -- @function .velocity
 -- @usage print( pan.velocity )
@@ -252,50 +254,15 @@ end
 --== Multitouch Event Methods
 
 
---[[
-function PanGesture:_createMultitouchEvent( params )
-	-- print( "PanGesture:_createMultitouchEvent" )
-	-- update to our "starting" touch
-	params = params or {}
-	--==--
-	local me = Continuous._createMultitouchEvent( self, params )
-
-	local pos = self:_calculateCentroid( self._touches )
-	me.xStart=pos.x
-	me.yStart=pos.y
-	me.x=pos.x
-	me.y=pos.y
-
-	return me
+-- velocity of the touches' centroid, in pixels per second
+function PanGesture:_addVelocity( me )
+	-- print( "PanGesture:_addVelocity" )
+	self:_addVelocitySample( me.time, me.x, me.y )
+	local vx, vy = self:_calculateVelocity( me.time )
+	self._velocity = msqrt( vx*vx + vy*vy )
+	me.xVelocity, me.yVelocity = vx, vy
+	me.velocity = self._velocity
 end
---]]
-
-
---[[
-function PanGesture:_updateMultitouchEvent( me, params )
-	-- print( "PanGesture:_updateMultitouchEvent" )
-	me = Continuous._updateMultitouchEvent( self, me, params )
-
-	local pos = self:_calculateCentroid( self._touches )
-	me.x, me.y = pos.x, pos.y
-
-	return me
-end
---]]
-
-
---[[
-function PanGesture:_endMultitouchEvent( me, params )
-	-- print( "PanGesture:_endMultitouchEvent" )
-	me = Continuous._endMultitouchEvent( self, me, params )
-
-	local pos = self:_calculateCentroid( self._touches )
-	me.x, me.y = pos.x, pos.y
-
-	return me
-end
---]]
-
 
 
 
@@ -321,8 +288,12 @@ function PanGesture:touch( event )
 		local threshold = self._threshold
 
 		if state==Continuous.STATE_POSSIBLE then
-			if is_touch_ok then
-				self:_addMultitouchToQueue( Continuous.BEGAN )
+			if touch_count>t_max then
+				-- too many fingers: not a pan, until they all lift
+				self:gotoState( Continuous.STATE_FAILED )
+
+			elseif is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.BEGAN, event.time )
 
 				if threshold==0 then
 					self:gotoState( Continuous.STATE_BEGAN, event )
@@ -342,7 +313,7 @@ function PanGesture:touch( event )
 
 		if state==Continuous.STATE_POSSIBLE then
 			if is_touch_ok then
-				self:_addMultitouchToQueue( Continuous.CHANGED )
+				self:_addMultitouchToQueue( Continuous.CHANGED, event.time )
 				if (_mabs(event.xStart-event.x)>threshold or _mabs(event.yStart-event.y)>threshold) then
 					self:gotoState( Continuous.STATE_BEGAN, event )
 				end
@@ -357,7 +328,7 @@ function PanGesture:touch( event )
 
 		elseif state==Continuous.STATE_SOFT_RESET then
 			if is_touch_ok then
-				self:_addMultitouchToQueue( Continuous.BEGAN )
+				self:_addMultitouchToQueue( Continuous.BEGAN, event.time )
 				self:gotoState( Continuous.STATE_BEGAN, event )
 			end
 
@@ -365,7 +336,7 @@ function PanGesture:touch( event )
 
 	elseif phase=='cancelled' then
 		-- @TODO: think about this, merge with 'ended' ?
-		self:gotoState( Continuous.STATE_CANCELLED )
+		self:gotoState( Continuous.STATE_CANCELLED, event )
 
 	else -- phase='ended'
 		local _mabs = mabs
@@ -379,7 +350,8 @@ function PanGesture:touch( event )
 					self:gotoState( Continuous.STATE_BEGAN, event )
 				end
 			else
-				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+				-- too few fingers left: start over when there are enough
+				self._multitouch_queue = {}
 			end
 
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then

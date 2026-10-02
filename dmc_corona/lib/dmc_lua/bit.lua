@@ -3,7 +3,7 @@
 --
 -- a consistent method to load Lua BitOp on various systems
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-bit-shim
 --====================================================================--
 
 
@@ -42,7 +42,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -50,17 +50,47 @@ local VERSION = "0.1.0"
 --== Setup, Constants
 
 
--- these are some popular bit op modules
-local BITOP_LIBS = { 'plugin.bit', 'lib.bit.numberlua' }
+-- each entry: module name, and a function that returns its
+-- LuaBitOp-compatible table
+local BITOP_LIBS = {
+	{ 'plugin.bit', function( mod ) return mod end },
+	-- numberlua's top level is unsigned; its 'bit' sub-table is signed,
+	-- like LuaBitOp
+	{ 'lib.bit.numberlua', function( mod ) return mod.bit end },
+}
 
-local has_bitOp, BitOp
+local BitOp, source
+local errors = {}
 
-for _, name in ipairs( BITOP_LIBS ) do
-	has_bitOp, BitOp = pcall( require, name )
-	if has_bitOp then break end
+for _, lib in ipairs( BITOP_LIBS ) do
+	local name, getBitOp = lib[1], lib[2]
+	local ok, mod = pcall( require, name )
+	if ok then
+		BitOp, source = getBitOp( mod ), name
+		break
+	end
+	table.insert( errors, name .. ": " .. tostring( mod ) )
 end
 
-assert( has_bitOp, "Bit module not found" )
+if not BitOp then
+	error( "Bit module not found\n" .. table.concat( errors, "\n" ), 2 )
+end
 
-return BitOp
 
+
+--====================================================================--
+--== Bit Facade
+
+
+-- a copy, so the loaded module's own table stays unchanged
+local Bit = {
+	__version=VERSION,
+	__source=source,
+}
+
+for k, v in pairs( BitOp ) do
+	Bit[k] = v
+end
+
+
+return Bit

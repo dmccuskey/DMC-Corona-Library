@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_class.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-class
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
@@ -62,9 +62,7 @@ local getmetatable, setmetatable = getmetatable, setmetatable
 local sformat = string.format
 local tinsert = table.insert
 local tremove = table.remove
-
--- table for copies from lua_utils
-local Utils = {}
+local unpack = unpack or table.unpack
 
 -- forward declare
 local ClassBase
@@ -75,46 +73,12 @@ local ClassBase
 --== Class Support Functions
 
 
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
+-- pack()
+-- like table.pack(): keeps the count, so nil values survive unpack()
 --
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
+local function pack( ... )
+	return { n=select( '#', ... ), ... }
 end
-
---== End: copy from lua_utils ==--
-
 
 
 
@@ -155,24 +119,25 @@ obj:superCall( Class, 'string', ... )
 -- function to intelligently find methods in object hierarchy
 --
 local function superCall( self, ... )
-	local args = {...}
-	local arg1 = args[1]
+	local arg1 = ...
 	assert( type(arg1)=='table' or type(arg1)=='string', "superCall arg not table or string" )
 	--==--
 	-- pick off arguments
-	local parent_lock, method, params
+	local parent_lock, method, args
 
 	if type(arg1) == 'table' then
-		parent_lock = tremove( args, 1 )
-		method = tremove( args, 1 )
+		parent_lock, method = ...
+		args = pack( select( 3, ... ) )
 	else
-		method = tremove( args, 1 )
+		method = arg1
+		args = pack( select( 2, ... ) )
 	end
-	params = args
 
 	local self_dmc_super = self.__dmc_super
 	local super_flag = ( self_dmc_super ~= nil )
-	local result = nil
+	-- pcall() results: ok flag, then values
+	-- nil, not nothing, when no method is called
+	local result = pack( true, nil )
 
 	-- finds method name in class hierarchy
 	-- returns found class or nil
@@ -216,13 +181,13 @@ local function superCall( self, ... )
 	-- call method if found
 	--
 	c = self_dmc_super[ # self_dmc_super ]
-	-- TODO: when c==nil
-	-- if c==nil or type(c)~='table' then return end
 
-	s = findMethod( c.__parents, method, parent_lock )
+	-- c is nil when no class defines the method
+	s = c and findMethod( c.__parents, method, parent_lock )
 	if s then
 		tinsert( self_dmc_super, s )
-		result = s[method]( self, unpack( args ) )
+		-- pcall(), so an error can't leave our place behind on the object
+		result = pack( pcall( s[method], self, unpack( args, 1, args.n ) ) )
 		tremove( self_dmc_super, # self_dmc_super )
 	end
 
@@ -235,7 +200,10 @@ local function superCall( self, ... )
 		self.__dmc_super = nil
 	end
 
-	return result
+	-- pass the error on unchanged
+	if not result[1] then error( result[2], 0 ) end
+
+	return unpack( result, 2, result.n )
 end
 
 
@@ -257,7 +225,7 @@ local function initializeObject( obj, params )
 	assert( params.set_isClass ~= nil, "initializeObject requires paramter 'set_isClass'" )
 
 	local is_class = params.set_isClass
-	local args = params.data or {}
+	local args = params.data or pack()
 
 	-- set Class/Instance flag
 	obj.__is_class = params.set_isClass
@@ -272,13 +240,64 @@ local function initializeObject( obj, params )
 
 		rawset( obj, '__parent_lock', parent )
 		if parent.__new__ then
-			parent.__new__( obj, unpack( args ) )
+			parent.__new__( obj, unpack( args, 1, args.n or #args ) )
 		end
 
 	end
 	rawset( obj, '__parent_lock', nil )
 
 	return obj
+end
+
+
+
+-- findAccessor()
+-- find a getter or setter on an object or its parents,
+-- in the same order as property lookup
+--
+-- @param t object table
+-- @param name '__getters' or '__setters'
+-- @param k key
+--
+local function findAccessor( t, name, k )
+	local tbl = rawget( t, name )
+	local f = tbl and rawget( tbl, k )
+	if f then return f end
+
+	local par = rawget( t, '__parents' )
+	if not par then return nil end
+	for i = 1, #par do
+		f = findAccessor( par[i], name, k )
+		if f then return f end
+	end
+	return nil
+end
+
+
+
+-- findValue()
+-- find a key on a list of parents or their parents,
+-- without calling their getters
+--
+-- @param parents list of Classes
+-- @param k key
+--
+local function findValue( parents, k )
+	for i = 1, #parents do
+		local p = parents[i]
+		local val
+		if rawget( p, '__is_dmc' ) then
+			val = rawget( p, k )
+			if val == nil then
+				local par = rawget( p, '__parents' )
+				if par then val = findValue( par, k ) end
+			end
+		else
+			val = p[k] -- not one of ours, use its own lookup
+		end
+		if val ~= nil then return val end
+	end
+	return nil
 end
 
 
@@ -292,20 +311,14 @@ end
 -- @param v value
 --
 local function newindexFunc( t, k, v )
-
-	local o, f
-
-	-- check for key in setters table
-	o = rawget( t, '__setters' ) or {}
-	f = o[k]
+	local f = findAccessor( t, '__setters', k )
 	if f then
 		-- found setter, so call it
-		f(t,v)
+		f( t, v )
 	else
 		-- place key/value directly on object
 		rawset( t, k, v )
 	end
-
 end
 
 
@@ -313,42 +326,27 @@ end
 -- multiindexFunc()
 -- override the normal Lua lookup functionality to allow
 -- property getter functions
+-- (only called when the key isn't directly on the object)
 --
 -- @param t object table
 -- @param k key
 --
 local function multiindexFunc( t, k )
-
-	local o, val
-
-	--== do key lookup in different places on object
-
-	-- check for key in getters table
-	o = rawget( t, '__getters' ) or {}
-	if o[k] then return o[k](t) end
-
-	-- check for key directly on object
-	val = rawget( t, k )
-	if val ~= nil then return val end
+	-- check for key in getters, on object or parents
+	local f = findAccessor( t, '__getters', k )
+	if f then return f( t ) end
 
 	-- check OO hierarchy
 	-- check Parent Lock else all of Parents
 	--
-	o = rawget( t, '__parent_lock' )
-	if o then
-		if o then val = o[k] end
-		if val ~= nil then return val end
-	else
-		local par = rawget( t, '__parents' )
-		for _, o in ipairs( par ) do
-			if o[k] ~= nil then
-				val = o[k]
-				break
-			end
-		end
-		if val ~= nil then return val end
+	local lock = rawget( t, '__parent_lock' )
+	if lock then
+		return findValue( { lock }, k )
 	end
-
+	local par = rawget( t, '__parents' )
+	if par then
+		return findValue( par, k )
+	end
 	return nil
 end
 
@@ -385,20 +383,10 @@ local function blessObject( inheritance, params )
 	o.__is_dmc = true
 
 	-- create lookup tables - setters, getters
+	-- parents' getters and setters are looked up when used,
+	-- so ones added to a parent later are found too
 	o.__setters = {}
 	o.__getters = {}
-
-	-- copy down all getters/setters of parents
-	-- do in reverse order, to match order of property lookup
-	for i = #inheritance, 1, -1 do
-		local cls = inheritance[i]
-		if cls.__getters then
-			o.__getters = Utils.extend( cls.__getters, o.__getters )
-		end
-		if cls.__setters then
-			o.__setters = Utils.extend( cls.__setters, o.__setters )
-		end
-	end
 
 	return o
 end
@@ -468,7 +456,7 @@ ClassBase = newClass( nil, { name="Class Class" } )
 --
 function ClassBase:__ctor__( ... )
 	local params = {
-		data = {...},
+		data = pack( ... ),
 		set_isClass = false
 	}
 	--==--
@@ -562,7 +550,7 @@ end
 --
 function ClassBase:optimize()
 
-	function _optimize( obj, inheritance )
+	local function _optimize( obj, inheritance )
 
 		if not inheritance or #inheritance == 0 then return end
 
@@ -614,13 +602,14 @@ ClassBase.superCall = superCall
 
 -- makeNewClassGlobal
 -- modifies the global namespace with newClass()
--- add or remove
+-- add (true or nil) or remove (false)
+-- a global newClass from elsewhere is left alone
 --
 local function makeNewClassGlobal( is_global )
-	is_global = is_global~=nil and is_global or true
-	if _G.newClass ~= nil then
+	if is_global == nil then is_global = true end
+	if _G.newClass ~= nil and _G.newClass ~= newClass then
 		print( "WARNING: newClass exists in global namespace" )
-	elseif is_global == true then
+	elseif is_global then
 		_G.newClass = newClass
 	else
 		_G.newClass = nil

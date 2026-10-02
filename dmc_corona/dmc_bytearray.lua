@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_bytearray.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-bytearray
 --====================================================================--
 
 --[[
@@ -39,66 +39,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.2.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from Utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
-
-
-
---====================================================================--
---== Configuration
 
 
 local dmc_lib_data
@@ -117,8 +64,18 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== DMC States Mix
+--== DMC Byte Array
 --====================================================================--
+
+
+
+--====================================================================--
+--== Imports
+
+
+local ByteArray = require 'lib.dmc_lua.lua_bytearray'
+local Utils = require 'lib.dmc_lua.lua_utils'
+
 
 
 --====================================================================--
@@ -128,19 +85,25 @@ dmc_lib_data = _G.__dmc_corona
 dmc_lib_data.dmc_bytearray = dmc_lib_data.dmc_bytearray or {}
 
 local DMC_BYTEARRAY_DEFAULTS = {
+	-- none
 }
 
-local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_bytearray, DMC_BYTEARRAY_DEFAULTS )
+local dmc_bytearray_data = Utils.extend( dmc_lib_data.dmc_bytearray, DMC_BYTEARRAY_DEFAULTS )
 
 
 
 --====================================================================--
---== Imports
+--== Byte Array Class
+--====================================================================--
 
 
-local ByteArray = require 'lib.dmc_lua.lua_bytearray'
+-- set on lua-bytearray's shared class, not a copy: a copy would be a
+-- second class, and isa() checks against either name would fail.
+-- ByteArray.__version is lua-bytearray's version
+--
+ByteArray.VERSION = VERSION
+
 
 
 
 return ByteArray
-

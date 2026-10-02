@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_navigator.lua
 --
--- Documentation:
+-- Documentation: https://github.com/dmccuskey/dmc-navigator
 --====================================================================--
 
 --[[
@@ -39,46 +39,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.3.0"
+local VERSION = "0.4.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 
@@ -98,6 +65,8 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
+
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -127,7 +96,6 @@ local Config = dmc_navigator_data
 
 
 local Objects = require 'dmc_objects'
--- local Utils = require 'dmc_utils'
 
 
 
@@ -150,6 +118,8 @@ local tremove = table.remove
 
 
 local Navigator = newClass( ComponentBase, {name="DMC Navigator"} )
+
+Navigator.VERSION = VERSION
 
 --== Class Constants
 
@@ -189,12 +159,12 @@ function Navigator:__init__( params )
 	self._trans_time = params.transition_time
 	self._btn_back_f = nil
 	self._enterFrame_f = nil
+	self._slide = nil -- the running slide, see _startEnterFrame()
 
 	self._views = {} -- slide list, in order
 
 	--== Object References ==--
 
-	self._root_view = nil
 	self._back_view = nil
 	self._top_view = nil
 	self._new_view = nil
@@ -207,7 +177,6 @@ end
 
 function Navigator:__undoInit__()
 	--print( "Navigator:__undoInit__" )
-	self._root_view = nil
 	self._back_view = nil
 	self._top_view = nil
 	self._new_view = nil
@@ -228,7 +197,7 @@ function Navigator:__createView__()
 
 	o = display.newRect( 0, 0, self._width, self._height )
 	o:setFillColor(0,0,0,0)
-	if false or Config.debug_active then
+	if Config.debug_active then
 		o:setFillColor(0.5,1,0.5)
 	end
 	o.anchorX, o.anchorY = 0.5, 0
@@ -289,30 +258,48 @@ function Navigator.__setters:nav_bar( value )
 end
 
 
+-- the view on top of the stack, or nil
+--
+function Navigator.__getters:top_view()
+	return self._top_view
+end
+
+-- a copy of the stack, the root view first
+--
+function Navigator.__getters:views()
+	local list = {}
+	for i, view in ipairs( self._views ) do list[i] = view end
+	return list
+end
+
+
 function Navigator:cleanUp()
 	-- print( "Navigator:cleanUp" )
-	self:_stopEnterFrame()
+	self:_finishSlide()
 	for i=#self._views, 1, -1 do
 		local view = self:_popStackView()
 		self:_removeViewFromNav( view )
 	end
+	self._back_view = nil
+	self._top_view = nil
+	self._new_view = nil
 end
 
 
+-- a push or pop during a slide finishes that slide at once first
+--
 function Navigator:pushView( view, params )
 	-- print( "Navigator:pushView" )
 	params = params or {}
 	assert( view, "[ERROR] Navigator:pushView requires a view object" )
-	-- assert( type(item)=='table' and item.isa and item:isa( NavItem ), "pushNavItem: item must be a NavItem" )
 	if params.animate==nil then params.animate=true end
 	--==--
+	self:_finishSlide()
 
-	if self._root_view then
-		-- pass
-	else
-		self._root_view = view
+	if #self._views==0 then
+		-- the root view appears at once
+		self._back_view = nil
 		self._top_view = nil
-		self._visible_view = nil
 		params.animate = false
 	end
 	self._new_view = view
@@ -321,29 +308,40 @@ function Navigator:pushView( view, params )
 end
 
 
+-- returns false, and does nothing, when the root view is on top
+--
 function Navigator:popViewAnimated()
+	-- print( "Navigator:popViewAnimated" )
+	self:_finishSlide()
+	if #self._views<2 then return false end
 	self:_gotoPrevView( true )
+	return true
 end
 
 
+-- removes the views between the root and the top, then pops the top
+-- returns false, and does nothing, when the root view is on top
+--
+function Navigator:popToRoot( params )
+	-- print( "Navigator:popToRoot" )
+	params = params or {}
+	if params.animate==nil then params.animate=true end
+	--==--
+	self:_finishSlide()
+	local views = self._views
+	if #views<2 then return false end
 
-function Navigator:viewIsVisible( value )
-	-- print( "Navigator:viewIsVisible" )
-	local o = self._current_view
-	if o and o.viewIsVisible then o:viewIsVisible( value ) end
-end
+	for i=#views-1, 2, -1 do
+		local view = tremove( views, i )
+		self:_removeViewFromNav( view )
+		-- the nav bar keeps its own list: pop its items at once
+		local f = self:_getPopNavBarTransition()
+		if f then f( 0 ) end
+	end
+	self._back_view = views[1]
 
-
-function Navigator:viewIsVisible( value )
-	-- print( "Navigator:viewIsVisible" )
-	local o = self._current_view
-	if o and o.viewIsVisible then o:viewIsVisible( value ) end
-end
-
-function Navigator:viewInMotion( value )
-	-- print( "Navigator:viewInMotion" )
-	local o = self._current_view
-	if o and o.viewInMotion then o:viewInMotion( value ) end
+	self:_gotoPrevView( params.animate )
+	return true
 end
 
 
@@ -352,23 +350,30 @@ end
 --== Private Methods
 
 
+-- the nav bar's transition methods: public in current
+-- DMC-Corona-UI, with a leading underscore in the 2015 one
+
 function Navigator:_getPushNavBarTransition( view, params )
 	-- print( "Navigator:_getPushNavBarTransition", view )
 	params = params or {}
-	local o, callback
-	if self._nav_bar then
+	local nav_bar = self._nav_bar
+	local o, f
+	if nav_bar then
 		o = view.nav_bar_item
 		assert( o, "view doesn't have nav bar item" )
 		o.backButton.onRelease = self._btn_back_f
-		callback = self._nav_bar:_pushNavItemGetTransition( o, {} )
+		f = nav_bar.pushNavItemGetTransition or nav_bar._pushNavItemGetTransition
+		return f( nav_bar, o, {} )
 	end
-	return callback
 end
 
-function Navigator:_getPopNavBarTransition()
+function Navigator:_getPopNavBarTransition( params )
 	-- print( "Navigator:_getPopNavBarTransition" )
 	params = params or {}
-	return self._nav_bar:_popNavItemGetTransition( params )
+	local nav_bar = self._nav_bar
+	if not nav_bar then return end
+	local f = nav_bar.popNavItemGetTransition or nav_bar._popNavItemGetTransition
+	return f( nav_bar, params )
 end
 
 
@@ -376,7 +381,7 @@ function Navigator:_pushStackView( view )
 	tinsert( self._views, view )
 end
 
-function Navigator:_popStackView( notify )
+function Navigator:_popStackView()
 	return tremove( self._views )
 end
 
@@ -401,21 +406,36 @@ end
 
 
 
-function Navigator:_startEnterFrame( func )
-	self._enterFrame_f = func
-	Runtime:addEventListener( 'enterFrame', func )
+-- a slide: frame_f runs each frame, moving the views with trans_f
+-- until it reaches the percent done
+
+function Navigator:_startEnterFrame( frame_f, trans_f, done )
+	self._slide = { f=trans_f, done=done }
+	self._enterFrame_f = frame_f
+	Runtime:addEventListener( 'enterFrame', frame_f )
 end
 
 function Navigator:_stopEnterFrame()
 	if not self._enterFrame_f then return end
 	Runtime:removeEventListener( 'enterFrame', self._enterFrame_f )
+	self._enterFrame_f = nil
+	self._slide = nil
+end
+
+-- puts a running slide at its end
+--
+function Navigator:_finishSlide()
+	local slide = self._slide
+	if not slide then return end
+	self:_stopEnterFrame()
+	slide.f( slide.done )
 end
 
 
 function Navigator:_startReverse( func )
 	local start_time = system.getTimer()
 	local duration = self._trans_time
-	local rev_f -- forward
+	local rev_f -- reverse
 
 	rev_f = function(e)
 		local delta_t = e.time-start_time
@@ -426,7 +446,7 @@ function Navigator:_startReverse( func )
 		end
 		func( perc )
 	end
-	self:_startEnterFrame( rev_f )
+	self:_startEnterFrame( rev_f, func, 0 )
 end
 
 function Navigator:_startForward( func )
@@ -443,7 +463,7 @@ function Navigator:_startForward( func )
 		end
 		func( perc )
 	end
-	self:_startEnterFrame( frw_f )
+	self:_startEnterFrame( frw_f, func, 100 )
 end
 
 
@@ -484,7 +504,6 @@ function Navigator:_getTransition( from_view, to_view, direction )
 	-- print( "Navigator:_getTransition", from_view, to_view, direction )
 	local W, H = self._width, self._height
 	local H_CENTER, V_CENTER = W*0.5, H*0.5
-	local MARGINS = self.MARGINS
 
 	local callback, nav_callback
 	local stack, stack_size, stack_offset
@@ -514,17 +533,6 @@ function Navigator:_getTransition( from_view, to_view, direction )
 		if percent==0 then
 			--== edge of transition ==--
 
-			--== Finish up
-
-			if direction==self.REVERSE then
-				local view = self:_popStackView()
-				self:_removeViewFromNav( view )
-
-				self._top_view = from_view
-				self._new_view = nil
-				self._back_view = stack[ #stack-1 ] -- get previous
-			end
-
 			if from_view then
 				from_view.isVisible = true
 				from_view.x = 0
@@ -532,6 +540,19 @@ function Navigator:_getTransition( from_view, to_view, direction )
 
 			if to_view then
 				to_view.isVisible = false
+			end
+
+			--== Finish up
+
+			-- last: a listener may remove the view it's given
+			if direction==self.REVERSE then
+				local view = self:_popStackView()
+
+				self._top_view = from_view
+				self._new_view = nil
+				self._back_view = stack[ #stack-1 ] -- get previous
+
+				self:_removeViewFromNav( view )
 			end
 
 
@@ -578,18 +599,6 @@ function Navigator:_getTransition( from_view, to_view, direction )
 
 	return callback
 end
-
-
--- TODO: add methods
---[[
-local s2_a = function()
-	if prev_view.viewInMotion then prev_view:viewInMotion( true ) end
-	if prev_view.viewIsVisible then prev_view:viewIsVisible( true ) end
-	if next_view.viewInMotion then next_view:viewInMotion( true ) end
-	if next_view.viewIsVisible then next_view:viewIsVisible( false ) end
-	s2_b()
-end
---]]
 
 
 function Navigator:_dispatchRemovedView( view )

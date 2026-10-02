@@ -297,6 +297,9 @@ function TCPSocket:close()
 		return
 	end
 
+	-- nothing to close, eg after a failed TLS setup
+	if not self._socket then return end
+
 	self:_closeSocket()
 	self:_removeSocket()
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- lua_e4x.lua
 --
--- Documentation: http://docs.davidmccuskey.com/display/docs/lua_e4x.lua
+-- Documentation: https://github.com/dmccuskey/lua-e4x
 --====================================================================--
 
 --[[
@@ -38,7 +38,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.1"
+local VERSION = "0.2.0"
 
 
 
@@ -71,7 +71,7 @@ end
 
 -- filter(function, table)
 -- e.g: filter(is_even, {1,2,3,4}) -> {2,4}
-function filter(func, tbl)
+local function filter(func, tbl)
 	local xlist= XmlList()
 	for i,v in ipairs(tbl) do
 		if func(v) then
@@ -81,54 +81,64 @@ function filter(func, tbl)
 	return xlist
 end
 
--- map(function, table)
--- e.g: map(double, {1,2,3})    -> {2,4,6}
-function map(func, tbl)
-	local xlist= XmlList()
-		for i,v in ipairs(tbl) do
-			xlist:addNode( func(v) )
-		end
-		return xlist
-end
-
 -- foldr(function, default_value, table)
 -- e.g: foldr(operator.mul, 1, {1,2,3,4,5}) -> 120
-function foldr(func, val, tbl)
-	for i,v in pairs(tbl) do
+local function foldr(func, val, tbl)
+	for i,v in ipairs(tbl) do
 		val = func(val, v)
 	end
 	return val
 end
 
 
-local function decodeXmlString(value)
-	value = string.gsub(value, "&#x([%x]+)%;",
-		function(h)
-			return string.char(tonumber(h, 16))
-		end)
-	value = string.gsub(value, "&#([0-9]+)%;",
-		function(h)
-				return string.char(tonumber(h, 10))
-		end)
-	value = string.gsub(value, "&quot;", "\"")
-	value = string.gsub(value, "&apos;", "'")
-	value = string.gsub(value, "&gt;", ">")
-	value = string.gsub(value, "&lt;", "<")
-	value = string.gsub(value, "&amp;", "&")
+-- UTF-8 bytes of a code point, nil if it isn't one
+local function utf8Char( code )
+	if not code or code < 0 or code > 0x10FFFF then
+		return nil
+	elseif code < 0x80 then
+		return string.char( code )
+	elseif code < 0x800 then
+		return string.char( 0xC0 + math.floor( code / 0x40 ),
+			0x80 + code % 0x40 )
+	elseif code < 0x10000 then
+		return string.char( 0xE0 + math.floor( code / 0x1000 ),
+			0x80 + math.floor( code / 0x40 ) % 0x40, 0x80 + code % 0x40 )
+	else
+		return string.char( 0xF0 + math.floor( code / 0x40000 ),
+			0x80 + math.floor( code / 0x1000 ) % 0x40,
+			0x80 + math.floor( code / 0x40 ) % 0x40, 0x80 + code % 0x40 )
+	end
+end
+
+local XML_ENTITIES = {
+	amp='&', lt='<', gt='>', quot='"', apos="'"
+}
+
+-- one pass, so '&amp;lt;' becomes '&lt;', not '<'
+-- an unknown entity is left as it is
+local function decodeXmlString( value )
+	return ( string.gsub( value, '&(#?[%w]+);', function( ent )
+		local char
+		if string.sub( ent, 1, 2 ) == '#x' then
+			char = utf8Char( tonumber( string.sub( ent, 3 ), 16 ) )
+		elseif string.sub( ent, 1, 1 ) == '#' then
+			char = utf8Char( tonumber( string.sub( ent, 2 ), 10 ) )
+		else
+			char = XML_ENTITIES[ ent ]
+		end
+		return char -- nil keeps the entity
+	end ) )
+end
+
+local function encodeXmlText( value )
+	value = string.gsub( value, '&', '&amp;' )
+	value = string.gsub( value, '<', '&lt;' )
+	value = string.gsub( value, '>', '&gt;' )
 	return value
 end
 
-
-function encodeXmlString(value)
-	value = string.gsub(value, "&", "&amp;"); -- '&' -> "&amp;"
-	value = string.gsub(value, "<", "&lt;"); -- '<' -> "&lt;"
-	value = string.gsub(value, ">", "&gt;"); -- '>' -> "&gt;"
-	value = string.gsub(value, "\"", "&quot;"); -- '"' -> "&quot;"
-	value = string.gsub(value, "([^%w%&%;%p%\t% ])",
-		function(c)
-			return string.format("&#x%X;", string.byte(c))
-		end);
-	return value;
+local function encodeXmlAttr( value )
+	return ( string.gsub( encodeXmlText( value ), '"', '&quot;' ) )
 end
 
 
@@ -218,7 +228,7 @@ end
 local function bless( base, params )
 	params = params or {}
 	--==--
-	local o = obj or {}
+	local o = {}
 	local mt = {
 		-- __index = indexFunc,
 		__index = params.indexFunc,
@@ -297,7 +307,6 @@ function XmlListBase:_bless( obj )
 	-- print("XmlListBase:_bless")
 	local p = {
 		indexFunc=listIndexFunc,
-		newIndexFunc=listNewIndexFunc,
 	}
 	return bless( self, p )
 end
@@ -419,12 +428,11 @@ function XmlDecNode:_init( params )
 	params = params or {}
 
 	self.__attrs = {}
+	self.__attr_names = {}
 
 end
 
-function XmlDecNode:addAttribute( node )
-	self.__attrs[ node:name() ] = node
-end
+-- addAttribute(), attribute() and attributes() are XmlNode's, below
 
 
 --====================================================================--
@@ -441,6 +449,7 @@ function XmlNode:_init( params )
 	self.__name = params.name
 	self.__children = {}
 	self.__attrs = {}
+	self.__attr_names = {} -- in document order
 
 end
 
@@ -450,7 +459,11 @@ function XmlNode:parent()
 end
 
 function XmlNode:addAttribute( node )
-	self.__attrs[ node:name() ] = node
+	local name = node:name()
+	if not self.__attrs[ name ] then
+		tinsert( self.__attr_names, name )
+	end
+	self.__attrs[ name ] = node
 end
 
 -- return XmlList
@@ -468,8 +481,8 @@ end
 function XmlNode:attributes()
 	local attrs = rawget( self, '__attrs' )
 	local result = XmlList()
-	for k,attr in pairs(attrs) do
-		result:addNode( attr )
+	for _, name in ipairs( rawget( self, '__attr_names' ) ) do
+		result:addNode( attrs[ name ] )
 	end
 	return result
 end
@@ -535,8 +548,15 @@ function XmlNode:children()
 end
 
 
+-- text of simple content, XML of complex content
 function XmlNode:toString()
-	return self:_childrenContent()
+	if self:hasComplexContent() then
+		return self:_childrenContent()
+	end
+	local func = function( val, node )
+		return val .. node:toString()
+	end
+	return foldr( func, "", rawget( self, '__children' ) )
 end
 
 function XmlNode:toXmlString()
@@ -560,16 +580,20 @@ end
 
 function XmlNode:_attrContent()
 	local attrs = rawget( self, '__attrs' )
-	table.sort( attrs ) -- apply some consistency
 	local str_t = {}
-	for k, attr in pairs( attrs ) do
-		tinsert( str_t, attr:toXmlString() )
+	for _, name in ipairs( rawget( self, '__attr_names' ) ) do
+		tinsert( str_t, attrs[ name ]:toXmlString() )
 	end
 	if #str_t > 0 then
 		tinsert( str_t, 1, '' ) -- insert blank space
 	end
 	return tconcat( str_t, ' ' )
 end
+
+
+XmlDecNode.addAttribute = XmlNode.addAttribute
+XmlDecNode.attribute = XmlNode.attribute
+XmlDecNode.attributes = XmlNode.attributes
 
 
 --====================================================================--
@@ -616,7 +640,7 @@ function XmlAttrNode:toString()
 	return self.__value
 end
 function XmlAttrNode:toXmlString()
-	return self.__name..'="'..self.__value..'"'
+	return self.__name..'="'..encodeXmlAttr( self.__value )..'"'
 end
 
 
@@ -633,11 +657,23 @@ function XmlTextNode:_init( params )
 	self.__text = params.text or ""
 end
 
+-- a text node has no name, children or attributes, so a search
+-- through mixed content passes over it
+function XmlTextNode:name()
+	return nil
+end
+function XmlTextNode:child( name )
+	return XmlList()
+end
+function XmlTextNode:attribute( name )
+	return XmlList()
+end
+
 function XmlTextNode:toString()
 	return self.__text
 end
 function XmlTextNode:toXmlString()
-	return self.__text
+	return encodeXmlText( self.__text )
 end
 
 
@@ -654,9 +690,13 @@ end
 
 local XmlParser = {}
 
-XmlParser.XML_DECLARATION_RE = '<?xml (.-)?>'
-XmlParser.XML_TAG_RE = '<(%/?)([%w:-]+)(.-)(%/?)>'
-XmlParser.XML_ATTR_RE = "([%-_%w]+)=([\"'])(.-)%2"
+-- XML names: letters, digits, '_', ':', '.', '-' and any non-ASCII
+-- byte (UTF-8), not starting with a digit, '.' or '-'
+local NAME = '[%a_:\128-\255][%w_:%.%-\128-\255]*'
+
+XmlParser.XML_NAME_RE = NAME
+XmlParser.XML_DECLARATION_RE = '^%s*<%?xml%s+(.-)%?>'
+XmlParser.XML_ATTR_RE = '('..NAME..')%s*=%s*(["\'])(.-)%2'
 
 
 function XmlParser:decodeXmlString(value)
@@ -664,11 +704,100 @@ function XmlParser:decodeXmlString(value)
 end
 
 
+-- used for the declaration, whose values have no '>'
 function XmlParser:parseAttributes( node, attr_str )
 	string.gsub(attr_str, XmlParser.XML_ATTR_RE, function( key, _, val )
-		local attr = XmlAttrNode( {name=key, value=val} )
+		local attr = XmlAttrNode( {name=key, value=decodeXmlString(val)} )
 		node:addAttribute( attr )
 	end)
+end
+
+
+local function parseError( xml_str, pos, msg )
+	error( string.format( "Lua E4X: %s, at character %d: '%s'",
+		msg, pos, string.sub( xml_str, pos, pos+20 ) ), 0 )
+end
+
+local function findOrError( xml_str, str, pos, msg, err_pos )
+	local si, ei = string.find( xml_str, str, pos, true )
+	if not si then parseError( xml_str, err_pos, msg ) end
+	return si, ei
+end
+
+
+-- reads the next piece of the XML at pos
+-- returns kind, value, attributes, empty, next pos; nil at the end
+-- kinds: 'text', 'cdata', 'skip' (comment, PI, DOCTYPE), 'start', 'end'
+-- attributes of a start tag are a list of { name, value }
+function XmlParser:_readToken( xml_str, pos )
+	if pos > #xml_str then return nil end
+
+	local lt = string.find( xml_str, '<', pos, true )
+	if lt ~= pos then
+		local stop = lt and lt-1 or #xml_str
+		return 'text', string.sub( xml_str, pos, stop ), nil, nil, stop+1
+	end
+
+	local si, ei, name
+
+	if string.sub( xml_str, pos, pos+3 ) == '<!--' then
+		si, ei = findOrError( xml_str, '-->', pos+4, "comment isn't closed", pos )
+		return 'skip', nil, nil, nil, ei+1
+
+	elseif string.sub( xml_str, pos, pos+8 ) == '<![CDATA[' then
+		si, ei = findOrError( xml_str, ']]>', pos+9, "CDATA isn't closed", pos )
+		return 'cdata', string.sub( xml_str, pos+9, si-1 ), nil, nil, ei+1
+
+	elseif string.sub( xml_str, pos, pos+1 ) == '<?' then
+		si, ei = findOrError( xml_str, '?>', pos+2, "processing instruction isn't closed", pos )
+		return 'skip', nil, nil, nil, ei+1
+
+	elseif string.sub( xml_str, pos, pos+1 ) == '<!' then
+		-- DOCTYPE, maybe with an internal subset in [ ]
+		si = string.find( xml_str, '[%[>]', pos+2 )
+		if si and string.sub( xml_str, si, si ) == '[' then
+			si = findOrError( xml_str, ']', si+1, "DOCTYPE isn't closed", pos )
+			si = string.find( xml_str, '>', si+1, true )
+		end
+		if not si then parseError( xml_str, pos, "DOCTYPE isn't closed" ) end
+		return 'skip', nil, nil, nil, si+1
+
+	elseif string.sub( xml_str, pos, pos+1 ) == '</' then
+		si, ei, name = string.find( xml_str, '^</('..NAME..')%s*>', pos )
+		if not si then parseError( xml_str, pos, "malformed end tag" ) end
+		return 'end', name, nil, nil, ei+1
+
+	end
+
+	-- start tag, read attribute by attribute so a value may hold '>'
+	si, ei, name = string.find( xml_str, '^<('..NAME..')', pos )
+	if not si then parseError( xml_str, pos, "malformed tag" ) end
+
+	local attrs = {}
+	local p = ei+1
+	local key, quote, vs, ve
+	while true do
+		si, ei = string.find( xml_str, '^%s*', p )
+		p = ei+1
+		if string.sub( xml_str, p, p+1 ) == '/>' then
+			return 'start', name, attrs, true, p+2
+		elseif string.sub( xml_str, p, p ) == '>' then
+			return 'start', name, attrs, false, p+1
+		end
+		si, ei, key, quote = string.find( xml_str, '^('..NAME..')%s*=%s*(["\'])', p )
+		if not si then parseError( xml_str, p, "malformed attribute in <"..name..">" ) end
+		vs = ei+1
+		ve = findOrError( xml_str, quote, vs, "attribute value isn't closed", p )
+		tinsert( attrs, { key, decodeXmlString( string.sub( xml_str, vs, ve-1 ) ) } )
+		p = ve+1
+	end
+end
+
+
+local function addAttributes( node, attrs )
+	for _, attr in ipairs( attrs ) do
+		node:addAttribute( XmlAttrNode( {name=attr[1], value=attr[2]} ) )
+	end
 end
 
 
@@ -678,48 +807,46 @@ function XmlParser:parseString( xml_str )
 
 	local root = XmlDocNode()
 	local node
-	local si, ei, close, label, attrs, empty
-	local text, lval
+	local si, ei, attrs
+	local kind, value, empty
 	local pos = 1
 
 	--== declaration
 
 	si, ei, attrs = string.find(xml_str, XmlParser.XML_DECLARATION_RE, pos)
 
-	if not si then
-		-- error("no declaration")
-	else
+	if si then
 		node = XmlDecNode()
 		self:parseAttributes( node, attrs )
 		root.declaration = node
 		pos = ei + 1
 	end
 
-	--== doc type
-	-- pos = ei + 1
+	--== comments, PIs, DOCTYPE, then the document root element
 
-	--== document root element
+	while true do
+		kind, value, attrs, empty, pos = self:_readToken( xml_str, pos )
 
-	si,ei,close,label,attrs,empty = string.find(xml_str, XmlParser.XML_TAG_RE, pos)
-	text = string.sub(xml_str, pos, si-1)
-	if not string.find(text, "^%s*$") then
-		root:addChild( XmlTextNode( {text=decodeXmlString(text)} ) )
-	end
+		if kind == nil then
+			error( "Lua E4X: no root element found", 0 )
 
-	pos = ei + 1
+		elseif kind == 'text' then
+			if not string.find(value, "^%s*$") then
+				root:addChild( XmlTextNode( {text=decodeXmlString(value)} ) )
+			end
 
-	if close == "" and empty == "" then -- start tag
-		root:setName( label )
-		self:parseAttributes( root, attrs )
+		elseif kind == 'start' then
+			root:setName( value )
+			addAttributes( root, attrs )
+			if not empty then
+				pos = self:_parseString( xml_str, root, pos )
+			end
+			break
 
-		pos = self:_parseString( xml_str, root, pos )
+		elseif kind ~= 'skip' then
+			parseError( xml_str, pos, "malformed XML before the root element" )
 
-	elseif empty == '/' then -- empty element tag
-		root:setName( label )
-
-	else
-		error( "malformed XML in XmlParser:parseString" )
-
+		end
 	end
 
 	return root
@@ -727,40 +854,42 @@ end
 
 
 -- recursive method
+-- returns the position after the end tag of xml_node
 --
 function XmlParser:_parseString( xml_str, xml_node, pos )
 	-- print( "XmlParser:_parseString", xml_node:name(), pos )
 
-	local si, ei, close, label, attrs, empty
+	local kind, value, attrs, empty
 	local node
 
 	while true do
 
-		si,ei,close,label,attrs,empty = string.find(xml_str, XmlParser.XML_TAG_RE, pos)
-		if not si then break end
+		kind, value, attrs, empty, pos = self:_readToken( xml_str, pos )
 
-		local text = string.sub(xml_str, pos, si-1)
-		if not string.find(text, "^%s*$") then
-			local node = XmlTextNode( {text=decodeXmlString(text),parent=xml_node} )
+		if kind == nil then
+			error( "Lua E4X: missing end tag </"..xml_node:name()..">", 0 )
+
+		elseif kind == 'text' then
+			if not string.find(value, "^%s*$") then
+				node = XmlTextNode( {text=decodeXmlString(value)} )
+				xml_node:addChild( node )
+			end
+
+		elseif kind == 'cdata' then
+			xml_node:addChild( XmlTextNode( {text=value} ) )
+
+		elseif kind == 'start' then
+			node = XmlNode( {name=value,parent=xml_node} )
+			addAttributes( node, attrs )
 			xml_node:addChild( node )
-		end
+			if not empty then
+				pos = self:_parseString( xml_str, node, pos )
+			end
 
-		pos = ei + 1
-
-		if close == "" and empty == "" then   -- start tag of doc
-			local node = XmlNode( {name=label,parent=xml_node} )
-			self:parseAttributes( node, attrs )
-			xml_node:addChild( node )
-
-			pos = self:_parseString( xml_str, node, pos )
-
-		elseif empty == "/" then  -- empty element tag
-			local node = XmlNode( {name=label,parent=xml_node} )
-			self:parseAttributes( node, attrs )
-			xml_node:addChild( node )
-
-		else  -- end tag
-			assert( xml_node:name() == label, "incorrect closing label found:" )
+		elseif kind == 'end' then
+			if value ~= xml_node:name() then
+				error( "Lua E4X: incorrect closing label found: </"..value..">, expected </"..xml_node:name()..">", 0 )
+			end
 			break
 
 		end
@@ -806,5 +935,7 @@ return {
 
 	load=load,
 	parse=parse,
-	save=save
+	save=save,
+
+	__version=VERSION
 }

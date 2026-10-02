@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_wamp/messages.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -67,6 +67,7 @@ local WUtils = require 'dmc_wamp.utils'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 local ipairs = ipairs
 local pairs = pairs
 local type = type
@@ -517,7 +518,7 @@ function Goodbye:__new__( params )
 	self:superCall( '__new__', params )
 	--==--
 
-	assert( type( params.reason )=='string' )
+	assert( params.reason == nil or type( params.reason )=='string' )
 	assert( params.message == nil or type( params.message )=='string' )
 
 	self.reason = params.reason or Goodbye.DEFAULT_REASON
@@ -689,7 +690,7 @@ function Error:__new__( params )
 
 	self.request_type = params.request_type
 	self.request = params.request
-	self.procedure = params.procedure
+	self.details = params.details
 	self.error = params.error
 	self.args = params.args
 	self.kwargs = params.kwargs
@@ -707,7 +708,7 @@ function Error.parse( wmsg )
 		error( WError.ProtocolError( "invalid message length ERROR" ) )
 	end
 
-	local request_type, request, err, args, kwargs, _
+	local request_type, request, details, err, args, kwargs
 
 	request_type = wmsg[2]
 	if type(request_type) ~= 'number' then
@@ -729,28 +730,28 @@ function Error.parse( wmsg )
 	end
 
 	request = check_or_raise_id{ value=wmsg[3], message="'request' in ERROR" }
-	_ = check_or_raise_extra{ value=wmsg[4], message="'details' in ERROR" }
+	details = check_or_raise_extra{ value=wmsg[4], message="'details' in ERROR" }
 	err = check_or_raise_uri{ value=wmsg[5], message="'error' in ERROR" }
 
-	if #wmsg > 4 then
-		args = wmsg[4]
-		if type(args) ~= 'table' then
-			error( WError.ProtocolError( "invalid type 'args' in EVENT" ) )
-		end
-	end
-
 	if #wmsg > 5 then
-		kwargs = wmsg[5]
-		if type(kwargs) ~= 'table' then
-			error( WError.ProtocolError( "invalid type 'kwargs' in EVENT" ) )
+		args = wmsg[6]
+		if type(args) ~= 'table' then
+			error( WError.ProtocolError( "invalid type 'args' in ERROR" ) )
 		end
 	end
 
+	if #wmsg > 6 then
+		kwargs = wmsg[7]
+		if type(kwargs) ~= 'table' then
+			error( WError.ProtocolError( "invalid type 'kwargs' in ERROR" ) )
+		end
+	end
 
 	return Error{
 		request_type=request_type,
+		request=request,
 		details=details,
-		error=error,
+		error=err,
 		args=args,
 		kwargs=kwargs
 	}
@@ -761,22 +762,17 @@ end
 function Error:marshal()
 	-- print( "Error:marshal" )
 
-	-- local options = {
-	-- 	timeout = self.timeout,
-	-- 	receive_progress = self.receive_progress,
-	-- 	discloseMe = self.discloseMe
-	-- }
+	local req_id = WUtils.encodeLuaInteger( self.request )
+	local details = WUtils.encodeLuaTable( {} )
 
-	-- options = WUtils.encodeLuaTable( options )
-	-- self.kwargs = WUtils.encodeLuaTable( self._kwargs )
-
-	-- if self._kwargs then
-	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure, self.args, self._kwargs }
-	-- elseif self._args then
-	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure, self.args }
-	-- else
-	-- 	return { Error.MESSAGE_TYPE, self.request, options, self.procedure }
-	-- end
+	if self.kwargs then
+		local kwargs = WUtils.encodeLuaTable( self.kwargs )
+		return { Error.MESSAGE_TYPE, self.request_type, req_id, details, self.error, self.args or {}, kwargs }
+	elseif self.args then
+		return { Error.MESSAGE_TYPE, self.request_type, req_id, details, self.error, self.args }
+	else
+		return { Error.MESSAGE_TYPE, self.request_type, req_id, details, self.error }
+	end
 end
 
 
@@ -1582,8 +1578,8 @@ function Register:marshal()
 
 	local options = {
 		pkeys = self.pkeys,
-		discloseCaller = self.discloseCaller,
-		discloseCallerTransport = self.discloseCallerTransport,
+		disclose_caller = self.discloseCaller,
+		disclose_caller_transport = self.discloseCallerTransport,
 	}
 	local req_id = self.request
 
@@ -1861,7 +1857,7 @@ function Invocation.parse( wmsg )
 
 	if details and details.timeout then
 		timeout = details.timeout
-		if type(timeout) ~= 'boolean' then
+		if type(timeout) ~= 'number' then
 			error( WError.ProtocolError( "invalid type 'timeout' in INVOCATION" ) )
 		end
 	end

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_objects.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-objects
 --====================================================================--
 
 --[[
@@ -39,62 +39,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "2.1.2"
+local VERSION = "2.2.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from Utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
-
 
 
 --====================================================================--
@@ -122,6 +73,16 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
+--== Imports
+
+
+local Objects = require 'lib.dmc_lua.lua_objects'
+local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
+local Utils = require 'lib.dmc_lua.lua_utils'
+
+
+
+--====================================================================--
 --== Configuration
 
 
@@ -135,19 +96,11 @@ local dmc_objects_data = Utils.extend( dmc_lib_data.dmc_objects, DMC_OBJECTS_DEF
 
 
 --====================================================================--
---== Imports
-
-
-local Objects = require 'lib.dmc_lua.lua_objects'
-local EventsMixModule = require 'lib.dmc_lua.lua_events_mix'
-
-
-
---====================================================================--
 --== Setup, Constants
 
 
 local Class = Objects.Class
+local newClass = Objects.newClass
 local registerCtorName = Objects.registerCtorName
 local registerDtorName = Objects.registerDtorName
 
@@ -181,7 +134,7 @@ local ComponentBase = newClass( Objects.ObjectBase, { name="Component" } )
 
 --== Class Constants ==--
 
---references for setAnchor()
+-- anchor points for setAnchor()
 ComponentBase.TopLeftReferencePoint = { 0, 0 }
 ComponentBase.TopCenterReferencePoint = { 0.5, 0 }
 ComponentBase.TopRightReferencePoint = { 1, 0 }
@@ -210,6 +163,10 @@ function ComponentBase:__new__( ... )
 
 	-- skip these if a Class object (ie, NOT an instance)
 	if rawget( self, '__is_class' ) == false then
+		-- without its own list, an instance would use its class's
+		assert( rawget( self, '__event_listeners' ), string.format(
+			"ComponentBase: %s's __init__() must call self:superCall( '__init__', ... )",
+			tostring( self.NAME ) ) )
 		self:__createView__()
 		self:__initComplete__()
 	end
@@ -244,7 +201,10 @@ end
 function ComponentBase:__init__( ... )
 	self:superCall( '__init__', ... )
 	--==--
-	self:_setView( display.newGroup() )
+	-- only an instance gets a view, not a class
+	if rawget( self, '__is_class' ) == false then
+		self:_setView( display.newGroup() )
+	end
 end
 
 -- __undoInit__()
@@ -428,6 +388,30 @@ end
 function ComponentBase.__setters:alpha( value )
 	self.view.alpha = value
 end
+-- anchorChildren
+--
+function ComponentBase.__getters:anchorChildren()
+	return self.view.anchorChildren
+end
+function ComponentBase.__setters:anchorChildren( value )
+	self.view.anchorChildren = value
+end
+-- anchorX
+--
+function ComponentBase.__getters:anchorX()
+	return self.view.anchorX
+end
+function ComponentBase.__setters:anchorX( value )
+	self.view.anchorX = value
+end
+-- anchorY
+--
+function ComponentBase.__getters:anchorY()
+	return self.view.anchorY
+end
+function ComponentBase.__setters:anchorY( value )
+	self.view.anchorY = value
+end
 -- contentBounds
 --
 function ComponentBase.__getters:contentBounds()
@@ -528,12 +512,6 @@ end
 function ComponentBase.__setters:rotation( value )
 	self.view.rotation = value
 end
--- stageBounds
---
-function ComponentBase.__getters:stageBounds()
-	print( "\nDEPRECATED: object.stageBounds - use object.contentBounds\n" )
-	return self.view.stageBounds
-end
 -- width
 --
 function ComponentBase.__getters:width()
@@ -550,22 +528,6 @@ end
 function ComponentBase.__setters:x( value )
 	self.view.x = value
 end
--- xOrigin
---
-function ComponentBase.__getters:xOrigin()
-	return self.view.xOrigin
-end
-function ComponentBase.__setters:xOrigin( value )
-	self.view.xOrigin = value
-end
--- xReference
---
-function ComponentBase.__getters:xReference()
-	return self.view.xReference
-end
-function ComponentBase.__setters:xReference( value )
-	self.view.xReference = value
-end
 -- xScale
 --
 function ComponentBase.__getters:xScale()
@@ -581,22 +543,6 @@ function ComponentBase.__getters:y()
 end
 function ComponentBase.__setters:y( value )
 	self.view.y = value
-end
--- yOrigin
---
-function ComponentBase.__getters:yOrigin()
-	return self.view.yOrigin
-end
-function ComponentBase.__setters:yOrigin( value )
-	self.view.yOrigin = value
-end
--- yReference
---
-function ComponentBase.__getters:yReference()
-	return self.view.yReference
-end
-function ComponentBase.__setters:yReference( value )
-	self.view.yReference = value
 end
 -- yScale
 --
@@ -639,9 +585,19 @@ function ComponentBase:dispatchEvent( ... )
 		-- corona type event
 		-- we don't need to update anything
 	else
-		evt = EventsMixModule.dmcEventFunc( self, ... )
+		evt = self.__event_func( self, ... )
 	end
 	self.view:dispatchEvent( evt )
+end
+
+-- dispatchRawEvent( event )
+-- dispatch a ready-made event table, which must have a name
+--
+function ComponentBase:dispatchRawEvent( event )
+	assert( type( event )=='table', "wrong type for event" )
+	assert( event.name, "event must have property 'name'" )
+	--==--
+	self.view:dispatchEvent( event )
 end
 
 -- localToContent( x, y )
@@ -667,28 +623,24 @@ function ComponentBase:scale( ... )
 	self.view:scale( ... )
 end
 
--- setAnchor
+-- setAnchor( anchorPoint ), setAnchor( anchorX, anchorY )
+-- anchorPoint is one of the *ReferencePoint constants, eg
+-- obj:setAnchor( obj.TopLeftReferencePoint )
 --
-function ComponentBase:setAnchor( ... )
-	local args = {...}
-	if type( args[2] ) == 'table' then
-		self.view.anchorX, self.view.anchorY = unpack( args[2] )
+function ComponentBase:setAnchor( x, y )
+	if type( x ) == 'table' then
+		x, y = x[1], x[2]
 	end
-	if type( args[2] ) == 'number' then
-		self.view.anchorX = args[2]
+	if type( x ) == 'number' then
+		self.view.anchorX = x
 	end
-	if type( args[3] ) == 'number' then
-		self.view.anchorY = args[3]
+	if type( y ) == 'number' then
+		self.view.anchorY = y
 	end
 end
 function ComponentBase:setMask( ... )
 	print( "\nWARNING: setMask( mask ) not tested \n" );
 	self.view:setMask( ... )
-end
--- setReferencePoint( referencePoint )
---
-function ComponentBase:setReferencePoint( ... )
-	self.view:setReferencePoint( ... )
 end
 -- toBack()
 --
@@ -847,11 +799,17 @@ end
 --====================================================================--
 
 
--- simply add to current exports
-Objects.ComponentBase = ComponentBase
-Objects.PhysicsComponentBase = PhysicsComponentBase
+-- lua-objects' exports, plus ours; a copy, so lua-objects' own
+-- table is left as it is
+local DmcObjects = {}
+for k, v in pairs( Objects ) do
+	DmcObjects[ k ] = v
+end
+DmcObjects.__version = VERSION
+DmcObjects.ComponentBase = ComponentBase
+DmcObjects.PhysicsComponentBase = PhysicsComponentBase
 
 
 
-return Objects
+return DmcObjects
 
