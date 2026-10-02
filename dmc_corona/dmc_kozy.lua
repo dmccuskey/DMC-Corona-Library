@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_kozy.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-kozy
 --====================================================================--
 
 --[[
@@ -37,48 +37,11 @@ SOFTWARE.
 --====================================================================--
 
 
+
+
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.0.1"
-
-
-
---====================================================================--
---== DMC Corona Library Config
---====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from lua_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
+local VERSION = "1.1.1"
 
 
 
@@ -86,7 +49,7 @@ end
 --== Configuration
 
 
-local dmc_lib_data, dmc_lib_info
+local dmc_lib_data
 
 -- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
@@ -115,7 +78,6 @@ dmc_lib_data.dmc_kozy = dmc_lib_data.dmc_kozy or {}
 
 local DMC_KOZY_DEFAULTS = {
 	make_global=false,
-	print_warnings=true,
 
 	-- G1 deprecated methods
 	activate_zeroone_alpha=true,
@@ -124,7 +86,21 @@ local DMC_KOZY_DEFAULTS = {
 	activate_strokecolor=true,
 }
 
-local dmc_kozy_data = Utils.extend( dmc_lib_data.dmc_kozy, DMC_KOZY_DEFAULTS )
+
+-- toBool()
+-- config values come as booleans (with the :BOOL type) or as
+-- strings (without it); anything but false (or 'false') is on
+--
+local function toBool( v )
+	return v ~= false and v ~= 'false'
+end
+
+local dmc_kozy_data = {}
+for k, default in pairs( DMC_KOZY_DEFAULTS ) do
+	local v = dmc_lib_data.dmc_kozy[ k ]
+	if v == nil then v = default end
+	dmc_kozy_data[ k ] = toBool( v )
+end
 
 
 
@@ -138,8 +114,28 @@ local _NATIVE = _G.native
 
 local dkd = dmc_kozy_data -- make shorter reference
 
-
 local Display, Native
+
+-- the nine Graphics 1.0 reference points, with their anchors
+local REFERENCE_POINTS = {
+	TopLeft={ 0, 0 },
+	TopCenter={ 0.5, 0 },
+	TopRight={ 1, 0 },
+	CenterLeft={ 0, 0.5 },
+	Center={ 0.5, 0.5 },
+	CenterRight={ 1, 0.5 },
+	BottomLeft={ 0, 1 },
+	BottomCenter={ 0.5, 1 },
+	BottomRight={ 1, 1 },
+}
+
+-- Solar2D's own reference point constants (userdata), to anchors
+local SOLAR2D_POINTS = {}
+
+for name, anchor in pairs( REFERENCE_POINTS ) do
+	local point = _DISPLAY[ name..'ReferencePoint' ]
+	if point ~= nil then SOLAR2D_POINTS[ point ] = anchor end
+end
 
 
 
@@ -147,179 +143,164 @@ local Display, Native
 --== Support Functions
 
 
--- translateRGBToHDR()
--- translates RGB color sequence to equivalent HDR values
+-- translateAlpha()
+-- an alpha in the configured range to Solar2D's 0-1
 --
-local function translateRGBToHDR( ... )
-	-- print( 'translateRGBToHDR' )
-
-	local args = { ... }
-	local color, alpha
-	local default_alpha = 255
-
-	if dkd.activate_zeroone_alpha then default_alpha = 1 end
-
-	-- print(  args[1], args[2], args[3], args[4], args[5] )
-
-	if type( args[2] ) == 'number' then
-		-- regular RGB
-		if args[3] == nil then
-			-- greyscale
-			args[3] = args[2]
-			args[4] = args[2]
-			args[5] = default_alpha
-		elseif args[4] == nil then
-			-- greyscale with alpha
-			args[3] = args[2]
-			args[4] = args[2]
-			args[5] = args[3]
-		elseif args[5] == nil then
-			-- RGB, no alpha
-			args[5] = default_alpha
-		end
-		if dkd.activate_zeroone_alpha then
-			alpha = args[5]
-		else
-			alpha = args[5]/255
-		end
-
-		color = { args[2]/255, args[3]/255, args[4]/255, alpha }
-
-	elseif type( args[2] ) == 'table' and args[2].type=='gradient' then
-
-		-- gradient RGB
-
-		t = args[2].color1
-		if not t[4] then
-			alpha = 1
-		elseif dkd.activate_zeroone_alpha then
-			alpha = t[4]
-		else
-			alpha = t[4]/255
-		end
-		args[2].color1 = { t[1]/255, t[2]/255, t[3]/255, alpha }
-
-		t = args[2].color2
-		if not t[4] then
-			alpha = 1
-		elseif dkd.activate_zeroone_alpha then
-			alpha = t[4]
-		else
-			alpha = t[4]/255
-		end
-		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, alpha }
-
-		color = { args[2] }
-
-	elseif type( args[2] ) == 'string' and args[2]:sub(1,1) == '#' then
-		local hex = args[2]:gsub("#","")
-		color = {
-			tonumber("0x"..hex:sub(1,2))/255,
-			tonumber("0x"..hex:sub(3,4))/255,
-			tonumber("0x"..hex:sub(5,6))/255
-		}
-
-	elseif type( args[2] ) == 'string' then
-
-		-- named color
-		color = NAMED_COLORS and NAMED_COLORS[ args[2] ]
-		if not color then
-			color = { 1, 1, 1 }
-			print('\n')
-			print( 'ERROR dmc_kolor: named color not found', tostring( args[2] ) )
-			print('\n')
-		end
-		color[4] = args[3]
-
-	else
-		print('\n')
-		print( 'ERROR dmc_kolor: invalid RGB color type', type( args[2] ) )
-		print('\n')
-	end
-
-	-- print( color[1], color[2], color[3], color[4] )
-
-	return color
+local function translateAlpha( a )
+	if a == nil then return 1 end
+	if dkd.activate_zeroone_alpha then return a end
+	return a/255
 end
 
+
+-- translateGradientColor()
+-- a gradient's color table, { r, g, b [, a] } in 0-255, to a new
+-- table in Solar2D's 0-1 values; nil and a message if it isn't one
+--
+local function translateGradientColor( t, name )
+	if type( t ) ~= 'table' or type( t[1] ) ~= 'number'
+		or type( t[2] ) ~= 'number' or type( t[3] ) ~= 'number' then
+		return nil, "gradient "..name.." must be { r, g, b [, a] }"
+	end
+	return { t[1]/255, t[2]/255, t[3]/255, translateAlpha( t[4] ) }
+end
+
+
+-- translateColor()
+-- translates a Graphics 1.0 color (0-255, hex string, gradient)
+-- to the arguments for Solar2D's own method, in a list;
+-- nil and a message if it isn't a color
+--
+local function translateColor( ... )
+	local args = { ... }
+	local n = select( '#', ... )
+	while n > 0 and args[ n ] == nil do n = n-1 end
+	local c = args[1]
+
+	if type( c ) == 'number' then
+		for i=1,n do
+			if type( args[i] ) ~= 'number' then
+				return nil, "invalid color: argument "..i.." is a "..type( args[i] )
+			end
+		end
+		if n == 1 then
+			-- gray
+			return { c/255, c/255, c/255, 1 }
+		elseif n == 2 then
+			-- gray with alpha
+			return { c/255, c/255, c/255, translateAlpha( args[2] ) }
+		elseif n == 3 or n == 4 then
+			-- RGB, RGBA
+			return { c/255, args[2]/255, args[3]/255, translateAlpha( args[4] ) }
+		end
+		return nil, "invalid color: "..n.." numbers"
+
+	elseif type( c ) == 'string' then
+		local hex = c:match( '^#(%x%x%x%x%x%x)$' )
+		if not hex then
+			return nil, "invalid color '"..c.."': use '#RRGGBB' (dmc-kolor has color names)"
+		end
+		return {
+			tonumber( hex:sub(1,2), 16 )/255,
+			tonumber( hex:sub(3,4), 16 )/255,
+			tonumber( hex:sub(5,6), 16 )/255
+		}
+
+	elseif type( c ) == 'table' and c.type == 'gradient' then
+		-- translate a copy: the caller's table may be used again
+		local gradient, err = {}
+		for k, v in pairs( c ) do gradient[ k ] = v end
+		gradient.color1, err = translateGradientColor( c.color1, 'color1' )
+		if not gradient.color1 then return nil, err end
+		gradient.color2, err = translateGradientColor( c.color2, 'color2' )
+		if not gradient.color2 then return nil, err end
+		return { gradient }
+
+	elseif type( c ) == 'table' then
+		-- another paint (image, composite): Solar2D's own
+		return { c }
+	end
+
+	return nil, "invalid color type "..type( c )
+end
+
+
+-- addColorMethod()
+-- replace the object's method with one taking Graphics 1.0 colors;
+-- Solar2D's own is kept as _<name>
+-- rawset: Solar2D ignores setting a line's color methods the usual way
+--
+local function addColorMethod( o, name )
+	local original = o[ name ]
+	rawset( o, '_'..name, original ) -- save original version
+	rawset( o, name, function( _, ... )
+		local color, err = translateColor( ... )
+		if not color then error( "dmc_kozy: "..err, 2 ) end
+		return original( o, unpack( color ) )
+	end )
+end
 
 
 -- addSetAnchor()
--- imbue object with setReferencePoint magic
+-- imbue object with setAnchor / setReferencePoint magic
 --
 local function addSetAnchor( o )
-	-- print( 'addSetAnchor' )
 
-	function createClosure( obj )
-		local f = function( ... )
-			local args = {...}
-			local x, y
-
-			if type( args[2] ) == 'table' then
-				x, y = unpack( args[2] )
-			end
-			if type( args[2] ) == 'number' then
-				x = args[2]
-			end
-			if type( args[3] ) == 'number' then
-				y = args[3]
-			end
-
-			obj.anchorX = x
-			obj.anchorY = y
-		end
-		return f
+	local function setAnchor( x, y )
+		-- a missing value keeps the current one (nil crashes Solar2D)
+		o.anchorX = x or o.anchorX
+		o.anchorY = y or o.anchorY
 	end
 
-	local f = createClosure( o )
-	o.setReferencePoint = f
-	o.setAnchor = f
+	o.setAnchor = function( _, x, y )
+		if type( x ) == 'table' then x, y = x[1], x[2] end
+		if x ~= nil and type( x ) ~= 'number' or y ~= nil and type( y ) ~= 'number' then
+			error( "dmc_kozy: setAnchor() takes numbers or { x, y }", 2 )
+		end
+		setAnchor( x, y )
+	end
+
+	o.setReferencePoint = function( _, point )
+		local anchor = SOLAR2D_POINTS[ point ] or point
+		if type( anchor ) ~= 'table' or type( anchor[1] ) ~= 'number'
+			or type( anchor[2] ) ~= 'number' then
+			error( "dmc_kozy: setReferencePoint() takes a reference point, such as display.CenterReferencePoint; got "..tostring( point ), 2 )
+		end
+		setAnchor( anchor[1], anchor[2] )
+	end
 end
 
 
-
--- addSetFillColor()
--- imbue object with setFillColor / setTextColor magic
+-- imbue()
+-- add the methods listed in adds to the new object, as configured;
+-- nil (Solar2D's answer for a missing file) is passed on
 --
-local function addSetFillColor( o )
-	-- print( 'addSetFillColor' )
+local function imbue( o, adds )
+	if o == nil then return nil end
 
-	function createClosure( obj, translate )
-		local f = function( ... )
-			-- print( 'DMC Kompatible :DISPLAY COLOR\n')
-			local args = { ... }
-			-- print(  args[1], args[2], args[3], args[4] )
-			local color = translate( ... )
-			obj:_setFillColor( unpack( color ) )
-		end
-		return f
+	if dkd.activate_anchor then
+		addSetAnchor( o )
+	end
+	if dkd.activate_fillcolor then
+		for _, name in ipairs( adds.fill or {} ) do addColorMethod( o, name ) end
+	end
+	if dkd.activate_strokecolor and adds.stroke then
+		addColorMethod( o, 'setStrokeColor' )
 	end
 
-	o._setFillColor = o.setFillColor -- save original version
-	o.setFillColor = createClosure( o, translateRGBToHDR )
-
+	return o
 end
 
 
-
--- addSetStrokeColor()
--- imbue object with strokeColor magic
+-- wrapConstructors()
+-- add each constructor in list to lib, calling Solar2D's own in super
 --
-local function addSetStrokeColor( o )
-	-- print( 'addSetStrokeColor' )
-
-	function createClosure( obj, translate )
-		-- print('createClosure stroke')
-		local f = function( ... )
-			local color = translate( ... )
-			obj:_setStrokeColor( unpack( color ) )
+local function wrapConstructors( lib, super, list )
+	for name, adds in pairs( list ) do
+		lib[ name ] = function( ... )
+			return imbue( super[ name ]( ... ), adds )
 		end
-		return f
 	end
-
-	o._setStrokeColor = o.setStrokeColor -- save original version
-	o.setStrokeColor = createClosure( o, translateRGBToHDR )
-
 end
 
 
@@ -338,196 +319,28 @@ setmetatable( Display, { __index=Display.super } )
 
 --== Config ==--
 
-Display.TopLeftReferencePoint = { 0, 0 }
-Display.TopCenterReferencePoint = { 0.5, 0 }
-Display.TopRightReferencePoint = { 1, 0 }
-Display.CenterLeftReferencePoint = { 0, 0.5 }
-Display.CenterReferencePoint = { 0.5, 0.5 }
-Display.CenterRightReferencePoint = { 1, 0.5 }
-Display.BottomLeftReferencePoint = { 0, 1 }
-Display.BottomCenterReferencePoint = { 0.5, 1 }
-Display.BottomRightReferencePoint = { 1, 1 }
+for name, anchor in pairs( REFERENCE_POINTS ) do
+	Display[ name..'ReferencePoint' ] = anchor
+end
 
 
 --== Corona Display API ==--
 
-function Display.newCircle( ... )
-	-- print( 'dmc_kozy.newCircle' )
+local FILL = { 'setFillColor' }
 
-	local o = Display.super.newCircle( ... )
-	local p
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newContainer( ... )
-	-- print( 'dmc_kozy.newContainer' )
-
-	local o = Display.super.newContainer( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newGroup( ... )
-	-- print( 'dmc_kozy.newGroup' )
-
-	local o = Display.super.newGroup( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newImage( ... )
-	-- print( 'dmc_kozy.newImage' )
-
-	local o = Display.super.newImage( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newImageRect( ... )
-	-- print( 'dmc_kozy.newImageRect' )
-
-	local o = Display.super.newImageRect( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newLine( ... )
-	-- print( 'dmc_kozy.newLine' )
-
-	local o = Display.super.newLine( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_strokecolor then
-		-- print( 'start', o.setStrokeColor )
-		addSetStrokeColor( o )
-		-- print( o.setStrokeColor )
-	end
-
-	return o
-end
-
-
-function Display.newPolygon( ... )
-	-- print( 'dmc_kozy.newPolygon' )
-
-	local o = Display.super.newPolygon( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newRect( ... )
-	-- print( 'dmc_kozy.newRect' )
-
-	local o = Display.super.newRect( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newRoundedRect( ... )
-	-- print( 'dmc_kozy.newRoundedRect' )
-
-	local o = Display.super.newRoundedRect( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newSprite( ... )
-	-- print( 'dmc_kozy.newSprite' )
-
-	local o = Display.super.newSprite( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newText( ... )
-	-- print( 'dmc_kozy.newText' )
-
-	local o = Display.super.newText( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
+wrapConstructors( Display, _DISPLAY, {
+	newCircle={ fill=FILL, stroke=true },
+	newContainer={},
+	newGroup={},
+	newImage={ fill=FILL },
+	newImageRect={ fill=FILL },
+	newLine={ stroke=true },
+	newPolygon={ fill=FILL, stroke=true },
+	newRect={ fill=FILL, stroke=true },
+	newRoundedRect={ fill=FILL, stroke=true },
+	newSprite={},
+	newText={ fill=FILL },
+})
 
 
 
@@ -545,68 +358,15 @@ setmetatable( Native, { __index=Native.super } )
 
 --== Corona Native API ==--
 
-function Native.newText( ... )
-	-- print( 'dmc_kozy.newText' )
+-- text fields and boxes color their text with setTextColor(),
+-- 0-255 like Graphics 1.0; web views have no color
+local TEXT = { 'setTextColor' }
 
-	local o = Native.super.newText( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newTextBox( ... )
-	-- print( 'dmc_kozy.newTextBox' )
-
-	local o = Native.super.newTextBox( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newTextField( ... )
-	-- print( 'dmc_kozy.newTextField' )
-
-	local o = Native.super.newTextField( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newWebView( ... )
-	-- print( 'dmc_kozy.newWebView' )
-
-	local o = Native.super.newWebView( ... )
-
-	if dkd.activate_anchor then
-		addSetAnchor( o )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
+wrapConstructors( Native, _NATIVE, {
+	newTextBox={ fill=TEXT },
+	newTextField={ fill=TEXT },
+	newWebView={},
+})
 
 
 function Native.setKeyboardFocus( obj )
@@ -635,5 +395,8 @@ if dkd.make_global then
 end
 
 
--- return function so we can return two values
-return function() return Display, Native end
+-- call the module to get the two tables:
+-- local display, native = require( 'dmc_corona.dmc_kozy' )()
+return setmetatable( { VERSION=VERSION, display=Display, native=Native }, {
+	__call=function() return Display, Native end
+})

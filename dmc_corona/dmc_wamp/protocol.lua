@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_wamp/protocol.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -82,7 +82,9 @@ local newClass = Objects.newClass
 local Class = Objects.Class
 
 local assert = assert
+local sformat = string.format
 local tpop = table.pop
+local type = type
 local unpack = unpack
 
 
@@ -278,10 +280,10 @@ function BaseSession:__new__( params )
 	self._uri_to_ecls = {}
 
 	-- session authentication information
-	self._authid = None
-	self._authrole = None
-	self._authmethod = None
-	self._authprovider = None
+	self._authid = nil
+	self._authrole = nil
+	self._authmethod = nil
+	self._authprovider = nil
 
 end
 
@@ -332,10 +334,13 @@ end
 
 -- Create a user (or generic) exception from a WAMP error message
 --
-function BaseSession:_exception_from_message( params )
+function BaseSession:_exception_from_message( msg )
 	-- print( "BaseSession:_exception_from_message" )
-	--==--
-	-- TODO: fill this out
+	return WError.ApplicationError{
+		error=msg.error,
+		args=msg.args,
+		kwargs=msg.kwargs
+	}
 end
 
 
@@ -367,6 +372,39 @@ Session.ONJOIN = 'on_join_wamp_event'
 Session.ONCHALLENGE = 'on_challenge_wamp_event'
 
 
+--== Support Functions ==--
+
+-- turns what a registered procedure returned into YIELD args, kwargs
+-- a table with only `results` and/or `kwresults` (or a CallResult) is
+-- taken as is; any other value is the single result; nil, no result
+--
+local function resultsFromReturn( res )
+	if res == nil then return nil, nil end
+	if type( res ) == 'table' then
+		if type( res.isa ) == 'function' and res:isa( WTypes.CallResult ) then
+			return res.results, res.kwresults
+		end
+		local only_results = ( res.results ~= nil or res.kwresults ~= nil )
+		for k, _ in pairs( res ) do
+			if k ~= 'results' and k ~= 'kwresults' then
+				only_results = false; break
+			end
+		end
+		if only_results then return res.results, res.kwresults end
+	end
+	return { res }, nil
+end
+
+-- the message of an error raised in a procedure: a string, or an Error object
+--
+local function errorMessage( err )
+	if type( err ) == 'table' and err.message ~= nil then
+		return tostring( err.message )
+	end
+	return tostring( err )
+end
+
+
 --======================================================--
 -- Start: Setup DMC Objects
 
@@ -389,6 +427,7 @@ function Session:__new__( params )
 	self._session_id = nil
 	self._goodbye_sent = nil
 	self._transport_is_closing = nil
+	self._close_details = nil -- CloseDetails, why the session ended
 
 	-- outstanding requests
 	self._publish_reqs = {}
@@ -427,6 +466,7 @@ function Session:onOpen( params )
 	assert( params.transport )
 
 	self._transport = params.transport
+	self._close_details = nil
 	self:onConnect()
 end
 
@@ -481,13 +521,47 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ISession.disconnect`
 --
+-- closes the transport; does nothing once it's gone (closed or lost)
+--
 function Session:disconnect( details )
 	-- print( "Session:disconnect" )
+	details = details or {}
 	if self._transport then
 		self._transport:close( details.reason, details.message )
-	else
-		-- transport not available
-		error( "Session:disconnect :: transport not available" )
+	end
+end
+
+
+-- the table of pending requests for a message type, eg Call.MESSAGE_TYPE
+--
+function Session:_pendingRequests( msg_type )
+	local reqs = {
+		[ WMessageFactory.Call.MESSAGE_TYPE ] = self._call_reqs,
+		[ WMessageFactory.Publish.MESSAGE_TYPE ] = self._publish_reqs,
+		[ WMessageFactory.Subscribe.MESSAGE_TYPE ] = self._subscribe_reqs,
+		[ WMessageFactory.Unsubscribe.MESSAGE_TYPE ] = self._unsubscribe_reqs,
+		[ WMessageFactory.Register.MESSAGE_TYPE ] = self._register_reqs,
+		[ WMessageFactory.Unregister.MESSAGE_TYPE ] = self._unregister_reqs,
+	}
+	return reqs[ msg_type ]
+end
+
+
+-- rejects every pending request with `err`, eg when the transport is lost
+--
+function Session:_rejectPendingRequests( err )
+	local defs = {}
+	for _, reqs in ipairs{
+		self._call_reqs, self._publish_reqs, self._subscribe_reqs,
+		self._unsubscribe_reqs, self._register_reqs, self._unregister_reqs
+	} do
+		for id, req in pairs( reqs ) do
+			defs[ #defs+1 ] = req[1]
+			reqs[ id ] = nil
+		end
+	end
+	for _, def in ipairs( defs ) do
+		self:_reject_future( def, err )
 	end
 end
 
@@ -534,13 +608,15 @@ function Session:onMessage( msg )
 			local onChallenge_f = self.config.onchallenge
 
 			if type( onChallenge_f ) ~= 'function' then
-				error( WError.ProtocolError( "Received %s incorrect onChallenge" % 'fdsf' ) )
+				error( WError.ProtocolError( "received CHALLENGE, but there's no onChallenge function" ) )
 			end
 
 			challenge = WTypes.Challenge{
 				method=msg.method,
 				extra=msg.extra
 			}
+
+			self:dispatchEvent( self.ONCHALLENGE, { challenge=challenge }, {merge=true} )
 
 			def = self:_as_future( onChallenge_f, { challenge } )
 
@@ -559,7 +635,7 @@ function Session:onMessage( msg )
 
 
 		else
-			error( WError.ProtocolError( "Received %s message, and session is not yet established" % msg.NAME ) )
+			error( WError.ProtocolError( sformat( "received %s message, and session is not yet established", tostring( msg.NAME ) ) ) )
 		end
 
 		return
@@ -571,12 +647,12 @@ function Session:onMessage( msg )
 	if msg:isa( WMessageFactory.Goodbye ) then
 
 		if not self._goodbye_sent then
-			local reply = WMessageFactory.Goodbye:new()
+			local reply = WMessageFactory.Goodbye:new{ reason='wamp.close.goodbye_and_out' }
 			self._transport:send( reply )
 		end
 
 		self._session_id = nil
-		self:onLeave( WTypes.CloseDetails( { reason=msg.reason, message=msg.message  } ))
+		self:onLeave( WTypes.CloseDetails{ reason=msg.reason, message=msg.message } )
 
 
 	--== Event Message
@@ -615,7 +691,7 @@ function Session:onMessage( msg )
 
 		local pub_req = tpop( self._publish_reqs, msg.request )
 		local def, opts = unpack( pub_req )
-		local pub = Publication:new{ publication=msg.publication }
+		local pub = Publication:new{ publication_id=msg.publication }
 
 		self:_resolve_future( def, pub )
 
@@ -679,7 +755,7 @@ function Session:onMessage( msg )
 		-- Progress
 		--
 		if msg.progress then
-			local _, opts = self._call_reqs[ msg.request ]
+			local opts = self._call_reqs[ msg.request ][2]
 			if opts.onProgress then
 				opts.onProgress( msg.args, msg.kwargs )
 			end
@@ -730,33 +806,58 @@ function Session:onMessage( msg )
 		-- 	end
 		-- end
 
-		local def_params, def, def_func
+		local def, def_func
 		local success_f, failure_f
 
 		if not endpoint.obj then
 			def_func = endpoint.fn
 		else
 			def_func = function( ... )
-				endpoint.fn( endpoint.obj, ... )
+				return endpoint.fn( endpoint.obj, ... )
 			end
 		end
-		def = self:_as_future( def_func, msg.args, msg.kwargs )
+		def = self:_as_future( def_func, msg.args or {}, msg.kwargs or {} )
 
 		success_f = function( res )
 			-- print("Invocation: success callback")
 			self._invocations[ msg.request ] = nil
+			if not self._transport then return end -- connection gone
 
+			local args, kwargs = resultsFromReturn( res )
 			local reply = WMessageFactory.Yield:new{
 				request = msg.request,
-				args = res.results,
-				kwargs = res.kwresults
+				args = args,
+				kwargs = kwargs
 			}
 			self._transport:send( reply )
-
 		end
 		failure_f = function( err )
 			-- print("Invocation: failure callback")
 			self._invocations[ msg.request ] = nil
+			if not self._transport then return end -- connection gone
+
+			local reply
+			if type( err ) == 'table' and type( err.isa ) == 'function'
+				and err:isa( WError.ApplicationError )
+			then
+				-- the procedure chose the error URI
+				reply = WMessageFactory.Error:new{
+					request_type = WMessageFactory.Invocation.MESSAGE_TYPE,
+					request = msg.request,
+					error = err.error,
+					args = err.args,
+					kwargs = err.kwargs
+				}
+			else
+				print( sformat( "dmc_wamp: procedure '%s' raised an error: %s", tostring( endpoint.procedure ), errorMessage( err ) ) )
+				reply = WMessageFactory.Error:new{
+					request_type = WMessageFactory.Invocation.MESSAGE_TYPE,
+					request = msg.request,
+					error = WError.ApplicationError.RUNTIME_ERROR,
+					args = { errorMessage( err ) }
+				}
+			end
+			self._transport:send( reply )
 		end
 
 		self._invocations[ msg.request ] = def
@@ -779,7 +880,7 @@ function Session:onMessage( msg )
 
 		local reg_req = tpop( self._register_reqs, msg.request )
 
-		local obj, fn, procedure, options = unpack( reg_req )
+		local def, obj, fn, procedure, options = unpack( reg_req )
 
 		local endpoint = Endpoint:new{
 			obj=obj,
@@ -788,11 +889,14 @@ function Session:onMessage( msg )
 			options=options
 		}
 
-		self._registrations[ msg.registration ] = Registration:new{
+		local reg = Registration:new{
 			session=self,
 			registration_id=msg.registration,
 			endpoint=endpoint
 		}
+		self._registrations[ msg.registration ] = reg
+
+		self:_resolve_future( def, reg )
 
 
 	--== Unregistered Message
@@ -811,18 +915,29 @@ function Session:onMessage( msg )
 		self:_resolve_future( def, nil )
 
 
-	--== Unregistered Message
+	--== Error Message
 
 	elseif msg:isa( WMessageFactory.Error ) then
 
+		-- the reply to a call, publish, subscribe, unsubscribe,
+		-- register or unregister: fail the pending request
+		local reqs = self:_pendingRequests( msg.request_type )
 
-	--== Unregistered Message
+		if not reqs or not reqs[ msg.request ] then
+			error( WError.ProtocolError( sformat( "ERROR received for non-pending request type %s, ID %s", tostring( msg.request_type ), tostring( msg.request ) ) ) )
+		end
+
+		local req = tpop( reqs, msg.request )
+		self:_reject_future( req[1], self:_exception_from_message( msg ) )
+
+
+	--== Heartbeat Message
 
 	elseif msg:isa( WMessageFactory.Heartbeat ) then
 
 
 	else
-		if onError then onError( "unknown message class", msg:class().NAME ) end
+		error( WError.ProtocolError( sformat( "unexpected message %s", tostring( msg.NAME ) ) ) )
 
 	end
 
@@ -831,16 +946,24 @@ end
 
 -- Implements :func:`autobahn.wamp.interfaces.ITransportHandler.onClose`
 --
-function Session:onClose( msg, onError )
+-- message - optional, why the transport closed
+--
+function Session:onClose( message )
 	-- print( "Session:onClose" )
 
 	self._transport = nil
 
 	if self._session_id then
-		self:onLeave()
+		-- the connection closed while joined: the router stopped,
+		-- the network dropped, or the app closed it
 		self._session_id = nil
+		self._close_details = WTypes.CloseDetails{
+			reason='wamp.close.transport_lost',
+			message=message or "WAMP transport was lost"
+		}
 	end
 
+	self:_rejectPendingRequests( WError.TransportLost() )
 	self:onDisconnect()
 
 end
@@ -871,6 +994,7 @@ end
 -- @param details type.SessionDetails
 function Session:onLeave( details )
 	-- print( "Session:onLeave" )
+	self._close_details = details
 	self:disconnect( details )
 end
 
@@ -891,7 +1015,10 @@ function Session:leave( params )
 			error( "Already requested to close the session" )
 
 	else
-		local msg = WMessageFactory.Goodbye:new( params )
+		local msg = WMessageFactory.Goodbye:new{
+			reason=params.reason,
+			message=params.message
+		}
 		self._transport:send( msg )
 		self._goodbye_sent = true
 
@@ -909,9 +1036,10 @@ function Session:publish( topic, params )
 	assert( topic )
 
 	if not self._transport then
-		error( WError.TransportError() )
+		error( WError.TransportLost() )
 	end
 
+	-- options: a table, or a PublishOptions (its options in .options)
 	local opts = params.options or {}
 	local request = WUtils.id()
 	local msg, p
@@ -919,7 +1047,8 @@ function Session:publish( topic, params )
 		request=request,
 		topic=topic,
 		args=params.args,
-		kwargs=params.kwargs
+		kwargs=params.kwargs,
+		acknowledge=( opts.acknowledge or ( opts.options and opts.options.acknowledge ) ) and true or nil
 	}
 	-- layer in Publish message options
 	if opts.options then
@@ -928,7 +1057,7 @@ function Session:publish( topic, params )
 
 	msg = WMessageFactory.Publish:new( p )
 
-	if opts.acknowledge == true then
+	if p.acknowledge == true then
 		local def = self:_create_future()
 		self._publish_reqs[ request ] = { def, opts }
 		self._transport:send( msg )
@@ -950,7 +1079,7 @@ function Session:subscribe( topic, handler, params )
 	assert( topic )
 
 	if not self._transport then
-		error( WError.TransportLostError() )
+		error( WError.TransportLost() )
 	end
 
 	-- TODO: register on object
@@ -1010,7 +1139,7 @@ function Session:_unsubscribe( subscription )
 	assert( self._subscriptions[subscription.id]~=nil )
 
 	if not self._transport then
-		error( WError.TransportLostError() )
+		error( WError.TransportLost() )
 	end
 
 	local def, request, msg
@@ -1039,9 +1168,11 @@ function Session:call( procedure, params )
 	assert( type(procedure)=='string' )
 
 	if not self._transport then
-		error( WError.TransportLostError() )
+		error( WError.TransportLost() )
 	end
 
+	-- options: a table (timeout, receive_progress, discloseMe, onProgress)
+	-- or a CallOptions (its message options in .options)
 	local opts = params.options or {}
 	local def, request, msg, p
 
@@ -1053,6 +1184,9 @@ function Session:call( procedure, params )
 		procedure = procedure,
 		args = params.args,
 		kwargs = params.kwargs,
+		timeout = opts.timeout,
+		receive_progress = opts.receive_progress,
+		discloseMe = opts.discloseMe,
 	}
 	-- layer in Call message options
 	if opts.options then
@@ -1078,31 +1212,35 @@ function Session:register( endpoint, params )
 	--==--
 
 	if not self._transport then
-		error( WError.TransportLostError() )
+		error( WError.TransportLost() )
 	end
 
 	local function _register( obj, endpoint, procedure, options )
 		-- print( "_register", obj, endpoint, procedure, options )
-		local request, msg
+		local request, def, msg
+		-- options: a table, or a RegisterOptions (its options in .options)
+		local o = options.options or options
 
 		request = WUtils.id()
+		def = self:_create_future()
 
-		self._register_reqs[ request ] = { obj, endpoint, procedure, options }
+		self._register_reqs[ request ] = { def, obj, endpoint, procedure, options }
 
 		msg = WMessageFactory.Register:new{
 			request = request,
 			procedure = procedure,
-			pkeys = options.pkeys,
-			disclose_caller = options.disclose_caller,
+			pkeys = o.pkeys,
+			discloseCaller = o.disclose_caller,
 		}
 		self._transport:send( msg )
 
+		return def
 	end
 
 
 	if type( endpoint ) == 'function' then
 		-- register single callable
-		_register( nil, endpoint, params.procedure, params.options )
+		return _register( nil, endpoint, params.procedure, params.options )
 
 	elseif type( endpoint ) == 'table' then
 		-- register all methods of "wamp_procedure"
@@ -1115,18 +1253,29 @@ function Session:register( endpoint, params )
 end
 
 
+-- unregisters the procedure registered with function `handler`
+-- returns the future of the (first) registration found
+--
 function Session:unregister( handler, params )
 	-- print( "Session:unregister", handler, params )
+	assert( type( handler ) == 'function', "Session:unregister: handler must be a function" )
 
-	for i, reg in pairs( self._registrations ) do
-		local endpoint = reg.endpoint
-		if type( handler ) == 'function' and endpoint.fn == handler then
-			reg:unsubscribe()
-		else
-			-- TODO: unregister an object handler
+	local found = {}
+	for _, reg in pairs( self._registrations ) do
+		if reg.active and reg.endpoint.fn == handler then
+			found[ #found+1 ] = reg
 		end
 	end
+	if #found == 0 then
+		error( "Session:unregister: handler isn't registered" )
+	end
 
+	local def
+	for i, reg in ipairs( found ) do
+		local d = reg:unregister()
+		if i == 1 then def = d end
+	end
+	return def
 end
 
 -- Called from :meth:`autobahn.wamp.protocol.Registration.unregister`
@@ -1139,14 +1288,14 @@ function Session:_unregister( registration )
 	assert( self._registrations[ registration.id ] )
 
 	if not self._transport then
-		error( WError.TransportLostError() )
+		error( WError.TransportLost() )
 	end
 
 	local request, def, msg
 
 	request = WUtils.id()
 
-	def = self._create_future()
+	def = self:_create_future()
 	self._unregister_reqs[ request ] = { def, registration }
 
 	msg = WMessageFactory.Unregister:new{
@@ -1155,6 +1304,8 @@ function Session:_unregister( registration )
 	}
 
 	self._transport:send(msg)
+
+	return def
 
 end
 

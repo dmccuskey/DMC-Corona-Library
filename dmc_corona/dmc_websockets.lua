@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_websockets.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-websockets
 --====================================================================--
 
 --[[
@@ -49,46 +49,13 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.4.0"
+local VERSION = "1.4.1"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 
@@ -108,6 +75,8 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
+
+local Utils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -144,7 +113,6 @@ local LuaStatesMixin = require 'lib.dmc_lua.lua_states_mix'
 local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'lib.dmc_lua.lua_patch'
 local Sockets = require 'dmc_sockets'
-local Utils = require 'lib.dmc_lua.lua_utils'
 
 -- websocket modules
 local ws_error = require 'dmc_websockets.exception'
@@ -192,6 +160,7 @@ local ERROR_CODES = {
 	NETWORK_ERROR = { code=3000, reason="Network Error" },
 	REQUEST_ERROR = { code=3001, reason="Request Error" },
 	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
+	TIMEOUT = { code=3003, reason="No pong received in time" },
 	INTERNAL = { code=9999, reason="Internal Error" },
 }
 
@@ -247,6 +216,7 @@ WebSocket.EVENT = 'websocket_event'
 WebSocket.ONOPEN = 'onopen'
 WebSocket.ONMESSAGE = 'onmessage'
 WebSocket.ONERROR = 'onerror'
+WebSocket.ONPONG = 'onpong'
 WebSocket.ONCLOSE = 'onclose'
 
 
@@ -274,7 +244,18 @@ function WebSocket:__init__( params )
 	self._uri = params.uri
 	self._port = params.port
 	self._query = params.query
+	self._origin = params.origin
 	self._protocols = params.protocols
+
+	-- keep-alive: milliseconds between pings (nil, off) and how long
+	-- to wait for each pong before failing the connection
+	self._keepalive = params.keepalive
+	self._keepalive_timeout = params.keepalive_timeout or 10000
+	self._keepalive_timer = nil
+	self._ping_timer = nil
+	self._ping_data = nil -- payload of the ping waiting for its pong
+	self._ping_time = nil
+	self._latency = nil
 
 	self._auto_connect = params.auto_connect
 	self._auto_reconnect = params.auto_reconnect
@@ -296,6 +277,13 @@ function WebSocket:__init__( params )
 
 
 	self._close_timer = nil
+
+	-- received data not yet parsed: pieces kept in a list and joined
+	-- only once enough has arrived for the next frame, so a large
+	-- message isn't copied again with every read
+	self._rx_chunks = {}
+	self._rx_len = 0
+	self._rx_need = 0 -- bytes needed before parsing is worth trying
 
 	self._ws_req_key = '' -- key sent to server on handshek
 
@@ -356,6 +344,13 @@ function WebSocket.__getters:readyState()
 	return self._ready_state
 end
 
+-- .latency
+-- round trip of the last keep-alive ping, milliseconds (nil until measured)
+--
+function WebSocket.__getters:latency()
+	return self._latency
+end
+
 -- send()
 --
 function WebSocket:send( data, params )
@@ -371,6 +366,18 @@ function WebSocket:send( data, params )
 		self:_sendText( data )
 	end
 
+end
+
+-- ping()
+-- the server answers with a pong, dispatched as ONPONG
+--
+function WebSocket:ping( data )
+	data = data or ''
+	assert( type(data)=='string', "expected string for ping()" )
+	assert( #data <= 125, "ping data is limited to 125 bytes" )
+	--==--
+	if self:getState() ~= WebSocket.STATE_CONNECTED then return end
+	self:_sendPing( data )
 end
 
 -- close()
@@ -408,6 +415,15 @@ function WebSocket:_onMessage( msg )
 	self:dispatchEvent( WebSocket.ONMESSAGE, evt, {merge=true} )
 end
 
+function WebSocket:_onPong( data, latency )
+	-- print( "WebSocket:_onPong", data )
+	local evt = {
+		data=data,
+		latency=latency
+	}
+	self:dispatchEvent( WebSocket.ONPONG, evt, {merge=true} )
+end
+
 function WebSocket:_onClose( params )
 	-- print( "WebSocket:_onClose", params )
 	params = params or {}
@@ -425,7 +441,8 @@ function WebSocket:_onError( params )
 	local evt = {
 		isError=true,
 		code=params.code,
-		reason=params.reason
+		reason=params.reason,
+		emsg=params.emsg
 	}
 	self:dispatchEvent( self.ONERROR, evt, {merge=true} )
 end
@@ -438,7 +455,9 @@ function WebSocket:_doHttpConnect()
 		host=self._host,
 		port=self._port,
 		path=self._path,
-		protocols=self._protocols
+		protocols=self._protocols,
+		origin=self._origin,
+		user_agent=WebSocket.USER_AGENT
 	}
 
 	self._ws_req_key = key
@@ -476,6 +495,44 @@ function WebSocket:_processHeaderString( str )
 		tinsert( results, line )
 	end
 	return results
+end
+
+-- add received data to the unread pieces; when the next frame (or
+-- the handshake response) may be complete, join them into self._ba
+-- and return true
+--
+function WebSocket:_bufferData( data )
+	tinsert( self._rx_chunks, data )
+	self._rx_len = self._rx_len + #data
+	if self._rx_len < self._rx_need then return false end
+
+	local ba = ByteArray:new()
+	ba:writeBuf( tconcat( self._rx_chunks ) )
+	self._ba = ba
+	self._rx_chunks = {}
+	self._rx_len = 0
+	self._rx_need = 0
+	return true
+end
+
+-- keep what self._ba holds unread for the next read, and note how much
+-- the next frame needs, so it is parsed only once it has all arrived
+--
+function WebSocket:_keepUnread()
+	local ba = self._ba
+	if not ba then return end
+
+	local avail = ba.bytesAvailable
+	if avail == 0 then return end
+
+	local rest = ba:readBuf( avail )
+	tinsert( self._rx_chunks, 1, rest )
+	self._rx_len = self._rx_len + #rest
+
+	local state = self:getState()
+	if state == WebSocket.STATE_CONNECTED or state == WebSocket.STATE_CLOSING then
+		self._rx_need = ws_frame.frameSize( rest ) or 0
+	end
 end
 
 -- read header response string and see if it's valid
@@ -622,7 +679,8 @@ function WebSocket:_receiveFrame()
 			end
 
 		elseif fcode == ws_types.pong then
-			-- pass
+			-- control frame: dispatch now, it may arrive mid-message
+			self:_pongReceived( data )
 
 		end
 	end
@@ -716,6 +774,24 @@ function WebSocket:_sendFrame( msg )
 end
 
 
+-- the query option: a string as is, or a table of names and values
+--
+function WebSocket:_encodeQuery( query )
+	if type( query ) == 'string' then
+		return query ~= '' and query or nil
+	elseif type( query ) ~= 'table' then
+		return nil
+	end
+	local parts = {}
+	for k, v in pairs( query ) do
+		tinsert( parts, urllib.escape( tostring( k ) ) .. '=' .. urllib.escape( tostring( v ) ) )
+	end
+	if #parts == 0 then return nil end
+	table.sort( parts ) -- same order every time
+	return tconcat( parts, '&' )
+end
+
+
 -- fail our connection with an error
 --
 function WebSocket:_bailout( params )
@@ -779,6 +855,64 @@ end
 function WebSocket:_sendText( data )
 	local msg = ws_message{ opcode=ws_frame.type.text, data=data }
 	self:_sendMessage( msg )
+end
+
+
+--== Keep-alive: ping, wait for its pong, wait the interval, ping again
+
+function WebSocket:_startKeepalive()
+	-- print( "WebSocket:_startKeepalive" )
+	if type( self._keepalive ) ~= 'number' or self._keepalive <= 0 then return end
+	self:_stopKeepalive()
+	local f = function()
+		self._keepalive_timer = nil
+		self:_sendKeepalivePing()
+	end
+	self._keepalive_timer = tdelay( self._keepalive, f )
+end
+
+function WebSocket:_stopKeepalive()
+	-- print( "WebSocket:_stopKeepalive" )
+	if self._keepalive_timer then
+		tcancel( self._keepalive_timer )
+		self._keepalive_timer = nil
+	end
+	if self._ping_timer then
+		tcancel( self._ping_timer )
+		self._ping_timer = nil
+	end
+	self._ping_data = nil
+end
+
+function WebSocket:_sendKeepalivePing()
+	-- print( "WebSocket:_sendKeepalivePing" )
+	if self:getState() ~= WebSocket.STATE_CONNECTED then return end
+
+	self._ping_count = ( self._ping_count or 0 ) + 1
+	self._ping_data = 'keepalive ' .. self._ping_count
+	self._ping_time = sgettimer()
+	self:_sendPing( self._ping_data )
+
+	local f = function()
+		self._ping_timer = nil
+		self._ping_data = nil
+		self:_bailout{
+			code=ERROR_CODES.TIMEOUT.code,
+			reason=ERROR_CODES.TIMEOUT.reason,
+		}
+	end
+	self._ping_timer = tdelay( self._keepalive_timeout, f )
+end
+
+function WebSocket:_pongReceived( data )
+	-- print( "WebSocket:_pongReceived", data )
+	local latency
+	if self._ping_data and data == self._ping_data then
+		latency = sgettimer() - self._ping_time
+		self._latency = latency
+		self:_startKeepalive() -- also clears the pong timeout
+	end
+	self:_onPong( data, latency )
 end
 
 
@@ -864,6 +998,11 @@ function WebSocket:do_state_init( params )
 	self._ready_state = self.NOT_ESTABLISHED
 	self:setState( WebSocket.STATE_INIT )
 
+	self._ba = nil
+	self._rx_chunks = {}
+	self._rx_len = 0
+	self._rx_need = 0
+
 	local uri = self._uri
 	local url_parts = urllib.parse( uri )
 	local host = url_parts.host
@@ -880,7 +1019,13 @@ function WebSocket:do_state_init( params )
 	if not path or path == "" then
 		path = "/"
 	end
-	if query then
+	local opt_query = self:_encodeQuery( self._query )
+	if query and query ~= '' and opt_query then
+		query = query .. '&' .. opt_query
+	elseif opt_query then
+		query = opt_query
+	end
+	if query and query ~= '' then
 		path = path .. '?' .. query
 	end
 
@@ -890,7 +1035,10 @@ function WebSocket:do_state_init( params )
 
 	if socket then socket:close() end
 
-	Sockets.throttle = self._socket_throttle
+	-- shared by all sockets: change it only when asked to
+	if self._socket_throttle ~= nil then
+		Sockets.throttle = self._socket_throttle
+	end
 
 	socket = Sockets:create( Sockets.ATCP, {ssl_params=self._ssl_params} )
 	socket.secure = (url_parts.scheme == 'wss') -- true/false
@@ -1009,6 +1157,7 @@ function WebSocket:do_state_connected( params )
 	end
 
 	self:_onOpen()
+	self:_startKeepalive()
 
 	-- check if more data after reading header
 	self:_receiveFrame()
@@ -1045,6 +1194,7 @@ function WebSocket:do_state_closing_connection( params )
 
 	self._ready_state = WebSocket.CLOSING_HANDSHAKE
 	self:setState( WebSocket.STATE_CLOSING )
+	self:_stopKeepalive()
 
 	-- send close code to server
 	if params.code then
@@ -1090,6 +1240,7 @@ function WebSocket:do_state_closed( params )
 
 	self._ready_state = WebSocket.CLOSED
 	self:setState( WebSocket.STATE_CLOSED )
+	self:_stopKeepalive()
 
 	if self._close_timer then
 		-- print( "Close response received" )
@@ -1144,8 +1295,15 @@ function WebSocket:_socketConnectEvent_handler( event )
 
 	if event.type == sock.CONNECT then
 
-		if event.isError then
-			self:gotoState( WebSocket.STATE_CLOSED )
+		if state == WebSocket.STATE_INIT and event.status ~= sock.CONNECTED
+			or event.isError
+		then
+			-- unreachable server, timeout, failed TLS handshake
+			self:_bailout{
+				code=ERROR_CODES.NETWORK_ERROR.code,
+				reason=ERROR_CODES.NETWORK_ERROR.reason,
+				emsg=event.emsg
+			}
 		elseif event.status == sock.CONNECTED then
 			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
 		else
@@ -1169,26 +1327,21 @@ function WebSocket:_socketDataEvent_handler( event )
 
 		local callback = function( s_event )
 			local data = s_event.data
+			if not data or data == '' then return end
 
-			local ba = ByteArray:new()
-			if self._ba then
-				ba:writeBytes( self._ba )
-			end
-			self._ba = ba
+			if not self:_bufferData( data ) then return end
 
-			ba:writeBuf( data ) -- copy in new data
-
-			-- if LOCAL_DEBUG then
-			-- 	print( 'Data', #data, ba:getAvailable(), ba.pos )
-			-- 	Utils.hexDump( data )
-			-- end
-
+			local state = self:getState()
 			if state == WebSocket.STATE_NOT_CONNECTED then
 				self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
+			elseif state == WebSocket.STATE_HTTP_NEGOTIATION then
+				-- the response header came in more than one read
+				self:_handleHttpRespose()
 			else
 				self:_receiveFrame()
 			end
 
+			self:_keepUnread()
 		end
 
 		sock:receive( '*a', callback )

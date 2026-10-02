@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_utils.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-utils
 --====================================================================--
 
 --[[
@@ -39,46 +39,13 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.0"
+local VERSION = "1.3.0"
 
 
 
 --====================================================================--
 --== DMC Corona Library Config
 --====================================================================--
-
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from lua_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 
@@ -108,10 +75,10 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
---== imports
+--== Imports
 
 
-Utils = require 'lib.dmc_lua.lua_utils'
+local LuaUtils = require 'lib.dmc_lua.lua_utils'
 
 
 
@@ -125,7 +92,22 @@ local DMC_UTILS_DEFAULTS = {
 	-- none
 }
 
-local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS )
+local dmc_utils_data = LuaUtils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS )
+
+
+
+--====================================================================--
+--== Utils Module
+--====================================================================--
+
+
+-- a copy of lua-utils' module, so the Solar2D functions aren't added
+-- to the shared one, which other modules get from 'lib.dmc_lua.lua_utils'
+--
+local Utils = {}
+for k, v in pairs( LuaUtils ) do Utils[ k ] = v end
+
+Utils.VERSION = VERSION
 
 
 
@@ -135,18 +117,20 @@ local dmc_utils_data = Utils.extend( dmc_lib_data.dmc_utils, DMC_UTILS_DEFAULTS 
 
 
 -- getAudioChannel( options )
--- simplifies getting an audio channel from Corona SDK
--- automatically sets volume and channel
+-- finds a free audio channel and sets its volume
+-- returns 0, without setting a volume, when no channel is free
+-- (the volume of channel 0 is the volume of every channel)
 --
 -- @params opts table: with properties: volume, channel
 --
 function Utils.getAudioChannel( opts )
 	opts = opts or {}
-	opts.volume = opts.volume == nil and 1.0 or opts.volume
-	opts.channel = opts.channel == nil and 1 or opts.channel
+	local volume = opts.volume == nil and 1.0 or opts.volume
+	local channel = opts.channel == nil and 1 or opts.channel
 	--==--
-	local ac = audio.findFreeChannel( opts.channel )
-	audio.setVolume( opts.volume, { channel=ac } )
+	local ac = audio.findFreeChannel( channel )
+	if ac == 0 then return 0 end
+	audio.setVolume( volume, { channel=ac } )
 	return ac
 end
 
@@ -157,22 +141,18 @@ end
 --====================================================================--
 
 
+-- true on iPhone and iPad, and in the Simulator with an iOS skin;
+-- Apple TV is 'tvos', not iOS
+--
 function Utils.is_iOS()
-	if string.sub(system.getInfo('model'),1,2) == "iP" then
-		return true
-	end
-	return false
+	return system.getInfo( 'platform' ) == 'ios'
 end
 
 
-function Utils.checkIsiPhone5( state, params )
-	local isiPhone5 = false
-
-	-- Check if device is iPhone 5
-	if string.sub(system.getInfo('model'),1,2) == "iP" and display.pixelHeight > 960 then
-		isiPhone5 = true
-	end
-	return isiPhone5
+-- deprecated: from 2012, every current iPhone and iPad passes
+--
+function Utils.checkIsiPhone5()
+	return Utils.is_iOS() and display.pixelHeight > 960
 end
 
 
@@ -192,26 +172,18 @@ end
 
 
 -- state -- 'show'/'hide'
+-- on every platform; those without a status bar ignore it
 --
 function Utils.setStatusBar( state, params )
 	params = params or {}
-	params.type = params.type or Utils.STATUS_BAR_DEFAULT
 	assert( state=='show' or state=='hide', "Utils.setStatusBar: unknown state "..tostring(state) )
 	--==--
-
-	if not Utils.is_iOS() then return end
-
-	local status
-
 	if state == 'hide' then
-		status = Utils.STATUS_BAR_HIDDEN
+		display.setStatusBar( Utils.STATUS_BAR_HIDDEN )
 	else
-		status = params.type
+		display.setStatusBar( params.type or Utils.STATUS_BAR_DEFAULT )
 	end
-	display.setStatusBar( status )
-
 end
-
 
 
 

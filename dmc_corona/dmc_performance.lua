@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_performance.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-performance
 --====================================================================--
 
 
@@ -39,61 +39,8 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 
-
-
---====================================================================--
---== DMC Corona Library Config
---====================================================================--
-
-
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
---
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
 
 
 --====================================================================--
@@ -128,11 +75,13 @@ dmc_lib_data = _G.__dmc_corona
 dmc_lib_data.dmc_performance = dmc_lib_data.dmc_performance or {}
 
 local DMC_PERFORMANCE_DEFAULTS = {
-	output_markers = 'false',
-	memory_active = 'false'
+	output_markers = true,
+	memory_active = false
 }
 
-local dmc_performance_data = Utils.extend( dmc_lib_data.dmc_performance, DMC_PERFORMANCE_DEFAULTS )
+local dmc_performance_data = {}
+for k,v in pairs( DMC_PERFORMANCE_DEFAULTS ) do dmc_performance_data[k] = v end
+for k,v in pairs( dmc_lib_data.dmc_performance ) do dmc_performance_data[k] = v end
 
 
 
@@ -156,6 +105,8 @@ local tcancel, tdelay = timer.cancel, timer.performWithDelay
 local tonumber, tostring, type = tonumber, tostring, type
 
 local Perf = {}
+Perf.VERSION = VERSION
+
 local firstTimeMarker = nil
 local lastTimeMarker = nil
 local timeMarks = {}
@@ -167,18 +118,22 @@ local memoryWatcherCallback = nil
 --== Support Functions
 
 
+-- castValue()
+-- config values come as booleans or numbers (with a :BOOL or :INT
+-- type) or as strings (without one)
+--
 local function castValue( v )
-	local ret = nil
+	if type(v)=='boolean' or type(v)=='number' then return v end
+	if v=='true' then return true end
+	if v=='false' then return false end
+	return tonumber( v )
+end
 
-	if v=='true' then
-		ret = true
-	elseif v=='false' then
-		ret = false
-	else
-		ret = tonumber( v )
-	end
-
-	return ret
+-- toBool()
+-- anything but false (or 'false') is on
+--
+local function toBool( v )
+	return castValue( v ) ~= false
 end
 
 
@@ -206,6 +161,7 @@ function Perf.markTime( marker, params )
 	local t = systimer()
 	local precision = 100000
 	local delta = 0
+	local name = marker==nil and '(unnamed)' or tostring( marker )
 
 	if firstTimeMarker==nil and dmc_performance_data.output_markers then
 		markerOutput( sformat( "Application Started:  (T:%s)", tostring(t) ) )
@@ -215,7 +171,7 @@ function Perf.markTime( marker, params )
 
 	if params.print and dmc_performance_data.output_markers then
 		delta = mfloor((t-lastTimeMarker)*precision)/precision
-		markerOutput( sformat( "%s:  %s  (T:%s)", marker, tostring(delta), tostring(t) ) )
+		markerOutput( sformat( "%s:  %s  (T:%s)", name, tostring(delta), tostring(t) ) )
 	end
 
 	lastTimeMarker = t
@@ -225,11 +181,16 @@ end
 function Perf.markTimeDiff( marker1, marker2 )
 	local precision = 100000
 	local t1, t2 = timeMarks[marker1], timeMarks[marker2]
-	local delta = mfloor((t1-t2 )*precision)/precision
+	if t1==nil or t2==nil then
+		print( sformat( "WARNING: dmc_performance: markTimeDiff(): no marker named '%s'", tostring( t1==nil and marker1 or marker2 ) ) )
+		return
+	end
+	local delta = mabs( mfloor((t1-t2 )*precision)/precision )
 
 	if dmc_performance_data.output_markers then
-		markerOutput( sformat( "%s <=> %s  <d> %s", marker1, marker2, tostring(mabs(delta)) ), {prefix="MARK <d>"} )
+		markerOutput( sformat( "%s <=> %s  <d> %s", tostring(marker1), tostring(marker2), tostring(delta) ), {prefix="MARK <d>"} )
 	end
+	return delta
 end
 
 
@@ -260,7 +221,9 @@ end
 --
 function Perf.watchMemory( value )
 	-- print( "Perf.watchMemory", value )
-	local f
+
+	-- one watch at a time: a new one replaces the old
+	if memoryWatcherCallback ~= nil then memoryWatcherCallback() end
 
 	if value==true then
 		-- setup constant, frame rate memory watch
@@ -274,23 +237,22 @@ function Perf.watchMemory( value )
 
 	elseif type(value)=='number' and value > 0 then
 
-		local timer = tdelay( value, Perf.memoryMonitor, 0 )
+		local memTimer = tdelay( value, Perf.memoryMonitor, 0 )
 
 		memoryWatcherCallback = function()
-			tcancel( timer )
+			tcancel( memTimer )
 			memoryWatcherCallback = nil
 		end
 
-	elseif value==false and memoryWatcherCallback ~= nil then
-		-- stop watching memory
-		memoryWatcherCallback()
 	end
 
 end
 
 
+dmc_performance_data.output_markers = toBool( dmc_performance_data.output_markers )
+dmc_performance_data.memory_active = castValue( dmc_performance_data.memory_active )
+
 if dmc_performance_data.memory_active then
-	dmc_performance_data.memory_active = castValue( dmc_performance_data.memory_active )
 	Perf.watchMemory( dmc_performance_data.memory_active )
 end
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_wamp/future_mix.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[

@@ -3,7 +3,7 @@
 --
 --
 -- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_wamp.lua
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -66,6 +66,7 @@ local WErrors = require 'dmc_wamp.exception'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 local pairs = pairs
 local rawget = rawget
 local type = type

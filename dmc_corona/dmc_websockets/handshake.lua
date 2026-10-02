@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_websockets/handshake.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-websockets
 --====================================================================--
 
 --[[
@@ -131,6 +131,12 @@ local function createHttpRequest( params )
 	}
 	if proto_header then
 		tinsert( req_t, "Sec-WebSocket-Protocol: %s" % proto_header )
+	end
+	if params.origin then
+		tinsert( req_t, "Origin: %s" % params.origin )
+	end
+	if params.user_agent then
+		tinsert( req_t, "User-Agent: %s" % params.user_agent )
 	end
 	tinsert( req_t, "" )
 	tinsert( req_t, "" )

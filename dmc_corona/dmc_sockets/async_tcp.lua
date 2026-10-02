@@ -247,18 +247,14 @@ function ATCPSocket:connect( host, port, params )
 						-- shared hosts and CDNs reject handshakes without it
 						if sock.sni then sock:sni( host ) end
 					else
-						evt.isError = true
-						evt.emsg = emsg
-						if self._onConnect then self._onConnect( evt ) end
+						self:_failSecureConnect( evt, emsg )
 						return
 					end
 
 					local result, emsg = self._socket:dohandshake()
 
 					if not result then
-						evt.isError = true
-						evt.emsg = emsg
-						if self._onConnect then self._onConnect( evt ) end
+						self:_failSecureConnect( evt, emsg )
 						return
 					end
 
@@ -505,8 +501,10 @@ function ATCPSocket:_processWriteQueue()
 			tremove( queue, 1 )
 			if rec.callback then rec.callback( {} ) end
 
-		elseif emsg == self.ERR_TIMEOUT or emsg == 'wantwrite' then
-			-- OS buffer is full, try again next frame
+		elseif emsg == self.ERR_TIMEOUT or emsg == 'wantwrite'
+			or emsg == self.SSL_READTIMEOUT then
+			-- OS buffer is full, or TLS must read before it can write
+			-- (eg, a renegotiation): try again next frame
 			rec.index = ( partial or rec.index-1 ) + 1
 			self:_startWriteHandler()
 			return
@@ -535,6 +533,23 @@ function ATCPSocket:_stopWriteHandler()
 	if not self._write_handler then return end
 	Runtime:removeEventListener( 'enterFrame', self._write_handler )
 	self._write_handler = nil
+end
+
+
+-- _failSecureConnect()
+-- the TCP connection succeeded but TLS setup (wrap or handshake)
+-- failed: close the socket and report the connect as failed, so
+-- the next connect() starts over with a new socket
+--
+function ATCPSocket:_failSecureConnect( evt, emsg )
+	-- print( 'ATCPSocket:_failSecureConnect', emsg )
+	-- status is now NO_SOCKET, so connect() makes a new socket
+	self._socket:close()
+	self:_removeSocket()
+	evt.isError = true
+	evt.status = self.NOT_CONNECTED
+	evt.emsg = emsg
+	if self._onConnect then self._onConnect( evt ) end
 end
 
 

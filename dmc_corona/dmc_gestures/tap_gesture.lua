@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/tap_gesture.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -126,6 +126,7 @@ function TapGesture:__init__( params )
 	if params.accuracy==nil then params.accuracy=Constants.TAP_ACCURACY end
 	if params.taps==nil then params.taps=Constants.TAP_TAPS end
 	if params.touches==nil then params.touches=Constants.TAP_TOUCHES end
+	if params.timeout==nil then params.timeout=Constants.TAP_TIMEOUT end
 
 	self:superCall( '__init__', params )
 	--==--
@@ -135,6 +136,7 @@ function TapGesture:__init__( params )
 	self._min_accuracy = params.accuracy
 	self._req_taps = params.taps
 	self._req_touches = params.touches
+	self._timeout = params.timeout
 
 	self._tap_count = 0 -- how many taps
 
@@ -149,6 +151,7 @@ function TapGesture:__initComplete__()
 	self.accuracy = self._min_accuracy
 	self.taps = self._req_taps
 	self.touches = self._req_touches
+	self.timeout = self._timeout
 end
 
 --[[
@@ -226,6 +229,25 @@ end
 
 
 
+--- the time allowed for each step of the tap, in milliseconds (number).
+-- once all the fingers are down they must lift within this time,
+-- and the next tap must start within it.
+--
+-- @function .timeout
+-- @usage print( gesture.timeout )
+-- @usage gesture.timeout = 500
+--
+function TapGesture.__getters:timeout()
+	return self._timeout
+end
+function TapGesture.__setters:timeout( value )
+	assert( type(value)=='number' and value>0 )
+	--==--
+	self._timeout = value
+end
+
+
+
 --====================================================================--
 --== Private Methods
 
@@ -234,6 +256,19 @@ function TapGesture:_do_reset()
 	-- print( "TapGesture:_do_reset" )
 	Gesture._do_reset( self )
 	self._tap_count=0
+end
+
+
+
+-- the event has where the fingers lifted, and when
+function TapGesture:_dispatchRecognizedEvent( data )
+	-- print( "TapGesture:_dispatchRecognizedEvent" )
+	data = data or {}
+	--==--
+	local pos = self:_calculateCentroid( self._touches )
+	data.x, data.y = pos.x, pos.y
+	data.time = system.getTimer()
+	Gesture._dispatchRecognizedEvent( self, data )
 end
 
 
@@ -254,11 +289,11 @@ function TapGesture:touch( event )
 		local r_touches = self._req_touches
 		local touch_count = self._touch_count
 
-		self:_startFailTimer()
+		self:_startFailTimer( self._timeout )
 		self._gesture_attempt=true
 
 		if touch_count==r_touches then
-			self:_startGestureTimer()
+			self:_startGestureTimer( self._timeout )
 		elseif touch_count>r_touches then
 			self:gotoState( TapGesture.STATE_FAILED )
 		end
@@ -288,7 +323,7 @@ function TapGesture:touch( event )
 		elseif taps>r_taps then
 			self:gotoState( TapGesture.STATE_FAILED )
 		else
-			self:_startFailTimer()
+			self:_startFailTimer( self._timeout )
 		end
 		self._tap_count = taps
 	end

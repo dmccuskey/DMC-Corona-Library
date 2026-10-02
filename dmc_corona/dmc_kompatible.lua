@@ -1,9 +1,7 @@
 --====================================================================--
--- dmc_kompatible.lua
+-- dmc_corona/dmc_kompatible.lua
 --
---
--- by David McCuskey
--- Documentation: http://docs.davidmccuskey.com/display/docs/dmc_kompatible.lua
+-- Documentation: https://github.com/dmccuskey/dmc-kompatible
 --====================================================================--
 
 --[[
@@ -37,67 +35,30 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 
-
-
---====================================================================--
--- DMC Corona Library Config
---====================================================================--
-
-
---====================================================================--
--- Support Functions
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
 
 
 --====================================================================--
 -- Configuration
 
-local dmc_lib_data, dmc_lib_info
+local dmc_lib_data
 
--- boot dmc_library with boot script or
+-- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
 --
-if false == pcall( function() require( "dmc_corona_boot" ) end ) then
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 	_G.__dmc_corona = {
 		dmc_corona={},
 	}
 end
 
 dmc_lib_data = _G.__dmc_corona
-dmc_lib_info = dmc_lib_data.dmc_library
 
 
 
 --====================================================================--
--- DMC Library : DMC Kompatible
+-- DMC Kompatible
 --====================================================================--
 
 
@@ -108,7 +69,7 @@ dmc_lib_data.dmc_kompatible = dmc_lib_data.dmc_kompatible or {}
 
 local DMC_KOMPATIBLE_DEFAULTS = {
 	make_global=false,
-	print_warnings= true,
+	print_warnings=true,
 
 	-- G1 deprecated methods
 	activate_reference=true,
@@ -116,7 +77,20 @@ local DMC_KOMPATIBLE_DEFAULTS = {
 	activate_strokecolor=true,
 }
 
-local dmc_kompatible_data = Utils.extend( dmc_lib_data.dmc_kompatible, DMC_KOMPATIBLE_DEFAULTS )
+-- toBool()
+-- config values come as booleans (with the :BOOL type) or as
+-- strings (without it); anything but false (or 'false') is on
+--
+local function toBool( v )
+	return v ~= false and v ~= 'false'
+end
+
+local dmc_kompatible_data = {}
+for k, default in pairs( DMC_KOMPATIBLE_DEFAULTS ) do
+	local v = dmc_lib_data.dmc_kompatible[ k ]
+	if v == nil then v = default end
+	dmc_kompatible_data[ k ] = toBool( v )
+end
 
 
 --====================================================================--
@@ -128,157 +102,182 @@ local _NATIVE = _G.native
 
 local dkd = dmc_kompatible_data -- make shorter reference
 
-
 local Display, Native
+
+-- the nine Graphics 1.0 reference points, with their anchors
+local REFERENCE_POINTS = {
+	TopLeft={ 0, 0 },
+	TopCenter={ 0.5, 0 },
+	TopRight={ 1, 0 },
+	CenterLeft={ 0, 0.5 },
+	Center={ 0.5, 0.5 },
+	CenterRight={ 1, 0.5 },
+	BottomLeft={ 0, 1 },
+	BottomCenter={ 0.5, 1 },
+	BottomRight={ 1, 1 },
+}
+
+-- Solar2D's own reference point constants (userdata), to anchors
+local SOLAR2D_POINTS = {}
+
+for name, anchor in pairs( REFERENCE_POINTS ) do
+	local point = _DISPLAY[ name..'ReferencePoint' ]
+	if point ~= nil then SOLAR2D_POINTS[ point ] = anchor end
+end
+
+local line_warned = false -- the newLine() warning is printed once
 
 
 --====================================================================--
 -- Support Methods
 
--- translateRGBToHDR()
--- translates RGB color sequence to equivalent HDR values
+-- translateGradientColor()
+-- a gradient's color table, { r, g, b [, a] } in 0-255, to a new
+-- table in Solar2D's 0-1 values; nil and a message if it isn't one
 --
-function translateRGBToHDR( ... )
-	-- print( 'translateRGBToHDR' )
-
-	local args = { ... }
-	local color
-
-	-- print(  args[1], args[2], args[3], args[4], args[5] )
-
-	if type( args[2] ) == 'number' then
-		-- regular RGB
-		if args[3] == nil then
-			-- greyscale
-			args[3] = args[2]
-			args[4] = args[2]
-			args[5] = 255
-		elseif args[4] == nil then
-			-- greyscale with alpha
-			args[3] = args[2]
-			args[4] = args[2]
-			args[5] = args[3]
-		elseif args[5] == nil then
-			-- RGB, no alpha
-			args[5] = 255
-		end
-
-		color = { args[2]/255, args[3]/255, args[4]/255, args[5]/255 }
-
-	elseif type( args[2] ) == 'table' and args[2].type=='gradient' then
-
-		-- gradient RGB
-		t = args[2].color1
-		args[2].color1 = { t[1]/255, t[2]/255, t[3]/255, t[4] }
-
-		t = args[2].color2
-		args[2].color2 = { t[1]/255, t[2]/255, t[3]/255, t[4] }
-
-		color = { args[2] }
-
-	elseif type( args[2] ) == 'string' then
-
-		-- named color
-		color = NAMED_COLORS and NAMED_COLORS[ args[2] ]
-		if not color then
-			color = { 1, 1, 1 }
-			print('\n')
-			print( 'ERROR dmc_kolor: named color not found', tostring( args[2] ) )
-			print('\n')
-		end
-		color[4] = args[3]
-
-	else
-		print('\n')
-		print( 'ERROR dmc_kolor: invalid RGB color type', type( args[2] ) )
-		print('\n')
+local function translateGradientColor( t, name )
+	if type( t ) ~= 'table' or type( t[1] ) ~= 'number'
+		or type( t[2] ) ~= 'number' or type( t[3] ) ~= 'number' then
+		return nil, "gradient "..name.." must be { r, g, b [, a] }"
 	end
-
-	-- print( color[1], color[2], color[3], color[4] )
-
-	return color
+	return { t[1]/255, t[2]/255, t[3]/255, ( t[4] or 255 )/255 }
 end
 
+
+-- translateRGBToHDR()
+-- translates a Graphics 1.0 color (0-255, hex string, gradient)
+-- to the arguments for Solar2D's own method, in a list;
+-- nil and a message if it isn't a color
+--
+local function translateRGBToHDR( ... )
+	local args = { ... }
+	local n = select( '#', ... )
+	while n > 0 and args[ n ] == nil do n = n-1 end
+	local c = args[1]
+
+	if type( c ) == 'number' then
+		for i=1,n do
+			if type( args[i] ) ~= 'number' then
+				return nil, "invalid color: argument "..i.." is a "..type( args[i] )
+			end
+		end
+		if n == 1 then
+			-- greyscale
+			return { c/255, c/255, c/255, 1 }
+		elseif n == 2 then
+			-- greyscale with alpha
+			return { c/255, c/255, c/255, args[2]/255 }
+		elseif n == 3 or n == 4 then
+			-- RGB, RGBA
+			return { c/255, args[2]/255, args[3]/255, ( args[4] or 255 )/255 }
+		end
+		return nil, "invalid color: "..n.." numbers"
+
+	elseif type( c ) == 'string' then
+		local hex = c:match( '^#(%x%x%x%x%x%x)$' )
+		if not hex then
+			return nil, "invalid color '"..c.."': use '#RRGGBB' (dmc-kolor has color names)"
+		end
+		return {
+			tonumber( hex:sub(1,2), 16 )/255,
+			tonumber( hex:sub(3,4), 16 )/255,
+			tonumber( hex:sub(5,6), 16 )/255
+		}
+
+	elseif type( c ) == 'table' and c.type == 'gradient' then
+		-- translate a copy: the caller's table may be used again
+		local gradient, err = {}
+		for k, v in pairs( c ) do gradient[ k ] = v end
+		gradient.color1, err = translateGradientColor( c.color1, 'color1' )
+		if not gradient.color1 then return nil, err end
+		gradient.color2, err = translateGradientColor( c.color2, 'color2' )
+		if not gradient.color2 then return nil, err end
+		return { gradient }
+
+	elseif type( c ) == 'table' then
+		-- another paint (image, composite): Solar2D's own
+		return { c }
+	end
+
+	return nil, "invalid color type "..type( c )
+end
+
+
+-- addColorMethod()
+-- add method name to the object, taking Graphics 1.0 colors and
+-- calling Solar2D's own method; Solar2D's is kept as _<own>
+-- (two names can share one: text's setFillColor and setTextColor)
+-- rawset: Solar2D ignores setting a line's color methods the usual way
+--
+local function addColorMethod( o, name, own )
+	own = own or name
+	local original = o[ '_'..own ] or o[ own ]
+	rawset( o, '_'..own, original ) -- save original version
+	rawset( o, name, function( _, ... )
+		local color, err = translateRGBToHDR( ... )
+		if not color then error( "dmc_kompatible: "..err, 2 ) end
+		return original( o, unpack( color ) )
+	end )
+end
 
 
 -- addSetAnchor()
 -- imbue object with setReferencePoint magic
 --
-function addSetAnchor( o, reference  )
-	-- print( 'addSetAnchor' )
+local function addSetAnchor( o, reference )
 
-	function createClosure( obj )
-		local f = function( ... )
-			local args = {...}
-			local x, y
-
-			if type( args[2] ) == 'table' then
-				x, y = unpack( args[2] )
-			end
-			if type( args[2] ) == 'number' then
-				x = args[2]
-			end
-			if type( args[3] ) == 'number' then
-				y = args[3]
-			end
-
-			obj.anchorX = x
-			obj.anchorY = y
+	o.setReferencePoint = function( _, x, y )
+		local anchor = SOLAR2D_POINTS[ x ] or x
+		if type( anchor ) == 'table' then
+			x, y = anchor[1], anchor[2]
 		end
-		return f
+		local valid = ( x ~= nil or y ~= nil )
+			and ( x == nil or type( x ) == 'number' )
+			and ( y == nil or type( y ) == 'number' )
+		if not valid then
+			error( "dmc_kompatible: setReferencePoint() takes a reference point, such as display.CenterReferencePoint, or numbers; got "..tostring( x ), 2 )
+		end
+		-- a missing value keeps the current one (nil crashes Solar2D)
+		o.anchorX = x or o.anchorX
+		o.anchorY = y or o.anchorY
 	end
 
-	o.setReferencePoint = createClosure( o )
 	if reference then
 		o:setReferencePoint( reference )
 	end
-
 end
 
 
-
--- addSetFillColor()
--- imbue object with setFillColor / setTextColor magic
+-- imbue()
+-- add the methods listed in adds to the new object, as configured;
+-- nil (Solar2D's answer for a missing file) is passed on
 --
-function addSetFillColor( o )
-	-- print( 'addSetFillColor' )
+local function imbue( o, adds )
+	if o == nil then return nil end
 
-	function createClosure( obj, translate )
-		local f = function( ... )
-			-- print( 'DMC Kompatible :DISPLAY COLOR\n')
-			local args = { ... }
-			-- print(  args[1], args[2], args[3], args[4] )
-			local color = translate( ... )
-			obj:_setFillColor( unpack( color ) )
-		end
-		return f
+	if dkd.activate_reference then
+		addSetAnchor( o, adds.reference )
+	end
+	if dkd.activate_fillcolor then
+		for name, own in pairs( adds.fill or {} ) do addColorMethod( o, name, own ) end
+	end
+	if dkd.activate_strokecolor and adds.stroke then
+		addColorMethod( o, 'setStrokeColor' )
 	end
 
-	o._setFillColor = o.setFillColor -- save original version
-	o.setFillColor = createClosure( o, translateRGBToHDR )
-
+	return o
 end
 
 
-
--- addSetStrokeColor()
--- imbue object with strokeColor magic
+-- wrapConstructors()
+-- add each constructor in list to lib, calling Solar2D's own in super
 --
-function addSetStrokeColor( o )
-	-- print( 'addSetStrokeColor' )
-
-	function createClosure( obj, translate )
-		-- print('createClosure stroke')
-		local f = function( ... )
-			local color = translate( ... )
-			obj:_setStrokeColor( unpack( color ) )
+local function wrapConstructors( lib, super, list )
+	for name, adds in pairs( list ) do
+		lib[ name ] = function( ... )
+			return imbue( super[ name ]( ... ), adds )
 		end
-		return f
 	end
-
-	o._setStrokeColor = o.setStrokeColor -- save original version
-	o.setStrokeColor = createClosure( o, translateRGBToHDR )
-
 end
 
 
@@ -296,205 +295,45 @@ setmetatable( Display, { __index=Display.super } )
 
 --== Config ==--
 
-Display.TopLeftReferencePoint = { 0, 0 }
-Display.TopCenterReferencePoint = { 0.5, 0 }
-Display.TopRightReferencePoint = { 1, 0 }
-Display.CenterLeftReferencePoint = { 0, 0.5 }
-Display.CenterReferencePoint = { 0.5, 0.5 }
-Display.CenterRightReferencePoint = { 1, 0.5 }
-Display.BottomLeftReferencePoint = { 0, 1 }
-Display.BottomCenterReferencePoint = { 0.5, 1 }
-Display.BottomRightReferencePoint = { 1, 1 }
+for name, anchor in pairs( REFERENCE_POINTS ) do
+	Display[ name..'ReferencePoint' ] = anchor
+end
 
 
 --== Corona Display API ==--
 
-function Display.newCircle( ... )
-	-- print( 'Kompatible.newCircle' )
+local CENTER = Display.CenterReferencePoint
+local TOP_LEFT = Display.TopLeftReferencePoint
 
-	local o = Display.super.newCircle( ... )
-	local p
+-- fill: method name = Solar2D's method it calls
+local FILL = { setFillColor='setFillColor' }
 
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.CenterReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
+wrapConstructors( Display, _DISPLAY, {
+	newCircle={ reference=CENTER, fill=FILL, stroke=true },
+	newContainer={},
+	newGroup={},
+	newImage={ reference=TOP_LEFT, fill=FILL },
+	newImageRect={ reference=TOP_LEFT, fill=FILL },
+	-- a line is colored by its stroke; Graphics 1.0's line:setColor()
+	newLine={ reference=TOP_LEFT, fill={ setColor='setStrokeColor' }, stroke=true },
+	newPolygon={ reference=TOP_LEFT, fill=FILL, stroke=true },
+	newRect={ reference=CENTER, fill=FILL, stroke=true },
+	newRoundedRect={ reference=CENTER, fill=FILL, stroke=true },
+	newSprite={},
+	-- Graphics 1.0's text:setTextColor()
+	newText={ reference=CENTER,
+		fill={ setFillColor='setFillColor', setTextColor='setFillColor' } },
+})
 
-	return o
-end
-
-
-function Display.newContainer( ... )
-	-- print( 'Kompatible.newContainer' )
-
-	local o = Display.super.newContainer( ... )
-
-	if dkd.activate_reference then
-		-- addSetAnchor( o, Display.TopLeftReferencePoint )
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newGroup( ... )
-	-- print( 'Kompatible.newGroup' )
-
-	local o = Display.super.newGroup( ... )
-
-	if dkd.activate_reference then
-		-- addSetAnchor( o, Display.TopLeftReferencePoint )
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newImage( ... )
-	-- print( 'Kompatible.newImage' )
-
-	local o = Display.super.newImage( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newImageRect( ... )
-	-- print( 'Kompatible.newImageRect' )
-
-	local o = Display.super.newImageRect( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-
-
+-- Graphics 1.0 lines had width, now strokeWidth
+local newLine = Display.newLine
 
 function Display.newLine( ... )
-	-- print( 'Kompatible.newLine' )
-
-	local o = Display.super.newLine( ... )
-
-	if dkd.print_warnings then
-		print('\n')
-		print( "WARNING KOMPATIBLE: change newLine property 'width' to 'strokeWidth'" )
-		print('\n')
+	if dkd.print_warnings and not line_warned then
+		line_warned = true
+		print( "WARNING dmc_kompatible: change newLine property 'width' to 'strokeWidth'" )
 	end
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-		o.setColor = o.setFillColor
-	end
-
-	return o
-end
-
-
-function Display.newPolygon( ... )
-	-- print( 'Kompat.newPolygon' )
-
-	local o = Display.super.newPolygon( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newRect( ... )
-	-- print( 'Kompatible.newRect' )
-
-	local o = Display.super.newRect( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.CenterReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newRoundedRect( ... )
-	-- print( 'Kompatible.newRoundedRect' )
-
-	local o = Display.super.newRoundedRect( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.CenterReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-	if dkd.activate_strokecolor then
-		addSetStrokeColor( o )
-	end
-
-	return o
-end
-
-
-function Display.newSprite( ... )
-	-- print( 'Kompatible.newSprite' )
-
-	local o = Display.super.newSprite( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o )
-	end
-
-	return o
-end
-
-
-function Display.newText( ... )
-	-- print( 'Kompatible.newText' )
-
-	local o = Display.super.newText( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.CenterReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-		o.setTextColor = o.setFillColor
-	end
-
-	return o
+	return newLine( ... )
 end
 
 
@@ -512,68 +351,15 @@ setmetatable( Native, { __index=Native.super } )
 
 --== Corona Native API ==--
 
-function Native.newText( ... )
-	-- print( 'Kompatible native.newText' )
+-- text fields and boxes color their text with setTextColor(),
+-- 0-255 like Graphics 1.0; web views have no color
+local TEXT = { setTextColor='setTextColor' }
 
-	local o = Native.super.newText( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newTextBox( ... )
-	-- print( 'Kompatible native.newTextBox' )
-
-	local o = Native.super.newTextBox( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newTextField( ... )
-	-- print( 'Kompatible native.newTextField' )
-
-	local o = Native.super.newTextField( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
-
-
-function Native.newWebView( ... )
-	-- print( 'Kompatible native.newWebView' )
-
-	local o = Native.super.newWebView( ... )
-
-	if dkd.activate_reference then
-		addSetAnchor( o, Display.TopLeftReferencePoint )
-	end
-	if dkd.activate_fillcolor then
-		addSetFillColor( o )
-	end
-
-	return o
-end
+wrapConstructors( Native, _NATIVE, {
+	newTextBox={ reference=TOP_LEFT, fill=TEXT },
+	newTextField={ reference=TOP_LEFT, fill=TEXT },
+	newWebView={ reference=TOP_LEFT },
+})
 
 
 
@@ -590,5 +376,8 @@ if dkd.make_global then
 end
 
 
--- return function so we can return two values
-return function() return Display, Native end
+-- call the module to get the two tables:
+-- local display, native = require( 'dmc_corona.dmc_kompatible' )()
+return setmetatable( { VERSION=VERSION, display=Display, native=Native }, {
+	__call=function() return Display, Native end
+})

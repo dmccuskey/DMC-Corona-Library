@@ -1,7 +1,7 @@
 --====================================================================--
 -- lua_promise.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-promise
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.1"
+local VERSION = "0.2.0"
 
 
 
@@ -48,6 +48,8 @@ local VERSION = "0.1.1"
 
 
 local Class = require 'lua_class'
+
+local newClass = Class.newClass
 
 
 
@@ -59,8 +61,9 @@ local Class = require 'lua_class'
 local LOCAL_DEBUG = false
 
 local tinsert = table.insert
+local unpack = unpack or table.unpack
 
-local Promise, Deferred, Failure -- forward declarations
+local Promise, Deferred -- forward declarations
 
 
 
@@ -83,21 +86,26 @@ local function fail( result )
 	return d
 end
 
-local function maybeDeferred( func, args, kwargs )
-	local result = func( args, kwargs )
-	local is_obj = type(result)=='table' and result.isa ~= nil
+-- calls func with the arguments; an error comes back as a rejected Deferred
+local function maybeDeferred( func, ... )
+	local ok, result = pcall( func, ... )
 
-	if is_obj and result:isa( Deferred ) then
-		return result
-
-	elseif is_obj and result:isa( Failure ) then
+	if not ok then
 		return fail( result )
+
+	elseif type(result)=='table' and type(result.isa)=='function'
+		and result:isa( Deferred )
+	then
+		return result
 
 	else
 		return succeed( result )
 	end
+end
 
-	return nil
+-- keeps every value, nil holes too
+local function pack( ... )
+	return { n=select( '#', ... ), ... }
 end
 
 
@@ -147,26 +155,29 @@ function Promise.__getters:state()
 end
 
 
+-- a promise settles once: later resolve()/reject() calls are ignored
 function Promise:resolve( ... )
 	-- print( "Promise:resolve" )
+	if self._state ~= Promise.STATE_PENDING then return end
 	self._state = Promise.STATE_RESOLVED
-	self._result = {...}
-	self:_execute( self._done_cbs, ... )
+	self._result = pack( ... )
+	self:_execute( self._done_cbs, self._result )
 end
 
 function Promise:reject( ... )
 	-- print( "Promise:reject" )
+	if self._state ~= Promise.STATE_PENDING then return end
 	self._state = Promise.STATE_REJECTED
-	self._reason = {...}
-	self:_execute( self._fail_cbs, ... )
+	self._reason = pack( ... )
+	self:_execute( self._fail_cbs, self._reason )
 end
 
 
 function Promise:done( callback )
 	-- print( "Promise:done" )
 	if self._state == Promise.STATE_RESOLVED then
-		callback( unpack( self._result ) )
-	else
+		callback( unpack( self._result, 1, self._result.n ) )
+	elseif self._state == Promise.STATE_PENDING then
 		self:_addCallback( self._done_cbs, callback )
 	end
 end
@@ -178,8 +189,8 @@ end
 function Promise:fail( errback )
 	-- print( "Promise:fail" )
 	if self._state == Promise.STATE_REJECTED then
-		errback( unpack( self._reason ) )
-	else
+		errback( unpack( self._reason, 1, self._reason.n ) )
+	elseif self._state == Promise.STATE_PENDING then
 		self:_addCallback( self._fail_cbs, errback )
 	end
 end
@@ -194,10 +205,12 @@ function Promise:_addCallback( list, func )
 	tinsert( list, #list+1, func )
 end
 
-function Promise:_execute( list, ... )
+-- the promise has settled: the callback lists aren't needed after this
+function Promise:_execute( list, values )
 	-- print("Promise:_execute")
+	self._done_cbs, self._fail_cbs = {}, {}
 	for i=1,#list do
-		list[i]( ... )
+		list[i]( unpack( values, 1, values.n ) )
 	end
 end
 

@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/bytearray.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-bytearray
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.4.0"
+local VERSION = "0.5.0"
 
 
 
@@ -57,8 +57,6 @@ local has_pack, PackByteArray = pcall( require, 'lua_bytearray.pack_bytearray' )
 --====================================================================--
 --== Setup, Constants
 
-
-local ObjectBase = Class.ObjectBase
 
 local assert = assert
 local iwrite = io.write
@@ -104,7 +102,8 @@ end
 --====================================================================--
 
 
-local ByteArray = newClass( Parents, { name="Byte Array" } )
+local ByteArray = Class.newClass( Parents, { name="Byte Array" } )
+ByteArray.__version = VERSION
 
 
 --======================================================--
@@ -258,7 +257,7 @@ function ByteArray:writeByte( byte )
 	assert( type(byte)=='number', "not valid byte" )
 	assert( byte>=0 and byte<=255, "not valid byte" )
 	--==--
-	self:writeChar( schar(byte) )
+	return self:writeChar( schar(byte) )
 end
 
 
@@ -306,18 +305,18 @@ ByteArray.writeBuf = ByteArray.writeUTFBytes
 
 -- reads bytes FROM us TO array
 -- ba array to read TO
--- length for ba being read from
--- offset for ba being written to
+-- offset for ba being written to (default: its end)
+-- length for us being read from (default: all we have left)
 --
 function ByteArray:readBytes( ba, offset, length )
 	assert( ba and ba:isa(ByteArray), "Need a ByteArray instance" )
 	--==--
-	offset = offset ~= nil and offset or 1
-	length = length ~= nil and length or ba.bytesAvailable
-	if length == 0 then return end
+	offset = offset ~= nil and offset or ba.length + 1
+	length = length ~= nil and length or self.bytesAvailable
 
 	assert( type(offset)=='number', "offset must be a number" )
-	assert( type(length)=='number', "offset must be a number" )
+	assert( type(length)=='number', "length must be a number" )
+	if length == 0 then return self end
 
 	local bytes = self:readUTFBytes( length )
 	ba._buf = ByteArray.putBytes( ba._buf, bytes, offset )
@@ -328,18 +327,18 @@ end
 
 -- write bytes TO us FROM array
 -- ba array to write FROM
--- length for ba being read from
--- offset for ba being written to
+-- offset for us being written to (default: our end)
+-- length for ba being read from (default: all it has left)
 --
 function ByteArray:writeBytes( ba, offset, length )
 	assert( ba and ba:isa(ByteArray), "Need a ByteArray instance" )
 	--==--
-	offset = offset ~= nil and offset or 1
+	offset = offset ~= nil and offset or self.length + 1
 	length = length ~= nil and length or ba.bytesAvailable
-	if length == 0 then return end
 
 	assert( type(offset)=='number', "offset must be a number" )
-	assert( type(length)=='number', "offset must be a number" )
+	assert( type(length)=='number', "length must be a number" )
+	if length == 0 then return self end
 
 	local bytes = ba:readUTFBytes( length )
 	self._buf = ByteArray.putBytes( self._buf, bytes, offset )

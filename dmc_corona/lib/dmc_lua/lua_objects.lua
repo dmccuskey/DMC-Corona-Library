@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_objects.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-objects
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.3.0"
+local VERSION = "1.4.1"
 
 
 
@@ -52,8 +52,7 @@ local VERSION = "1.3.0"
 --====================================================================--
 --== Imports
 
-local Class = test
-local Objects = require 'lua_class'
+local ClassModule = require 'lua_class'
 local EventsMixModule = require 'lua_events_mix'
 
 
@@ -62,9 +61,8 @@ local EventsMixModule = require 'lua_events_mix'
 --== Setup, Constants
 
 
-local Class = Objects.Class
-local registerCtorName = Objects.registerCtorName
-local registerDtorName = Objects.registerDtorName
+local Class = ClassModule.Class
+local registerDtorName = ClassModule.registerDtorName
 
 local EventsMix = EventsMixModule.EventsMix
 
@@ -79,7 +77,7 @@ registerDtorName( 'removeSelf', Class )
 --====================================================================--
 
 
-local ObjectBase = newClass( { Class, EventsMix }, { name="Object Base" } )
+local ObjectBase = ClassModule.newClass( { Class, EventsMix }, { name="Object Base" } )
 
 
 
@@ -99,6 +97,10 @@ function ObjectBase:__new__( ... )
 
 	-- skip these if a Class object (ie, NOT an instance)
 	if rawget( self, '__is_class' ) == false then
+		-- without its own list, an instance would use its class's
+		assert( rawget( self, '__event_listeners' ), string.format(
+			"ObjectBase: %s's __init__() must call self:superCall( '__init__', ... )",
+			tostring( self.NAME ) ) )
 		self:__initComplete__()
 	end
 
@@ -135,7 +137,11 @@ function ObjectBase:__init__( ... )
 	there is no __init__ on Class
 	-- self:superCall( Class, '__init__', ... )
 	--]]
-	self:superCall( EventsMix, '__init__', ... )
+	-- only instances get a list of listeners: a class's would be shared
+	-- by every instance that is missing its own
+	if rawget( self, '__is_class' ) == false then
+		self:superCall( EventsMix, '__init__', ... )
+	end
 	--==--
 end
 
@@ -200,9 +206,13 @@ end
 --====================================================================--
 
 
--- simply add to current exports
+-- lua-class's exports, plus ours
+local Objects = {}
+for k, v in pairs( ClassModule ) do
+	Objects[ k ] = v
+end
+Objects.__version = VERSION
 Objects.ObjectBase = ObjectBase
-
 
 
 return Objects

@@ -3,7 +3,7 @@
 --
 --  utility to read in configuration file for dmc-corona-library
 --
--- Documentation:
+-- Documentation: https://github.com/dmccuskey/dmc-corona-boot
 --====================================================================--
 
 --[[
@@ -41,7 +41,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.5.2"
+local VERSION = "1.6.0"
 
 
 
@@ -76,7 +76,7 @@ local Utils = {} -- make copying from dmc_utils easier
 
 function Utils.extend( fromTable, toTable )
 
-	function _extend( fT, tT )
+	local function _extend( fT, tT )
 
 		for k,v in pairs( fT ) do
 
@@ -159,7 +159,7 @@ end
 
 --== Start lua_files copies ==--
 
--- version 0.2.0
+-- version 0.2.0; the config parser (readConfigFile) from 0.3.0
 
 local File = {}
 
@@ -265,7 +265,7 @@ function File.processSectionLine( line )
 	assert( type(line)=='string', "expected string as parameter" )
 	assert( #line > 0 )
 	--==--
-	local key = line:match( "%[([%u_]+)%]" )
+	local key = line:match( "^%[(%u[%w_]*)%]" )
 	assert( type(key) ~= 'nil', "key not found in line: "..tostring(line) )
 	return string.lower( key ) -- use only lowercase inside of module
 end
@@ -276,14 +276,12 @@ function File.processKeyLine( line )
 	assert( #line > 0 )
 	--==--
 
-	-- split up line into key/value
-	local raw_key, raw_val = line:match( "([%u_:]+)%s*=%s*(.-)%s*$" )
-
-	-- split up key parts
-	local keys = {}
-	for k in string.gmatch( raw_key, "([^:]+)") do
-		tinsert( keys, #keys+1, k )
+	-- split up line into key/value, KEY:TYPE = value or KEY = value
+	local key_name, key_type, raw_val = line:match( "^(%u[%w_]*)%s*:%s*(%w+)%s*=%s*(.-)%s*$" )
+	if key_name == nil then
+		key_name, raw_val = line:match( "^(%u[%w_]*)%s*=%s*(.-)%s*$" )
 	end
+	assert( key_name ~= nil, "expected KEY = value in line: "..tostring(line) )
 
 	-- trim off quotes, make sure balanced
 	local q1, q2, trim
@@ -291,17 +289,16 @@ function File.processKeyLine( line )
 	assert( q1 == q2, "quotes must match" )
 
 	-- process key and value
-	local key_name, key_type = unpack( keys )
 	key_name = File.processKeyName( key_name )
 	key_type = File.processKeyType( key_type )
 
 	-- get final value
 	local key_value
-	if key_type and Utils.propertyIn( KEY_TYPES, key_type ) then
-		local method = 'castTo_'..key_type
-		key_value = File[method]( trim )
-	else
+	if key_type == nil then
 		key_value = File.castTo_string( trim )
+	else
+		assert( Utils.propertyIn( KEY_TYPES, key_type ), "unknown type '"..key_type.."' in line: "..tostring(line) )
+		key_value = File[ 'castTo_'..key_type ]( trim )
 	end
 
 	return key_name, key_value
@@ -325,11 +322,13 @@ function File.processKeyType( name )
 end
 
 
+-- 'true' or 'false', any case
 function File.castTo_boolean( value )
 	assert( type(value)=='string' )
 	--==--
-	if value == 'true' then return true
-	else return false end
+	local lower = string.lower( value )
+	assert( lower == 'true' or lower == 'false', "expected true or false, got '"..value.."'" )
+	return lower == 'true'
 end
 File.castTo_bool = File.castTo_boolean
 
@@ -340,7 +339,7 @@ function File.castTo_integer( value )
 	assert( type(value)=='string' )
 	--==--
 	local num = tonumber( value )
-	assert( type(num) == 'number' )
+	assert( type(num) == 'number' and num == math.floor( num ), "expected a whole number, got '"..value.."'" )
 	return num
 end
 File.castTo_int = File.castTo_integer
@@ -353,7 +352,7 @@ end
 function File.castTo_path( value )
 	assert( type(value)=='string' )
 	--==--
-	return string.gsub( value, '[/\\]', "." )
+	return ( string.gsub( value, '[/\\]', "." ) )
 end
 function File.castTo_string( value )
 	assert( type(value)~='nil' and type(value)~='table' )

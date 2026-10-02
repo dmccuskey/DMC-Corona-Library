@@ -50,39 +50,6 @@ local VERSION = "0.3.0"
 
 
 --====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
-
---====================================================================--
 --== Configuration
 
 
@@ -98,6 +65,8 @@ if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
 end
 
 dmc_lib_data = _G.__dmc_corona
+
+local Utils = require 'lua_utils'
 
 
 
@@ -129,7 +98,6 @@ local dmc_sockets_data = Utils.extend( dmc_lib_data.dmc_sockets, DMC_SOCKETS_DEF
 
 local Objects = require 'lua_objects'
 local socket = require 'socket'
-local Utils = require 'lua_utils'
 
 local TCPSocket = require 'dmc_sockets.tcp'
 local ATCPSocket = require 'dmc_sockets.async_tcp'

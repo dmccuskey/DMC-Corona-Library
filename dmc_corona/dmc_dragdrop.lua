@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_dragdrop.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-dragdrop
 --====================================================================--
 
 --[[
@@ -32,6 +32,8 @@ SOFTWARE.
 
 
 
+
+
 --====================================================================--
 -- DMC Corona Library : DMC Drag Drop
 --====================================================================--
@@ -39,7 +41,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.5.0"
+local VERSION = "0.6.0"
 
 
 
@@ -48,91 +50,16 @@ local VERSION = "0.5.0"
 --====================================================================--
 
 
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-
---== Start: copy from lua_utils ==--
-
--- extend()
--- Copy key/values from one table to another
--- Will deep copy any value from first table which is itself a table.
+-- boot dmc_corona with boot script, if it's there
+-- dmc-dragdrop has no settings
 --
--- @param fromTable the table (object) from which to take key/value pairs
--- @param toTable the table (object) in which to copy key/value pairs
--- @return table the table (object) that received the copied items
---
-function Utils.extend( fromTable, toTable )
-
-	if not fromTable or not toTable then
-		error( "table can't be nil" )
-	end
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
---== End: copy from lua_utils ==--
-
-
-
---====================================================================--
---== Configuration
-
-
-local dmc_lib_data
-
--- boot dmc_corona with boot script or
--- setup basic defaults if it doesn't exist
---
-if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
-	_G.__dmc_corona = {
-		dmc_corona={},
-	}
-end
-
-dmc_lib_data = _G.__dmc_corona
+pcall( function() require( 'dmc_corona_boot' ) end )
 
 
 
 --====================================================================--
 --== DMC Drag Drop
 --====================================================================--
-
-
-
---====================================================================--
---== Configuration
-
-
-dmc_lib_data.dmc_dragdrop = dmc_lib_data.dmc_dragdrop or {}
-
-local DMC_DRAGDROP_DEFAULTS = {
-	debug_active=false,
-}
-
-local dmc_dragdrop_data = Utils.extend( dmc_lib_data.dmc_dragdrop, DMC_DRAGDROP_DEFAULTS )
 
 
 
@@ -206,6 +133,49 @@ local function is_display_object( o )
 end
 
 
+-- contentCenter()
+--
+-- centre of a display object, in content coordinates
+-- returns nil if it has no bounds (eg, it has been removed)
+--
+local function contentCenter( o )
+	local bounds = o and o.contentBounds
+	if not bounds then return nil end
+	return ( bounds.xMin+bounds.xMax )/2, ( bounds.yMin+bounds.yMax )/2
+end
+
+
+-- toParent()
+--
+-- convert content coordinates to those of an object's parent
+--
+local function toParent( o, x, y )
+	if o.parent then x, y = o.parent:contentToLocal( x, y ) end
+	return x, y
+end
+
+
+-- copyList()
+--
+-- copy of a list, so a callback can change the original
+-- while we go through it
+--
+local function copyList( list )
+	local copy = {}
+	for i=1, #list do copy[i] = list[i] end
+	return copy
+end
+
+
+-- removeFromList()
+--
+local function removeFromList( list, item )
+	for i=#list, 1, -1 do
+		if list[i]==item then tremove( list, i ) end
+	end
+end
+
+
 
 --====================================================================--
 --== Drag Drop Class
@@ -213,6 +183,8 @@ end
 
 
 local DragDrop = newClass( Class, {name="Drag Drop"} )
+
+DragDrop.VERSION = VERSION
 
 --== Class Constants
 
@@ -249,9 +221,6 @@ function DragDrop:__new__( ... )
 
 	self._display_property = self.DISPLAY_PROPERTY
 
-	self._proxy_color = {}
-	self._proxy_stroke_color = color_lightgrey
-
 	-- hash of all registered objects
 	-- hashed on object string
 	self._registered = {}
@@ -262,15 +231,16 @@ function DragDrop:__new__( ... )
 	-- list of registered objects with dragStop()
 	self._onDragStopList = {}
 
-	-- Drag Targets Info
-	-- a hash, indexed by drag target source
+	-- Drag Info, one per drag
+	-- a hash, indexed by drag proxy
 	self._drag_targets = {}
 
-	-- Drag Target Event Info
-	-- drop_target: target being dropped on, Display Object
-	-- drop_target_accept: drag event is accepted, Boolean
-	self._drop_target = nil
-	self._drop_target_accept = false
+	-- Drag Info of the drag whose event is being sent,
+	-- for acceptDragDrop()
+	self._dispatch_drag = nil
+
+	-- drop targets already warned about, having no display object
+	self._warned = setmetatable( {}, { __mode='k' } )
 
 end
 
@@ -295,7 +265,7 @@ end
 --
 function DragDrop.__setters:display_name( value )
 	-- print( "DragDrop.__setters:display_name", value )
-	assert( type(value)=='string', "fdsfsd")
+	assert( type(value)=='string', "DragDrop.display_name must be a string" )
 	--==--
 	self._display_property = value
 end
@@ -304,6 +274,7 @@ end
 -- register()
 --
 -- register a Drop Target
+-- registering it again replaces its handlers
 -- @param drop, Corona Display Object
 -- @param params, table with parameters
 --
@@ -347,6 +318,8 @@ function DragDrop:register( drop, params )
 	self._registered[ drop ] = ds
 
 	-- save for lookup optimization
+	removeFromList( self._onDragStartList, drop )
+	removeFromList( self._onDragStopList, drop )
 	if ds.dragStart then
 		tinsert( self._onDragStartList, drop )
 	end
@@ -356,26 +329,25 @@ function DragDrop:register( drop, params )
 end
 
 
+-- unregister()
+--
+-- a drag over the target carries on as if over nothing
+--
 function DragDrop:unregister( drop )
 	-- print( "DragDrop:unregister", drop )
 	assert( drop, "DragDrop:unregister requires drop target" )
 	--==--
 
-	local idx, list
-
 	self._registered[ drop ] = nil
+	removeFromList( self._onDragStartList, drop )
+	removeFromList( self._onDragStopList, drop )
 
-	idx, list = nil, self._onDragStartList
-	for i, item in ipairs( list ) do
-		if item==drop then idx=i; break end
+	for _, drag_info in pairs( self._drag_targets ) do
+		if drag_info.drop_target==drop then
+			drag_info.drop_target = nil
+			drag_info.drop_target_accept = false
+		end
 	end
-	if idx~=nil then tremove( list, idx ) end
-
-	idx, list = nil, self._onDragStopList
-	for i, item in ipairs( list ) do
-		if item==drop then idx=i; break end
-	end
-	if idx~=nil then tremove( list, idx ) end
 
 end
 
@@ -401,9 +373,9 @@ function DragDrop:doDrag( drag_orgin, event, drag_op_info )
 		drag_proxy = createProxySquare{
 			width=drag_orgin.width,
 			height=drag_orgin.height,
-			fillColor=self._proxy_fillColor,
-			strokeColor=self._proxy_strokeColor,
-			strokeWidth=self._proxy_strokeWidth
+			fillColor=drag_op_info.fillColor,
+			strokeColor=drag_op_info.strokeColor,
+			strokeWidth=drag_op_info.strokeWidth
 		}
 	end
 
@@ -417,6 +389,9 @@ function DragDrop:doDrag( drag_orgin, event, drag_op_info )
 		x_offset: dragged item x-offset from touch center, Integer
 		y_offset: dragged item y-offset from touch center, Integer
 		alpha: dragged item alpha, Number
+		touch_id: id of the touch doing the drag
+		drop_target: target being dropped on, Display Object
+		drop_target_accept: drag event is accepted, Boolean
 	--]]
 	local drag_info = {}
 
@@ -427,13 +402,15 @@ function DragDrop:doDrag( drag_orgin, event, drag_op_info )
 	drag_info.x_offset = drag_op_info.xOffset or 0
 	drag_info.y_offset = drag_op_info.yOffset or 0
 	drag_info.alpha = drag_op_info.alpha or 0.5
+	drag_info.touch_id = event.id
+	drag_info.drop_target = nil
+	drag_info.drop_target_accept = false
 
 	self._drag_targets[ drag_proxy ] = drag_info
 
 	--== Update the Drag Target visual item
 
-	drag_proxy.x = event.x + drag_info.x_offset
-	drag_proxy.y = event.y + drag_info.y_offset
+	self:_moveProxy( drag_info, event.x, event.y )
 	drag_proxy.alpha = drag_info.alpha
 
 	--== Start our drag operation
@@ -447,9 +424,11 @@ end
 -- acceptDragDrop()
 --
 -- notify manager about drag accept
+-- applies to the drag whose event is being sent
 --
 function DragDrop:acceptDragDrop()
-	self._drop_target_accept = true
+	local drag_info = self._dispatch_drag
+	if drag_info then drag_info.drop_target_accept = true end
 end
 
 
@@ -477,6 +456,69 @@ function DragDrop:_createEventStructure( obj, drag_info )
 end
 
 
+-- _dispatch()
+--
+-- call a drop target's handler for an event, if it has one
+-- @param name, handler name, eg 'dragEnter'
+-- @param o, drop target
+-- @param drag_info, the drag
+--
+function DragDrop:_dispatch( name, o, drag_info )
+	local ds = self._registered[ o ]
+	local f = ds and ds[ name ]
+	if not f then return end
+
+	local e = self:_createEventStructure( o, drag_info )
+	local prev = self._dispatch_drag
+	self._dispatch_drag = drag_info
+	if ds.call_with_object then
+		f( o, e )
+	else
+		f( e )
+	end
+	self._dispatch_drag = prev
+end
+
+
+-- _getDisplayObject()
+--
+-- a target's display object, the target itself or its display property
+--
+function DragDrop:_getDisplayObject( o )
+	if is_display_object( o ) then return o end
+	return o[ self._display_property ]
+end
+
+
+-- _setFocus()
+--
+-- give the proxy the touch focus, or take it away
+-- under multitouch, the touch id gives each drag its own focus;
+-- without, Solar2D treats it as the one focus
+--
+function DragDrop:_setFocus( drag_info, focus )
+	local stage = display.getCurrentStage()
+	local proxy = drag_info.proxy
+	if drag_info.touch_id==nil then
+		stage:setFocus( focus and proxy or nil )
+	elseif focus then
+		stage:setFocus( proxy, drag_info.touch_id )
+	else
+		stage:setFocus( proxy, nil )
+	end
+end
+
+
+-- _moveProxy()
+--
+-- put the proxy at a touch point, in content coordinates
+--
+function DragDrop:_moveProxy( drag_info, x, y )
+	local proxy = drag_info.proxy
+	proxy.x, proxy.y = toParent( proxy, x + drag_info.x_offset, y + drag_info.y_offset )
+end
+
+
 -- _doDragStart()
 --
 -- start a drag process
@@ -486,22 +528,14 @@ function DragDrop:_doDragStart( drag_proxy )
 	-- print( "DragDrop:_doDragStart", drag_proxy )
 	assert( drag_proxy, "DragDrop:_doDragStart requires drag proxy" )
 	--==--
-	drag_proxy.__is_dmc_drag = true
-	display.getCurrentStage():setFocus( drag_proxy )
-
 	local drag_info = self._drag_targets[ drag_proxy ]
-	local onDragStartList = self._onDragStartList
-	for i=1, #onDragStartList do
 
-		local o = onDragStartList[ i ]
-		local ds = self._registered[ o ]
-		local e = self:_createEventStructure( o, drag_info )
+	drag_proxy.__is_dmc_drag = true
+	self:_setFocus( drag_info, true )
 
-		if ds.call_with_object then
-			ds.dragStart( o, e )
-		else
-			ds.dragStart( e )
-		end
+	local list = copyList( self._onDragStartList )
+	for i=1, #list do
+		self:_dispatch( 'dragStart', list[ i ], drag_info )
 	end
 end
 
@@ -512,24 +546,16 @@ end
 -- @param drag_proxy, the drag proxy object
 --
 function DragDrop:_doDragStop( drag_proxy )
-	assert( drag_proxy, "DragDrop:_doDragStart requires drag proxy" )
+	assert( drag_proxy, "DragDrop:_doDragStop requires drag proxy" )
 	--==--
-	drag_proxy.__is_dmc_drag = nil
-	display.getCurrentStage():setFocus( nil )
-
 	local drag_info = self._drag_targets[ drag_proxy ]
-	local onDragStartList = self._onDragStopList
-	for i=1, #onDragStartList do
 
-		local o = onDragStartList[ i ]
-		local ds = self._registered[ o ]
-		local e = self:_createEventStructure( o, drag_info )
+	drag_proxy.__is_dmc_drag = nil
+	self:_setFocus( drag_info, false )
 
-		if ds.call_with_object then
-			ds.dragStop( o, e )
-		else
-			ds.dragStop( e )
-		end
+	local list = copyList( self._onDragStopList )
+	for i=1, #list do
+		self:_dispatch( 'dragStop', list[ i ], drag_info )
 	end
 end
 
@@ -539,8 +565,8 @@ end
 --
 -- stop a drag process
 -- @param params, table of animation parameters
--- x, number coordinate
--- y, number coordinate
+-- x, number content coordinate
+-- y, number content coordinate
 -- time, milliseconds
 -- resize, boolean
 -- drag_proxy, the drag proxy pbject
@@ -565,9 +591,10 @@ function DragDrop:_createEndAnimation( params )
 	local tParams = {
 		onComplete=removeFunc,
 		time=params.time,
-		x=params.x,
-		y=params.y,
 	}
+	if params.x and params.y then
+		tParams.x, tParams.y = toParent( params.drag_proxy, params.x, params.y )
+	end
 	if params.resize then
 		tParams.width = 10 ; tParams.height = 10
 	end
@@ -616,23 +643,19 @@ function DragDrop:_searchDropTargets( x, y )
 	local target = nil
 
 	for drop, _ in pairs( self._registered ) do
-		local o = drop
+		local o = self:_getDisplayObject( drop )
+		local bounds = o and o.contentBounds
 
-		if not is_display_object( drop ) then
-			o = drop[ self._display_property ]
-			if o == nil then
-				print( string.format( "\nWARNING: object not of type Corona Display nor does it have display property '%s'\n", self._display_property ) )
-			end
+		if o == nil and not self._warned[ drop ] then
+			self._warned[ drop ] = true
+			print( string.format( "\nWARNING: object not of type Corona Display nor does it have display property '%s'\n", self._display_property ) )
 		end
 
-		local bounds, isWithinBounds
-
-		bounds = o.contentBounds
-		isWithinBounds =
-			( bounds.xMin <= x and bounds.xMax >= x and
-			bounds.yMin <= y and bounds.yMax >= y )
-
-		if isWithinBounds then target=drop; break end
+		if bounds and
+			bounds.xMin <= x and bounds.xMax >= x and
+			bounds.yMin <= y and bounds.yMax >= y then
+			target=drop; break
+		end
 
 	end
 
@@ -650,123 +673,82 @@ function DragDrop:touch( e )
 
 	local proxy = e.target
 	local phase = e.phase
-	local result = false
-
-	if not proxy.__is_dmc_drag then return result end
-
 	local drag_info = self._drag_targets[ proxy ]
 
+	if not proxy.__is_dmc_drag or not drag_info then return false end
+
 	if phase=='began' then
-		return result
+		return false
 
 	elseif phase=='moved' then
 
 		-- keep the dragged item moving with the touch coordinates
-		proxy.x = e.x + drag_info.x_offset
-		proxy.y = e.y + drag_info.y_offset
+		self:_moveProxy( drag_info, e.x, e.y )
 
 		-- see if we are over any drop targets
+		local dropTarget = drag_info.drop_target
 		local newDropTarget = self:_searchDropTargets( e.x, e.y )
 
-		if self._drop_target == newDropTarget then
+		if dropTarget == newDropTarget then
 			-- over the same object, so call dragOver()
 
-			if self._drop_target and self._drop_target_accept then
-
-				local o = newDropTarget
-				local ds = self._registered[ o ]
-				local f = ds.dragOver
-				if f then
-					local e = self:_createEventStructure( o, drag_info )
-					if ds.call_with_object then
-						result = f( o, e )
-					else
-						result = f( e )
-					end
-				end
+			if dropTarget and drag_info.drop_target_accept then
+				self:_dispatch( 'dragOver', dropTarget, drag_info )
 			end
 
-		elseif self._drop_target ~= newDropTarget then
+		else
 			-- new target is different
 			-- we exited current, so call dragExit() on current
 
-			if self._drop_target and self._drop_target_accept then
-
-				local o = self._drop_target
-				local ds = self._registered[ o ]
-				local f = ds.dragExit
-				if f then
-					local e = self:_createEventStructure( o, drag_info )
-					if ds.call_with_object then
-						result = f( o, e )
-					else
-						result = f( e )
-					end
-				end
+			if dropTarget and drag_info.drop_target_accept then
+				self:_dispatch( 'dragExit', dropTarget, drag_info )
 			end
 
-			self._drop_target_accept = false
+			-- save current drop target, before dragEnter()
+			-- so an unregister() there clears it
+			drag_info.drop_target = newDropTarget
+			drag_info.drop_target_accept = false
 
 			--== call dragEnter on newDropTarget
 
 			if newDropTarget then
-				local o = newDropTarget
-				local ds = self._registered[ o ]
-				local f = ds.dragEnter
-				if f then
-					local e = self:_createEventStructure( o, drag_info )
-					if ds.call_with_object then
-						result = f( o, e )
-					else
-						result = f( e )
-					end
-				end
+				self:_dispatch( 'dragEnter', newDropTarget, drag_info )
 			end
 
 		end
 
-		-- save current drop target
-		self._drop_target = newDropTarget
-
 
 	elseif phase=='ended' or phase=='cancelled' then
 
+		local dropTarget = drag_info.drop_target
 		local animateFunc
 
-		if self._drop_target and self._drop_target_accept then
-			-- same object, so call dragDrop()
-
-			local o = self._drop_target
-			local ds = self._registered[ o ]
-			local f = ds.dragDrop
-			if f then
-				local e = self:_createEventStructure( o, drag_info )
-
-				if ds.call_with_object then
-					result = f( o, e )
-				else
-					result = f( e )
-				end
-			end
+		if dropTarget and drag_info.drop_target_accept then
 			-- drag accepted, so keep on Drop Target and scale
+			-- (find where before dragDrop(), which may remove it)
+			local x, y = contentCenter( self:_getDisplayObject( dropTarget ) )
 			animateFunc = self:_createEndAnimation{
-				x=o.x, y=o.y,
-				time=DragDrop.ANIMATE_TIME_FAST,
+				x=x, y=y,
+				time=self.ANIMATE_TIME_FAST,
 				resize=true, drag_proxy=proxy
 			}
 
+			-- same object, so call dragDrop()
+			self:_dispatch( 'dragDrop', dropTarget, drag_info )
+
 		else
 			-- drop not accepted, so move proxy back to drag origin
+			local x, y = contentCenter( self:_getDisplayObject( drag_info.origin ) )
 			animateFunc = self:_createEndAnimation{
-				x=drag_info.origin.x, y=drag_info.origin.y,
-				time=DragDrop.ANIMATE_TIME_SLOW,
+				x=x, y=y,
+				time=self.ANIMATE_TIME_SLOW,
 				resize=false, drag_proxy=proxy
 			}
 
 		end
 
-		self._drop_target = nil
-		self._drop_target_accept = false
+		drag_info.drop_target = nil
+		drag_info.drop_target_accept = false
 
 		self:_doDragStop( proxy )
 		self:_stopListening( proxy )
@@ -775,7 +757,7 @@ function DragDrop:touch( e )
 
 	end
 
-	return result
+	return true
 end
 
 

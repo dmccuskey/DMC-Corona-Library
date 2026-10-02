@@ -1,7 +1,7 @@
 --====================================================================--
--- dmc_coroan/dmc_lifecycle_mix.lua
+-- dmc_corona/dmc_lifecycle_mix.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-lifecycle-mixin
 --====================================================================--
 
 --[[
@@ -39,7 +39,22 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
+
+
+
+--====================================================================--
+--== Configuration
+
+
+-- boot dmc_corona with boot script or
+-- setup basic defaults if it doesn't exist
+--
+if false == pcall( function() require( 'dmc_corona_boot' ) end ) then
+	_G.__dmc_corona = {
+		dmc_corona={},
+	}
+end
 
 
 
@@ -91,18 +106,28 @@ local function _patch( obj )
 	obj = obj or {}
 
 	-- add properties
-	Lifecycle.__init__( obj )
-
 	obj.LIFECYCLE_UPDATED = Lifecycle.LIFECYCLE_UPDATED
+	obj.PROPERTY_UPDATED = Lifecycle.PROPERTY_UPDATED
 
 	-- add methods
+	-- a plain table has no setters, so onUpdate and onProperty are
+	-- methods here: obj:onUpdate( func )
+	obj.__undoInit__ = Lifecycle.__undoInit__
+	obj.resetLifecycle = Lifecycle.resetLifecycle
+	obj.onUpdate = Lifecycle.onUpdate
+	obj.onProperty = Lifecycle.__setters.onProperty
 	obj.__invalidateProperties__ = Lifecycle.__invalidateProperties__
+	obj.__dispatchInvalidateNotification__ = Lifecycle.__dispatchInvalidateNotification__
+	obj.__stopUpdate = Lifecycle.__stopUpdate
 	obj.__invalidateNextFrame__ = Lifecycle.__invalidateNextFrame__
 	obj.__enterFrame__ = Lifecycle.__enterFrame__
 	obj.__validate__ = Lifecycle.__validate__
-	obj.__commitProperties__ = Lifecycle.__commitProperties__
+	obj.__commitProperties__ = obj.__commitProperties__ or Lifecycle.__commitProperties__
 
 	obj.setDebug = Lifecycle.setDebug
+
+	-- set up, once the methods are there
+	Lifecycle.__init__( obj )
 
 	return obj
 end
@@ -139,7 +164,7 @@ function Lifecycle.__undoInit__( self )
 	-- print( "Lifecycle.__undoInit__" )
 	self:__stopUpdate()
 	self.__enterFrame_f = nil
-	self.__setters.onUpdate = nil
+	if self.__setters then self.__setters.onUpdate = nil end
 end
 
 -- END: Mixin Setup for Lua Objects
@@ -168,7 +193,8 @@ function Lifecycle.resetLifecycle( self, params )
 	self.__debug_on = params.debug_on
 
 	-- need to do these manually, because in setters/getters
-	self.__setters.onUpdate = Lifecycle.onUpdate
+	-- (a patched plain table has none: it calls obj:onUpdate( func ))
+	if self.__setters then self.__setters.onUpdate = Lifecycle.onUpdate end
 end
 
 
@@ -200,6 +226,7 @@ function Lifecycle.__dispatchInvalidateNotification__( self, prop, value )
 	local e = {
 		name=self.EVENT,
 		type=self.PROPERTY_UPDATED,
+		target=self,
 		property=prop,
 		value=value
 	}
@@ -208,7 +235,9 @@ end
 
 
 function Lifecycle.__stopUpdate( self )
-	Runtime:removeEventListener( 'enterFrame', self.__enterFrame_f )
+	if self.__pending_update == true then
+		Runtime:removeEventListener( 'enterFrame', self.__enterFrame_f )
+	end
 	self.__pending_update = false
 end
 
@@ -232,7 +261,11 @@ function Lifecycle.__validate__( self )
 			self.__onUpdate({name=self.EVENT, type=self.LIFECYCLE_UPDATED, target=self})
 		end
 	end
-	self:__stopUpdate()
+	-- a setter called during the update marked the object as changed
+	-- again: keep listening, so that change is committed next frame
+	if self.__commit_dirty ~= true then
+		self:__stopUpdate()
+	end
 end
 
 function Lifecycle.__commitProperties__( self )
@@ -252,6 +285,8 @@ end
 
 
 return {
+	VERSION=VERSION,
+
 	LifecycleMix=Lifecycle,
 
 	patch=_patch,

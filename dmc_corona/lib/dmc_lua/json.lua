@@ -3,7 +3,7 @@
 --
 -- consistent method which which to load json on various systems
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-json-shim
 --====================================================================--
 
 

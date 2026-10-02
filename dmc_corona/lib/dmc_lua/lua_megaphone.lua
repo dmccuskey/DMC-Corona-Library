@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_megaphone.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-megaphone
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.2.0"
+local VERSION = "1.3.0"
 
 
 
@@ -66,11 +66,13 @@ local singleton = nil
 --====================================================================--
 
 
-local Megaphone = newClass( ObjectBase, { name="Lua Megaphone" } )
+local Megaphone = Objects.newClass( ObjectBase, { name="Lua Megaphone" } )
 
 --== Event Constants ==--
 
 Megaphone.EVENT = 'megaphone_event'
+
+Megaphone.__version = VERSION
 
 
 --======================================================--
@@ -108,13 +110,13 @@ function Megaphone:say( message, data, params )
 end
 function Megaphone:listen( listener )
 	-- print( "Megaphone:listen " )
-	assert( type(listener)=='function', "Megaphone:listen, arg 'listener' must be a function" )
+	assert( type(listener)=='function' or type(listener)=='table', "Megaphone:listen, arg 'listener' must be a function or an object" )
 	--==--
 	self:addEventListener( Megaphone.EVENT, listener )
 end
 function Megaphone:ignore( listener )
 	-- print( "Megaphone:ignore " )
-	assert( type(listener)=='function', "Megaphone:ignore, arg 'listener' must be a function" )
+	assert( type(listener)=='function' or type(listener)=='table', "Megaphone:ignore, arg 'listener' must be a function or an object" )
 	--==--
 	self:removeEventListener( Megaphone.EVENT, listener )
 end

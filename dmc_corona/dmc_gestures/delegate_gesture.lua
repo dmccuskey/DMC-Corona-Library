@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gestures/delegate_gesture.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[

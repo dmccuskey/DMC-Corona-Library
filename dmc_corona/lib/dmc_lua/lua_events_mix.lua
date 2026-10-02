@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_lua/lua_events_mix.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/lua-events-mixin
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.2"
+local VERSION = "0.3.0"
 
 
 
@@ -61,6 +61,8 @@ local type = type
 
 
 --== Start: copy from lua_utils ==--
+-- Copied, not required, so this file loads on its own, without
+-- lua_utils. A fix to the function in lua_utils goes here too.
 
 function Utils.createObjectCallback( object, method )
 	assert( object ~= nil, "missing object in Utils.createObjectCallback" )
@@ -72,15 +74,6 @@ function Utils.createObjectCallback( object, method )
 end
 
 --== End: copy from lua_utils ==--
-
-
--- callback is either function or object (table)
--- creates listener lookup key given event name and handler
---
-local function _createEventListenerKey( e_name, handler )
-	return e_name .. "::" .. tostring( handler )
-end
-
 
 
 -- return event unmodified
@@ -144,6 +137,9 @@ local function _patch( obj )
 	obj.setDebug = Events.setDebug
 	obj.setEventFunc = Events.setEventFunc
 
+	obj.createCallback = Events.createCallback
+	obj.createEvent = Events.createEvent
+
 	obj._dispatchEvent = Events._dispatchEvent
 
 	return obj
@@ -170,13 +166,11 @@ function Events.__init__( self, params )
 	--==--
 
 	--[[
-	event listeners key'd by:
-	* <event name>::<function>
-	* <event name>::<object>
+	event listeners, by event name, keyed by the listener itself
 	{
 		<event name> = {
-			'event::function' = func,
-			'event::object' = object (table)
+			<function> = func,
+			<object> = object (table)
 		}
 	}
 	--]]
@@ -244,28 +238,16 @@ function Events.addEventListener( self, e_name, listener )
 	assert( type( e_name )=='string', sfmt( "Events.addEventListener event name should be a string, received '%s'", tostring(e_name)) )
 	assert( type(listener)=='function' or type(listener)=='table', sfmt( "Events.addEventListener callback should be function or object, received '%s'", tostring(listener) ))
 
-	-- Sanity Check
-
-	if not e_name or type( e_name )~='string' then
-		error( "ERROR addEventListener: event name must be string", 2 )
-	end
-	if not listener and not Utils.propertyIn( {'function','table'}, type(listener) ) then
-		error( "ERROR addEventListener: listener must be a function or object", 2 )
-	end
-
-	-- Processing
-
-	local events, listeners, key
+	local events, listeners
 
 	events = self.__event_listeners
 	if not events[ e_name ] then events[ e_name ] = {} end
 	listeners = events[ e_name ]
 
-	key = _createEventListenerKey( e_name, listener )
-	if listeners[ key ] then
+	if listeners[ listener ] then
 		print("WARNING:: Events:addEventListener, already have listener")
 	else
-		listeners[ key ] = listener
+		listeners[ listener ] = listener
 	end
 
 end
@@ -275,19 +257,18 @@ end
 function Events.removeEventListener( self, e_name, listener )
 	-- print( "Events.removeEventListener" );
 
-	local listeners, key
+	local listeners
 
 	listeners = self.__event_listeners[ e_name ]
 	if not listeners or type(listeners)~= 'table' then
 		print( "WARNING:: Events:removeEventListener, no listeners found" )
+		return
 	end
 
-	key = _createEventListenerKey( e_name, listener )
-
-	if not listeners[ key ] then
+	if not listeners[ listener ] then
 		print( "WARNING:: Events:removeEventListener, listener not found" )
 	else
-		listeners[ key ] = nil
+		listeners[ listener ] = nil
 	end
 
 end
@@ -303,14 +284,27 @@ function Events:_dispatchEvent( event )
 	local e_name, listeners
 
 	e_name = event.name
+	if self.__debug_on then
+		print( "Events:dispatchEvent", e_name, tostring( event.type ) )
+	end
+
 	if not e_name or not self.__event_listeners[ e_name ] then return end
 
 	listeners = self.__event_listeners[ e_name ]
 	if type( listeners )~='table' then return end
 
-	for k, callback in pairs( listeners ) do
+	-- copy first: a listener added during this dispatch waits for the next
+	local callbacks = {}
+	for _, callback in pairs( listeners ) do
+		callbacks[ #callbacks+1 ] = callback
+	end
 
-		if type( callback )=='function' then
+	for _, callback in ipairs( callbacks ) do
+
+		if listeners[ callback ]==nil then
+			-- removed during this dispatch
+
+		elseif type( callback )=='function' then
 			-- have function
 		 	callback( event )
 
@@ -335,6 +329,8 @@ end
 
 
 return {
+	__version=VERSION,
+
 	EventsMix=Events,
 
 	dmcEventFunc=_createDmcEvent,

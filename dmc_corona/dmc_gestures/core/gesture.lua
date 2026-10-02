@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/core/gesture.lua
 --
--- Documentation:
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -127,8 +127,10 @@ function Gesture:__init__( params )
 	-- print( "Gesture:__init__", params )
 	params = params or {}
 
-	self:superCall( StatesMix, '__init__', params )
+	-- the events mixin (in ObjectBase) shares the debug flag
+	-- with the states mixin: init it first, so debug_on stays
 	self:superCall( ObjectBase, '__init__', params )
+	self:superCall( StatesMix, '__init__', params )
 	--==--
 
 	--== Sanity Check ==--
@@ -168,8 +170,8 @@ end
 function Gesture:__undoInit__()
 	-- print( "Gesture:__undoInit__" )
 	--==--
-	self:superCall( ObjectBase, '__undoInit__' )
 	self:superCall( StatesMix, '__undoInit__' )
+	self:superCall( ObjectBase, '__undoInit__' )
 end
 
 
@@ -453,6 +455,34 @@ end
 --======================================================--
 -- Touch Event
 
+-- calculate the "middle" of touch points in this gesture
+-- @param table of touches
+-- @return Coordinate table of coordinates
+function Gesture:_calculateCentroid( touches )
+	-- print("Gesture:_calculateCentroid" )
+	local cnt=0
+	local x,y = 0,0
+	for _, te in pairs( touches ) do
+		x=x+te.x ; y=y+te.y
+		cnt=cnt+1
+	end
+	if cnt==0 then return {x=0,y=0} end
+	return {x=x/cnt,y=y/cnt}
+end
+
+-- forget touches which have ended, once a new touch
+-- begins or one moves; until then their positions
+-- count, e.g. for the end of a two-finger tap
+function Gesture:_removeEndedTouches()
+	-- print( "Gesture:_removeEndedTouches" )
+	local touches = self._touches
+	for id, evt in pairs( touches ) do
+		if evt.phase=='ended' or evt.phase=='cancelled' then
+			touches[ id ] = nil
+		end
+	end
+end
+
 function Gesture:_createTouchEvent( event )
 	-- print( "Gesture:_createTouchEvent", self.id )
 	self._total_touch_count = self._total_touch_count + 1
@@ -476,7 +506,7 @@ function Gesture:_updateTouchEvent( event )
 		if id==tstr(event.id) then
 			evt.x, evt.y = event.x, event.y
 			evt.phase = event.phase
-		else
+		elseif evt.phase~='ended' and evt.phase~='cancelled' then
 			evt.phase='stationary'
 		end
 	end
@@ -504,11 +534,13 @@ function Gesture:touch( event )
 	-- print("Gesture:touch", event.phase, self.id )
 	local phase = event.phase
 	if phase=='began' then
+		self:_removeEndedTouches()
 		self:_createTouchEvent( event )
 	elseif phase=='moved' then
+		self:_removeEndedTouches()
 		self:_updateTouchEvent( event )
 	elseif phase=='cancelled' or phase=='ended' then
-	self:_endTouchEvent( event )
+		self:_endTouchEvent( event )
 	end
 end
 

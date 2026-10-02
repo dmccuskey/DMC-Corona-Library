@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_gesture/pinch_gesture.lua
 --
--- Documentation: http://docs.davidmccuskey.com/dmc-gestures
+-- Documentation: https://github.com/dmccuskey/dmc-gestures
 --====================================================================--
 
 --[[
@@ -69,10 +69,7 @@ local newClass = Objects.newClass
 
 local mabs = math.abs
 local msqrt = math.sqrt
-local tdelay = timer.performWithDelay
 local tinsert = table.insert
-local tremove = table.remove
-local tstr = tostring
 
 
 
@@ -149,9 +146,6 @@ function PinchGesture:__init__( params )
 	self._min_touches = 2
 	self._touch_dist = 0
 
-	self._test_mode = false
-	self._test_evt = nil
-
 end
 
 function PinchGesture:__initComplete__()
@@ -220,18 +214,8 @@ function PinchGesture.__setters:threshold( value )
 end
 
 
--- sets Test Mode, which injects another Touch Event.
--- allows easier testing on the simultator
---
-function PinchGesture.__setters:test_mode( value )
-	assert( type(value)=='boolean' )
-	--==--
-	self._test_mode = value
-end
-
-
--- @TODO
--- the velocity of the gesture motion (number).
+--- how fast the scale changes, per second, over the pinch's last movement (number).
+-- the events have it too, as `velocity`.
 -- Get Only
 -- @function .velocity
 -- @usage print( gesture.velocity )
@@ -251,7 +235,6 @@ function PinchGesture:_do_reset()
 	Continuous._do_reset( self )
 	self._velocity=0
 	self._touch_dist = 0
-	self._test_evt = nil
 	if self._reset_scale then
 		self._prev_scale = 1.0
 	end
@@ -281,6 +264,8 @@ function PinchGesture:_calculateTouchDistance( touches )
 	for _,v in pairs( touches ) do
 		tinsert( tch, v )
 	end
+	-- one touch left: no change
+	if #tch<2 then return self._touch_dist end
 	local xDelta = tch[1].x-tch[2].x
 	local yDelta = tch[1].y-tch[2].y
 	return msqrt( xDelta*xDelta + yDelta*yDelta )
@@ -300,7 +285,7 @@ function PinchGesture:_createMultitouchEvent( params )
 		self._touch_dist = self:_calculateTouchDistance( self._touches )
 	end
 	local o_dist = self._touch_dist
-	local n_dist = o_dist
+	local n_dist = self:_calculateTouchDistance( self._touches )
 	me.scale = (1-(o_dist-n_dist)/o_dist)*self._prev_scale
 	--[[
 	experimental
@@ -331,40 +316,13 @@ function PinchGesture:_endMultitouchEvent( me, params )
 end
 
 
---======================================================--
---== Test Methods
-
---[[
-function PinchGesture:_startTestTouchEvent( event )
-	-- print("PinchGesture:_startTestTouchEvent")
-	local offset = 30
-	local xOff, yOff = 2, 0
-	local evt ={
-		id=tstr( event.id )..'-test',
-		name=event.name,
-		xStart=event.xStart-offset*xOff,
-		yStart=event.yStart+offset*yOff,
-		x=event.xStart-offset*xOff,
-		y=event.yStart+offset*yOff,
-		time=event.time+100,
-		phase=event.phase
-	}
-	tdelay( 100, function()
-		self._test_evt = evt
-		self:touch( evt )
-	end)
+-- velocity of the scale, per second
+function PinchGesture:_addVelocity( me )
+	-- print( "PinchGesture:_addVelocity" )
+	self:_addVelocitySample( me.time, me.scale )
+	self._velocity = self:_calculateVelocity( me.time )
+	me.velocity = self._velocity
 end
-
-function PinchGesture:_endTestTouchEvent( event )
-	-- print("PinchGesture:_endTestTouchEvent")
-	local evt = self._test_evt
-	evt.phase = event.phase
-	tdelay( 100, function()
-		self._test_evt = nil
-		self:touch( evt )
-	end)
-end
---]]
 
 
 
@@ -387,10 +345,11 @@ function PinchGesture:touch( event )
 	if phase=='began' then
 
 		if state==Continuous.STATE_POSSIBLE then
-			local touches = self._touches
-			if is_touch_ok then
-					self._touch_dist = self:_calculateTouchDistance( touches )
-					self:_addMultitouchToQueue( Continuous.BEGAN )
+			if touch_count>2 then
+				-- too many fingers: not a pinch, until they all lift
+				self:gotoState( Continuous.STATE_FAILED )
+			elseif is_touch_ok then
+				self:_addMultitouchToQueue( Continuous.BEGAN, event.time )
 			end
 
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then
@@ -406,7 +365,7 @@ function PinchGesture:touch( event )
 
 		if state==Continuous.STATE_POSSIBLE then
 			if is_touch_ok then
-				self:_addMultitouchToQueue( Continuous.CHANGED )
+				self:_addMultitouchToQueue( Continuous.CHANGED, event.time )
 				if self:_calculateTouchChange( touches, self._touch_dist )>threshold then
 					self:gotoState( Continuous.STATE_BEGAN, event )
 				end
@@ -421,7 +380,7 @@ function PinchGesture:touch( event )
 
 		elseif state==Continuous.STATE_SOFT_RESET then
 			if is_touch_ok then
-				self:_addMultitouchToQueue( Continuous.BEGAN )
+				self:_addMultitouchToQueue( Continuous.BEGAN, event.time )
 				self:gotoState( Continuous.STATE_BEGAN, event )
 			end
 
@@ -429,16 +388,15 @@ function PinchGesture:touch( event )
 
 	elseif phase=='cancelled' then
 		-- @TODO: think about this, merge with 'ended' ?
-		self:gotoState( PinchGesture.STATE_FAILED  )
+		self:gotoState( Continuous.STATE_FAILED, event )
 
 	else -- ended
 		if state==Continuous.STATE_POSSIBLE then
 			if touch_count==0 then
 				self:gotoState( Continuous.STATE_FAILED )
-			elseif is_touch_ok then
-				self:gotoState( Continuous.STATE_BEGAN, event )
 			else
-				self:gotoState( Continuous.STATE_SOFT_RESET, event )
+				-- one finger left: start over when there are two
+				self._multitouch_queue = {}
 			end
 
 		elseif state==Continuous.STATE_BEGAN or state==Continuous.STATE_CHANGED then

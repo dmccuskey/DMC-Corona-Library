@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_files.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-files
 --====================================================================--
 
 --[[
@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 
 
 
@@ -48,44 +48,7 @@ local VERSION = "1.1.0"
 --====================================================================--
 
 
---====================================================================--
---== Support Functions
-
-
-local Utils = {} -- make copying from dmc_utils easier
-
-function Utils.extend( fromTable, toTable )
-
-	function _extend( fT, tT )
-
-		for k,v in pairs( fT ) do
-
-			if type( fT[ k ] ) == "table" and
-				type( tT[ k ] ) == "table" then
-
-				tT[ k ] = _extend( fT[ k ], tT[ k ] )
-
-			elseif type( fT[ k ] ) == "table" then
-				tT[ k ] = _extend( fT[ k ], {} )
-
-			else
-				tT[ k ] = v
-			end
-		end
-
-		return tT
-	end
-
-	return _extend( fromTable, toTable )
-end
-
-
-
---====================================================================--
---== Configuration
-
-
-local dmc_lib_data, dmc_lib_info
+local dmc_lib_data
 
 -- boot dmc_corona with boot script or
 -- setup basic defaults if it doesn't exist
@@ -107,6 +70,15 @@ dmc_lib_data = _G.__dmc_corona
 
 
 --====================================================================--
+--== Imports
+
+
+local LuaFiles = require 'lib.dmc_lua.lua_files'
+local Utils = require 'lib.dmc_lua.lua_utils'
+
+
+
+--====================================================================--
 --== Configuration
 
 
@@ -121,117 +93,77 @@ local dmc_files_data = Utils.extend( dmc_lib_data.dmc_files, DMC_FILES_DEFAULTS 
 
 
 --====================================================================--
---== Imports
-
-
-local lfs = require 'lfs'
-local File = require 'lib.dmc_lua.lua_files'
-
-
-
---====================================================================--
 --== Corona File Module
 --====================================================================--
+
+
+-- a copy of lua-files' module, so the shared one, which other
+-- modules get from 'lib.dmc_lua.lua_files', keeps its own
+-- path-based fileExists() and remove()
+--
+local File = {}
+for k, v in pairs( LuaFiles ) do File[ k ] = v end
+
+File.VERSION = VERSION
 
 
 --======================================================--
 -- fileExists()
 
 -- http://docs.coronalabs.com/api/library/system/pathForFile.html
--- check to see if a file already exists in storage
+-- true for a file in storage, false for a folder or a missing file
 --
 function File.fileExists( filename, options )
-
 	options = options or {}
-	if options.base_dir == nil then options.base_dir = system.DocumentsDirectory end
+	local base_dir = options.base_dir or system.DocumentsDirectory
 
-	local file_path = system.pathForFile( filename, options.base_dir )
-	return LuaFile.fileExists( file_path, options )
+	-- nil for a missing file in system.ResourceDirectory
+	local file_path = system.pathForFile( filename, base_dir )
+	if file_path == nil then return false end
+	return LuaFiles.fileExists( file_path )
 end
 
 
 --======================================================--
 -- remove()
 
--- item is a path
-function File._removeFile( f_path, f_options )
-		local success, msg = os.remove( f_path )
-		if not success then
-			print( "ERROR: removing " .. f_path )
-			print( "ERROR: " .. msg )
-		end
-end
-
-function File._removeDir( dir_path, dir_options )
-	for f_name in lfs.dir( dir_path ) do
-		if f_name == '.' or f_name == '..' then
-			-- skip system files
-		else
-			local f_path = dir_path .. '/' .. f_name
-			local f_mode = lfs.attributes( f_path, 'mode' )
-
-			if f_mode == 'directory' then
-				File._removeDir( f_path, dir_options )
-				if dir_options.rm_dir == true then
-					File._removeFile( f_path, dir_options )
-				end
-			elseif f_mode == 'file' then
-				File._removeFile( f_path, dir_options )
-			end
-
-		end -- if f_name
-	end
-end
-
-
--- name could be :
--- user data
--- string of file
--- string of directory names
--- table of files
--- table of dir names
-
--- @param  items  name of file to remove, string or table of strings, if directory
+-- @param  items  what to remove:
+--   a name of a file or folder in options.base_dir
+--   a Solar2D folder, such as system.TemporaryDirectory: emptied
+--   a list of either
 -- @param  options
---   dir -- directory, system.DocumentsDirectory, system.TemporaryDirectory, etc
+--   base_dir -- the folder names are in (default system.DocumentsDirectory)
+--   rm_dir -- false keeps the folders, emptied (default true)
 --
--- if name -- name and dir, removes files in directory
+-- a missing name is skipped; a file that can't be removed raises
+-- the error from os.remove()
+--
 function File.remove( items, options )
 	-- print( "File.remove" )
 	options = options or {}
-	if options.base_dir == nil then options.base_dir = system.DocumentsDirectory end
-	if options.rm_dir == nil then options.rm_dir = true end
+	local base_dir = options.base_dir or system.DocumentsDirectory
 
-	local f_type, f_path, f_mode
-	local opts
+	local i_type = type( items )
 
-	f_type = type( items )
-
-	-- if items is Corona system directory
-	if f_type == 'userdata' then
-		f_path = system.pathForFile( '', items )
-		File._removeDir( f_path, options )
-
-	-- if items is name of a directory
-	elseif f_type == 'string' then
-		f_path = system.pathForFile( items, options.base_dir )
-		f_mode = lfs.attributes( f_path, 'mode' )
-
-		if f_mode == 'directory' then
-			rm_dir( f_path, options )
-			if options.rm_dir == true then
-				File._removeFile( f_path, options )
-			end
-
-		elseif f_mode == 'file' then
-			File._removeFile( f_path, options )
+	if i_type == 'table' then
+		for _, item in ipairs( items ) do
+			File.remove( item, options )
 		end
 
-	-- if items is list of names
-	elseif f_type == 'table' then
+	elseif i_type == 'userdata' then
+		-- a Solar2D folder: remove what's in it, not the folder
+		local dir_path = system.pathForFile( '', items )
+		assert( dir_path ~= nil, "no path for the folder" )
+		LuaFiles._removeDir( dir_path, options )
 
+	elseif i_type == 'string' then
+		-- nil for a missing file in system.ResourceDirectory
+		local path = system.pathForFile( items, base_dir )
+		if path ~= nil then LuaFiles.remove( path, options ) end
+
+	else
+		error( "expected a name, a Solar2D folder or a list, got "..i_type )
 	end
-
 end
 
 

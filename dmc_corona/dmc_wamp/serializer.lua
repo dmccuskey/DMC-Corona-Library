@@ -1,7 +1,7 @@
 --====================================================================--
 -- dmc_corona/dmc_wamp/serializer.lua
 --
--- Documentation: http://docs.davidmccuskey.com/
+-- Documentation: https://github.com/dmccuskey/dmc-wamp
 --====================================================================--
 
 --[[
@@ -66,6 +66,7 @@ local WUtils = require 'dmc_wamp.utils'
 --== Setup, Constants
 
 
+local newClass = Objects.newClass
 local tostring = tostring
 local jdecode = json.decode
 local jencode = json.encode
