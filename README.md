@@ -2,7 +2,7 @@
 
 The DMC libraries for Solar2D (formerly Corona SDK) in one folder: objects, gestures, drag and drop, networking (sockets, WebSockets, WAMP), colors, storage and more.
 
-**Version 2.0, brought fully up to date in 2026.** Every library has been fixed for current Solar2D and has unit tests, and each is documented in its own repository with a Quick Start and reference (dmc-multitouch's documentation is still to come); most come with example apps.
+**Version 2.0, brought fully up to date in 2026.** Every library has been fixed for current Solar2D and has unit tests, and each is documented in its own repository with a Quick Start and reference; most come with example apps.
 
 Each library is written and documented in its own repository; this one only collects copies of them, so a project can take all of them in one clone, at versions that work together. It also includes [DMC-Lua-Library](https://github.com/dmccuskey/DMC-Lua-Library), the plain-Lua modules they are built on, and [dmc-corona-boot](https://github.com/dmccuskey/dmc-corona-boot), the loader that lets them find each other.
 

@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.4.0"
+local VERSION = "0.4.1"
 
 
 -- boot dmc_corona with boot script, if it's there
@@ -624,7 +624,7 @@ local function calculateDelta( obj )
 		-- dispatch events
 		direction = dmc.lastDirection,
 		angleDelta = -angleDiff, -- convert to Corona angle
-		distanceDelta = d,
+		distanceDelta = math.sqrt( xDiff*xDiff + yDiff*yDiff ),
 		xDelta = xDiff,
 		yDelta = yDiff
 	}
@@ -915,9 +915,6 @@ local function processParameters( dmc, action, touchtype, params )
 		config.func = createConstrainScaleFunc( params )
 	elseif action == 'rotate' then
 		config.func = createConstrainRotateFunc( params )
-	else
-		print( "WARNING: unknown action: " .. action )
-		return nil
 	end
 
 	-- active touches
@@ -953,6 +950,9 @@ end
 -- @return the object which has been blessed (original), or nil on error
 --
 MultiTouch.activate = function( obj, action, touchtype, params )
+	if action ~= 'move' and action ~= 'scale' and action ~= 'rotate' then
+		error( "dmc_multitouch: unknown action '" .. tostring( action ) .. "', use 'move', 'scale' or 'rotate'", 2 )
+	end
 
 	params = params or {}
 
@@ -1053,7 +1053,8 @@ end
 
 MultiTouch.deactivate = function( obj )
 
-	local dmc = obj.__dmc.multitouch
+	-- nothing to do for an object that was never activated
+	if not obj.__dmc or not obj.__dmc.multitouch then return end
 	obj.__dmc.multitouch = nil
 
 	TouchMgr.unregister( obj, multitouchTouchHandler )
