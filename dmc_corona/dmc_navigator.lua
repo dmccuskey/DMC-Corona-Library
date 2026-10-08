@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.4.0"
+local VERSION = "0.4.1"
 
 
 
@@ -252,9 +252,14 @@ end
 
 function Navigator.__setters:nav_bar( value )
 	-- print( "Navigator.__setters:nav_bar", value )
-	-- TODO
 	assert( value )
 	self._nav_bar = value
+	-- the current DMC-Corona-UI NavBar pops its top item itself when
+	-- its Back button is released, unless its delegate says no: be
+	-- that delegate, so the view and the item go together
+	if value.pushNavItemGetTransition and value.delegate==nil then
+		value.delegate = self
+	end
 end
 
 
@@ -361,8 +366,12 @@ function Navigator:_getPushNavBarTransition( view, params )
 	if nav_bar then
 		o = view.nav_bar_item
 		assert( o, "view doesn't have nav bar item" )
-		o.backButton.onRelease = self._btn_back_f
-		f = nav_bar.pushNavItemGetTransition or nav_bar._pushNavItemGetTransition
+		f = nav_bar.pushNavItemGetTransition
+		if not f then
+			-- the 2015 NavBar: its Back button is ours to listen to
+			o.backButton.onRelease = self._btn_back_f
+			f = nav_bar._pushNavItemGetTransition
+		end
 		return f( nav_bar, o, {} )
 	end
 end
@@ -610,6 +619,18 @@ end
 
 --====================================================================--
 --== Event Handlers
+
+
+-- NavBar delegate (current DMC-Corona-UI): the Back button was
+-- released. the navigator pops its view and the bar's item together,
+-- so the bar is told not to pop on its own.
+-- a press during a slide is ignored, as the bar does by itself
+--
+function Navigator:shouldPopItem( nav_bar, item )
+	-- print( "Navigator:shouldPopItem" )
+	if not self._slide then self:popViewAnimated() end
+	return false
+end
 
 
 function Navigator:_backButtonRelease_handler( event )
