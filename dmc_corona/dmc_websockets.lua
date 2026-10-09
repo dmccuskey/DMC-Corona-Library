@@ -49,7 +49,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.4.1"
+local VERSION = "1.5.0"
 
 
 
@@ -104,22 +104,31 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSO
 --== Imports
 
 
-local mime = require 'mime'
-local urllib = require 'socket.url'
-
 local ByteArray = require 'lib.dmc_lua.lua_bytearray'
 local ByteArrayError = require 'lib.dmc_lua.lua_bytearray.exceptions'
 local LuaStatesMixin = require 'lib.dmc_lua.lua_states_mix'
 local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'lib.dmc_lua.lua_patch'
-local Sockets = require 'dmc_sockets'
 
 -- websocket modules
 local ws_error = require 'dmc_websockets.exception'
 local ws_frame = require 'dmc_websockets.frame'
-local ws_handshake = require 'dmc_websockets.handshake'
 local ws_message = require 'dmc_websockets.message'
 local ws_utf8 = require 'dmc_websockets.utf8'
+
+-- an HTML5 build has no sockets: the browser's WebSocket makes the
+-- connection, see dmc_websockets/html5.lua
+local IS_HTML5 = system.getInfo ~= nil and system.getInfo( 'platform' ) == 'html5'
+
+local Sockets, urllib, ws_handshake
+if IS_HTML5 then
+	Sockets = require 'dmc_websockets.html5'
+	urllib = Sockets.url
+else
+	Sockets = require 'dmc_sockets'
+	urllib = require 'socket.url'
+	ws_handshake = require 'dmc_websockets.handshake'
+end
 
 
 
@@ -239,6 +248,16 @@ function WebSocket:__init__( params )
 
 	assert( params.uri, "WebSocket: requires parameter 'uri'" )
 
+	if IS_HTML5 then
+		-- the browser makes the handshake and does TLS itself
+		assert( type( params.keepalive ) ~= 'number' or params.keepalive <= 0,
+			"WebSocket: 'keepalive' isn't available in HTML5 builds" )
+		assert( params.origin == nil,
+			"WebSocket: 'origin' isn't available in HTML5 builds, the browser sends its own" )
+		assert( params.ssl_params == nil,
+			"WebSocket: 'ssl_params' isn't available in HTML5 builds" )
+	end
+
 	--== Create Properties ==--
 
 	self._uri = params.uri
@@ -308,6 +327,9 @@ function WebSocket:__initComplete__()
 	self._socket_data_handler = self:createCallback( self._socketDataEvent_handler )
 
 	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
+	if IS_HTML5 then
+		self._browser_event_handler = self:createCallback( self._browserEvent_handler )
+	end
 	self:_createNewFrame()
 
 	if self._auto_connect == true then
@@ -358,6 +380,11 @@ function WebSocket:send( data, params )
 	assert( type(data)=='string', "expected string for send()")
 	params = params or {}
 	params.type = params.type or WebSocket.TEXT
+	if params.type ~= WebSocket.BINARY then
+		-- RFC 6455 5.6: a server fails the connection on anything else
+		assert( ws_utf8.isValid( data ),
+			"WebSocket: text must be valid UTF-8, send other data as BINARY" )
+	end
 	--==--
 
 	if params.type == WebSocket.BINARY then
@@ -372,6 +399,8 @@ end
 -- the server answers with a pong, dispatched as ONPONG
 --
 function WebSocket:ping( data )
+	assert( not IS_HTML5,
+		"WebSocket: ping() isn't available in HTML5 builds, browsers don't let scripts send pings" )
 	data = data or ''
 	assert( type(data)=='string', "expected string for ping()" )
 	assert( #data <= 125, "ping data is limited to 125 bytes" )
@@ -750,6 +779,11 @@ end
 function WebSocket:_sendFrame( msg )
 	-- print( "WebSocket:_sendFrame", msg )
 
+	if IS_HTML5 then
+		self:_sendBrowserMessage( msg )
+		return
+	end
+
 	local sock = self._socket
 	local record, callback
 
@@ -771,6 +805,41 @@ function WebSocket:_sendFrame( msg )
 	}
 	sock:send( record.frame, callback )
 
+end
+
+-- HTML5: the browser makes the frames, it's given whole messages
+--
+function WebSocket:_sendBrowserMessage( msg )
+	-- print( "WebSocket:_sendBrowserMessage", msg )
+	local sock = self._socket
+	local types = ws_frame.type
+	local data = msg:read( msg:getAvailable() )
+
+	if msg.opcode == types.close then
+		sock:sendClose( ws_frame.decodeCloseFrameData( data ) )
+	elseif msg.opcode == types.binary then
+		sock:send( WebSocket.BINARY, data )
+	elseif msg.opcode == types.text then
+		sock:send( WebSocket.TEXT, data )
+	end
+	-- pings and pongs aren't sent in HTML5 builds
+end
+
+-- HTML5: connect with the parts do_state_init worked out
+--
+function WebSocket:_doBrowserConnect( scheme )
+	-- print( "WebSocket:_doBrowserConnect" )
+	local host = self._host
+	if host:find( ':', 1, true ) then host = '[' .. host .. ']' end -- IPv6
+
+	local protocols = self._protocols
+	if type( protocols ) == 'string' then protocols = { protocols } end
+
+	self._socket = Sockets.connect{
+		url=scheme .. '://' .. host .. ':' .. self._port .. self._path,
+		protocols=protocols,
+		onEvent=self._browser_event_handler
+	}
 end
 
 
@@ -824,6 +893,10 @@ function WebSocket:_close( params )
 		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
+		self:gotoState( WebSocket.STATE_CLOSED, params )
+
+	elseif IS_HTML5 and state == WebSocket.STATE_INIT then
+		-- the browser is still connecting: give up on it
 		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
@@ -956,6 +1029,20 @@ function WebSocket:_processMessageQueue()
 	-- print( "WebSocket:_processMessageQueue", #self._msg_queue )
 
 	if #self._msg_queue == 0 then return end
+
+	if IS_HTML5 then
+		-- the browser takes messages only once the connection is open
+		local state = self:getState()
+		if state == WebSocket.STATE_CLOSED then
+			while #self._msg_queue > 0 do
+				self:_removeMessageFromQueue( self._msg_queue[1] )
+			end
+			return
+		elseif state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
+			return
+		end
+	end
+
 	local start = sgettimer()
 
 	repeat
@@ -1040,6 +1127,11 @@ function WebSocket:do_state_init( params )
 		Sockets.throttle = self._socket_throttle
 	end
 
+	if IS_HTML5 then
+		self:_doBrowserConnect( url_parts.scheme )
+		return
+	end
+
 	socket = Sockets:create( Sockets.ATCP, {ssl_params=self._ssl_params} )
 	socket.secure = (url_parts.scheme == 'wss') -- true/false
 	self._socket = socket
@@ -1062,6 +1154,10 @@ function WebSocket:state_init( next_state, params )
 
 	elseif next_state == WebSocket.STATE_NOT_CONNECTED then
 		self:do_state_not_connected( params )
+
+	elseif IS_HTML5 and next_state == WebSocket.STATE_CONNECTED then
+		-- the browser made the connection and the handshake
+		self:do_state_connected( params )
 
 	else
 		print( "WARNING :: WebSocket:state_init " .. tostring( next_state ) )
@@ -1160,7 +1256,9 @@ function WebSocket:do_state_connected( params )
 	self:_startKeepalive()
 
 	-- check if more data after reading header
-	self:_receiveFrame()
+	if not IS_HTML5 then
+		self:_receiveFrame()
+	end
 
 	-- send any waiting messages
 	self:_processMessageQueue()
@@ -1348,6 +1446,64 @@ function WebSocket:_socketDataEvent_handler( event )
 
 	end
 
+end
+
+-- handle events from the browser's WebSocket (HTML5 builds)
+--
+function WebSocket:_browserEvent_handler( event )
+	-- print( "WebSocket:_browserEvent_handler", event.type )
+
+	-- as with frames from a socket, an error in app code fails the connection
+	local ok, err = xpcall( function()
+		self:_handleBrowserEvent( event )
+	end, debug.traceback )
+
+	if not ok then
+		print( "\n\ndmc_websockets :: Unknown Error", err )
+		if self:getState() ~= WebSocket.STATE_CLOSED then
+			self:_bailout{
+				code=CLOSE_CODES.INTERNAL.code,
+				reason=CLOSE_CODES.INTERNAL.reason
+			}
+		end
+	end
+end
+
+function WebSocket:_handleBrowserEvent( event )
+	local state = self:getState()
+
+	if event.type == 'open' then
+		if state == WebSocket.STATE_INIT then
+			self:gotoState( WebSocket.STATE_CONNECTED )
+		end
+
+	elseif event.type == 'message' then
+		if state == WebSocket.STATE_CONNECTED or state == WebSocket.STATE_CLOSING then
+			self:_onMessage{ data=event.data, type=event.ftype }
+		end
+
+	elseif event.type == 'close' then
+		if state == WebSocket.STATE_CLOSED then
+			-- pass
+
+		elseif event.isError or state == WebSocket.STATE_INIT then
+			-- unreachable server, refused handshake, failed TLS or a
+			-- dropped connection: browsers don't say which
+			self:_bailout{
+				code=ERROR_CODES.NETWORK_ERROR.code,
+				reason=ERROR_CODES.NETWORK_ERROR.reason,
+				emsg=event.emsg
+			}
+
+		else
+			self:_close{
+				code=event.code,
+				reason=event.reason,
+				from_server=true
+			}
+		end
+
+	end
 end
 
 
