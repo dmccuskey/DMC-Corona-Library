@@ -214,7 +214,7 @@ def register( name, config ):
 
 
 
-REQUIRE_TO="./{file_root}.lua"
+REQUIRE_TO="./{file_path}"
 
 print( "Building ", MODULE )
 
@@ -236,5 +236,5 @@ rule build_tests:
 
 rule copy_requires:
 	output: REQUIRE_TO
-	input: lambda  output: _lookup( "./{0}.lua".format( output ) )
+	input: lambda  output: _lookup( "./{0}".format( output ) )
 	shell: "cp {input} {output}"
