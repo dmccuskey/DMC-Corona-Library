@@ -49,7 +49,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.5.0"
+local VERSION = "1.6.0"
 
 
 
@@ -104,31 +104,23 @@ local dmc_websockets_data = Utils.extend( dmc_lib_data.dmc_websockets, DMC_WEBSO
 --== Imports
 
 
-local ByteArray = require 'lib.dmc_lua.lua_bytearray'
-local ByteArrayError = require 'lib.dmc_lua.lua_bytearray.exceptions'
 local LuaStatesMixin = require 'lib.dmc_lua.lua_states_mix'
 local Objects = require 'lib.dmc_lua.lua_objects'
 local Patch = require 'lib.dmc_lua.lua_patch'
 
 -- websocket modules
-local ws_error = require 'dmc_websockets.exception'
 local ws_frame = require 'dmc_websockets.frame'
-local ws_message = require 'dmc_websockets.message'
 local ws_utf8 = require 'dmc_websockets.utf8'
 
--- an HTML5 build has no sockets: the browser's WebSocket makes the
--- connection, see dmc_websockets/html5.lua
+-- what makes the connection: a transport. Each has the same members
+-- and works in whole messages, see dmc_websockets/native.lua
+--
+-- an HTML5 build has no sockets: there the browser's WebSocket makes
+-- the connection, see dmc_websockets/html5.lua
 local IS_HTML5 = system.getInfo ~= nil and system.getInfo( 'platform' ) == 'html5'
 
-local Sockets, urllib, ws_handshake
-if IS_HTML5 then
-	Sockets = require 'dmc_websockets.html5'
-	urllib = Sockets.url
-else
-	Sockets = require 'dmc_sockets'
-	urllib = require 'socket.url'
-	ws_handshake = require 'dmc_websockets.handshake'
-end
+local Transport = require( IS_HTML5 and 'dmc_websockets.html5' or 'dmc_websockets.native' )
+local urllib = Transport.url
 
 
 
@@ -144,7 +136,6 @@ local newClass = Objects.newClass
 local ObjectBase = Objects.ObjectBase
 
 local assert = assert
-local sgmatch = string.gmatch
 local sgettimer = system.getTimer
 local tdelay = timer.performWithDelay
 local tcancel = timer.cancel
@@ -152,16 +143,6 @@ local tinsert = table.insert
 local tconcat = table.concat
 local tremove = table.remove
 local type = type
-
-local ProtocolError = ws_error.ProtocolError
-local BufferError = ByteArrayError.BufferError
-
-
---== dmc_websocket Close Constants
-
-local CLOSE_CODES = {
-	INTERNAL = { code=9999, reason="Internal Error" },
-}
 
 --== dmc_websocket Error Constants
 
@@ -171,6 +152,15 @@ local ERROR_CODES = {
 	INVALID_HANDSHAKE = { code=3002, reason="Received invalid websocket handshake" },
 	TIMEOUT = { code=3003, reason="No pong received in time" },
 	INTERNAL = { code=9999, reason="Internal Error" },
+}
+
+
+-- a transport's 'error' event, by its kind
+local TRANSPORT_ERRORS = {
+	network = ERROR_CODES.NETWORK_ERROR,
+	request = ERROR_CODES.REQUEST_ERROR,
+	handshake = ERROR_CODES.INVALID_HANDSHAKE,
+	internal = ERROR_CODES.INTERNAL,
 }
 
 
@@ -196,10 +186,10 @@ WebSocket.BINARY = 'binary'
 
 --== Throttle Constants
 
-WebSocket.OFF = Sockets.OFF
-WebSocket.LOW = Sockets.LOW
-WebSocket.MEDIUM = Sockets.MEDIUM
-WebSocket.HIGH = Sockets.HIGH
+WebSocket.OFF = Transport.OFF
+WebSocket.LOW = Transport.LOW
+WebSocket.MEDIUM = Transport.MEDIUM
+WebSocket.HIGH = Transport.HIGH
 
 --== Connection-Status Constants
 
@@ -212,8 +202,6 @@ WebSocket.CLOSED = 3
 
 WebSocket.STATE_CREATE = "state_create"
 WebSocket.STATE_INIT = "state_init"
-WebSocket.STATE_NOT_CONNECTED = "state_not_connected"
-WebSocket.STATE_HTTP_NEGOTIATION = "state_http_negotiation"
 WebSocket.STATE_CONNECTED = "state_connected"
 WebSocket.STATE_CLOSING = "state_closing_connection"
 WebSocket.STATE_CLOSED = "state_closed"
@@ -248,15 +236,8 @@ function WebSocket:__init__( params )
 
 	assert( params.uri, "WebSocket: requires parameter 'uri'" )
 
-	if IS_HTML5 then
-		-- the browser makes the handshake and does TLS itself
-		assert( type( params.keepalive ) ~= 'number' or params.keepalive <= 0,
-			"WebSocket: 'keepalive' isn't available in HTML5 builds" )
-		assert( params.origin == nil,
-			"WebSocket: 'origin' isn't available in HTML5 builds, the browser sends its own" )
-		assert( params.ssl_params == nil,
-			"WebSocket: 'ssl_params' isn't available in HTML5 builds" )
-	end
+	-- options this platform's transport can't honor
+	Transport.checkParams( params )
 
 	--== Create Properties ==--
 
@@ -283,33 +264,14 @@ function WebSocket:__init__( params )
 	self._msg_queue_handler = nil
 	self._msg_queue_active = false
 
-	-- used to build data from frames, table
-	self._current_frame = nil
-
-	-- self._max_payload_len = params.max_payload_len
-	-- self._send_unmasked = params.send_unmasked or false
-	-- self._rd_frame_co = nil -- ref to read-frame coroutine
-
-	self._socket_data_handler = nil -- ref to
-	self._socket_connect_handler = nil -- ref to
+	self._transport_event_handler = nil -- ref to
 	self._socket_throttle = params.throttle
-
 
 	self._close_timer = nil
 
-	-- received data not yet parsed: pieces kept in a list and joined
-	-- only once enough has arrived for the next frame, so a large
-	-- message isn't copied again with every read
-	self._rx_chunks = {}
-	self._rx_len = 0
-	self._rx_need = 0 -- bytes needed before parsing is worth trying
-
-	self._ws_req_key = '' -- key sent to server on handshek
-
 	--== Object References ==--
 
-	self._ba = nil -- our Byte Array, buffer
-	self._socket = nil
+	self._conn = nil -- the transport's connection
 	self._ssl_params = params.ssl_params
 
 	-- set first state
@@ -323,14 +285,8 @@ function WebSocket:__initComplete__()
 	self:superCall( ObjectBase, '__initComplete__' )
 	--==--
 
-	self._socket_connect_handler = self:createCallback( self._socketConnectEvent_handler )
-	self._socket_data_handler = self:createCallback( self._socketDataEvent_handler )
-
+	self._transport_event_handler = self:createCallback( self._transportEvent_handler )
 	self._msg_queue_handler = self:createCallback( self._processMessageQueue )
-	if IS_HTML5 then
-		self._browser_event_handler = self:createCallback( self._browserEvent_handler )
-	end
-	self:_createNewFrame()
 
 	if self._auto_connect == true then
 		self:connect()
@@ -357,7 +313,7 @@ end
 --
 function WebSocket.__setters:throttle( value )
 	-- print( 'WebSocket.__setters:throttle', value )
-	Sockets.throttle = value
+	Transport.setThrottle( value )
 end
 
 -- .readyState
@@ -399,7 +355,7 @@ end
 -- the server answers with a pong, dispatched as ONPONG
 --
 function WebSocket:ping( data )
-	assert( not IS_HTML5,
+	assert( Transport.can_ping,
 		"WebSocket: ping() isn't available in HTML5 builds, browsers don't let scripts send pings" )
 	data = data or ''
 	assert( type(data)=='string', "expected string for ping()" )
@@ -477,372 +433,6 @@ function WebSocket:_onError( params )
 end
 
 
-function WebSocket:_doHttpConnect()
-	-- print( "WebSocket:_doHttpConnect" )
-
-	local request, key = ws_handshake.createRequest{
-		host=self._host,
-		port=self._port,
-		path=self._path,
-		protocols=self._protocols,
-		origin=self._origin,
-		user_agent=WebSocket.USER_AGENT
-	}
-
-	self._ws_req_key = key
-
-	if not request then
-		self:_bailout{
-			code=ERROR_CODES.REQUEST_ERROR.code,
-			reason=ERROR_CODES.REQUEST_ERROR.reason,
-		}
-		return
-	end
-
-	local callback = function( event )
-		-- print("socket connect callback")
-		if event.isError then
-			self:_bailout{
-				code=ERROR_CODES.REQUEST_ERROR.code,
-				reason=ERROR_CODES.REQUEST_ERROR.reason,
-			}
-		end
-	end
-	self._socket:send( request, callback )
-
-end
-
-
--- @param str raw returned header from HTTP request
---
--- split up string into individual lines
---
-function WebSocket:_processHeaderString( str )
-	-- print( "WebSocket:_processHeaderString" )
-	local results = {}
-	for line in sgmatch( str, '([^\r\n]*)\r\n') do
-		tinsert( results, line )
-	end
-	return results
-end
-
--- add received data to the unread pieces; when the next frame (or
--- the handshake response) may be complete, join them into self._ba
--- and return true
---
-function WebSocket:_bufferData( data )
-	tinsert( self._rx_chunks, data )
-	self._rx_len = self._rx_len + #data
-	if self._rx_len < self._rx_need then return false end
-
-	local ba = ByteArray:new()
-	ba:writeBuf( tconcat( self._rx_chunks ) )
-	self._ba = ba
-	self._rx_chunks = {}
-	self._rx_len = 0
-	self._rx_need = 0
-	return true
-end
-
--- keep what self._ba holds unread for the next read, and note how much
--- the next frame needs, so it is parsed only once it has all arrived
---
-function WebSocket:_keepUnread()
-	local ba = self._ba
-	if not ba then return end
-
-	local avail = ba.bytesAvailable
-	if avail == 0 then return end
-
-	local rest = ba:readBuf( avail )
-	tinsert( self._rx_chunks, 1, rest )
-	self._rx_len = self._rx_len + #rest
-
-	local state = self:getState()
-	if state == WebSocket.STATE_CONNECTED or state == WebSocket.STATE_CLOSING then
-		self._rx_need = ws_frame.frameSize( rest ) or 0
-	end
-end
-
--- read header response string and see if it's valid
---
-function WebSocket:_handleHttpRespose()
-	-- print( "WebSocket:_handleHttpRespose" )
-	local ba = self._ba
-
-	-- first check if we have entire header to read
-	local _, e_pos = ba:search( '\r\n\r\n' )
-	if e_pos == nil then return end
-
-	ba.position = 1
-	local h_str = ba:readBuf( e_pos )
-
-	-- process header
-	if ws_handshake.checkResponse( self:_processHeaderString( h_str ), self._ws_req_key, self._protocols ) then
-		self:gotoState( WebSocket.STATE_CONNECTED )
-
-	else
-		self:_bailout{
-			code=ERROR_CODES.INVALID_HANDSHAKE.code,
-			reason=ERROR_CODES.INVALID_HANDSHAKE.reason,
-		}
-	end
-
-end
-
-
---== Methods to handle non-/fragmented frames
-
-function WebSocket:_createNewFrame()
-	self._current_frame = {
-		data = {},
-		type = '',
-		utf8 = nil -- validator, text messages only
-	}
-end
-function WebSocket:_insertFrameData( data, ftype )
-	local frame = self._current_frame
-
-	--== Check for errors in Continuation
-
-	-- there is no type for this frame and none from previous
-	if ftype == nil and #frame.data == 0 then
-		return nil
-	end
-	-- we already have a type/data from previous frame
-	if ftype ~= nil and #frame.data > 0 then
-		return nil
-	end
-
-	if ftype then
-		frame.type = ftype
-		if ftype == WebSocket.TEXT then
-			frame.utf8 = ws_utf8.newValidator()
-		end
-	end
-	tinsert( frame.data, data )
-
-	return data
-end
--- check text as it arrives, so invalid UTF-8 fails fast
---
-function WebSocket:_validateFrameText( data, fin )
-	local validator = self._current_frame.utf8
-	if not validator then return end
-
-	if not validator:feed( data ) or ( fin and not validator:isComplete() ) then
-		local close = ws_frame.close.INVALID_DATA
-		error( ProtocolError{
-			code=close.code, reason=close.reason,
-			message="Invalid UTF-8 in text message" } )
-	end
-end
-
-function WebSocket:_processCurrentFrame()
-	local frame = self._current_frame
-	frame.data = tconcat( frame.data, '' )
-
-	self:_createNewFrame()
-	return frame
-end
-
-
-function WebSocket:_receiveFrame()
-	-- print( "WebSocket:_receiveFrame" )
-
-	local ws_types = ws_frame.type
-	local ws_close = ws_frame.close
-
-	-- check current state
-	local state = self:getState()
-	if state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-		-- in process of closing, cancel frame check
-		return
-	end
-
-	--== processing callback function
-
-	local function handleWSFrame( frame_info )
-		-- print("got frame", frame_info.type, frame_info.fin )
-		-- print("got data", frame_info.data ) -- when testing, this could be A LOT of data
-		local fcode, ftype, fin, data = frame_info.opcode, frame_info.type, frame_info.fin, frame_info.data
-		if LOCAL_DEBUG then
-			print( "Received msg type:" % ftype )
-		end
-
-		if fcode == ws_types.continuation then
-			if not self:_insertFrameData( data ) then
-				error( ProtocolError{
-					code=ws_close.PROTO_ERR.code, reason=ws_close.PROTO_ERR.reason,
-					message="Continuation frame without a message to continue" } )
-			end
-			self:_validateFrameText( data, fin )
-			if fin then
-				local msg = self:_processCurrentFrame()
-				self:_onMessage( msg )
-			end
-
-		elseif fcode == ws_types.text or fcode == ws_types.binary then
-			if not self:_insertFrameData( data, ftype ) then
-				error( ProtocolError{
-					code=ws_close.PROTO_ERR.code, reason=ws_close.PROTO_ERR.reason,
-					message="New message started before previous one finished" } )
-			end
-			self:_validateFrameText( data, fin )
-			if fin then
-				local msg = self:_processCurrentFrame()
-				self:_onMessage( msg )
-			end
-
-		elseif fcode == ws_types.close then
-			local code, reason = ws_frame.decodeCloseFrameData( data )
-			self:_close{
-				code=code or ws_close.OK.code,
-				reason=reason or ws_close.OK.reason,
-				from_server=true
-			}
-
-		elseif fcode == ws_types.ping then
-			if self:getState() == WebSocket.STATE_CONNECTED then
-				self:_sendPong( data )
-			end
-
-		elseif fcode == ws_types.pong then
-			-- control frame: dispatch now, it may arrive mid-message
-			self:_pongReceived( data )
-
-		end
-	end
-
-	--== processing loop
-
-	-- TODO: hook this up to enterFrame so large
-	-- amount of frames won't pause processing
-
-	local err = nil
-	repeat
-
-		local position = self._ba.position -- save in case of errors
-		try{
-			function()
-				handleWSFrame( ws_frame.receiveFrame( self._ba ) )
-			end,
-			catch{
-				function(e)
-					err=e
-					self._ba.position = position
-				end
-			}
-		}
-	until err or self:getState() == WebSocket.STATE_CLOSED
-
-	--== handle error
-	if not err then
-		-- pass, WebSocket.STATE_CLOSED
-
-	elseif not err.isa then
-		-- always print this out, most likely a regular Lua error
-		print( "\n\ndmc_websockets :: Unknown Error", err )
-		print( debug.traceback() )
-		self:_bailout{
-			code=CLOSE_CODES.INTERNAL.code,
-			reason=CLOSE_CODES.INTERNAL.reason
-		}
-
-	elseif err:isa( BufferError ) then
-		-- pass, not enough data to read another frame
-
-	elseif err:isa( ws_error.ProtocolError ) then
-		if LOCAL_DEBUG then
-			print( "dmc_websockets :: Protocol Error:", err.message )
-			print( "dmc_websockets :: Protocol Error:", err.traceback )
-		end
-		self:_close{
-			code=err.code,
-			reason=err.reason,
-		}
-
-	else
-		if LOCAL_DEBUG then
-			print( "dmc_websockets :: Unknown Error", err.code, err.reason, err.message )
-		end
-		self:_bailout{
-			code=CLOSE_CODES.INTERNAL.code,
-			reason=CLOSE_CODES.INTERNAL.reason
-		}
-	end
-
-end
-
--- @param msg WebSocket Message object
---
-function WebSocket:_sendFrame( msg )
-	-- print( "WebSocket:_sendFrame", msg )
-
-	if IS_HTML5 then
-		self:_sendBrowserMessage( msg )
-		return
-	end
-
-	local sock = self._socket
-	local record, callback
-
-	msg.masked = true -- always when client to server
-
-	callback = function( event )
-		-- print("socket connect callback")
-		if event.isError then
-			self:_bailout{
-				code=ERROR_CODES.NETWORK_ERROR.code,
-				reason=ERROR_CODES.NETWORK_ERROR.reason,
-			}
-		end
-	end
-
-	record = ws_frame.buildFrames{
-		message=msg,
-		-- max_frame_size = 16  -- TODO: add functionality to fragment a message
-	}
-	sock:send( record.frame, callback )
-
-end
-
--- HTML5: the browser makes the frames, it's given whole messages
---
-function WebSocket:_sendBrowserMessage( msg )
-	-- print( "WebSocket:_sendBrowserMessage", msg )
-	local sock = self._socket
-	local types = ws_frame.type
-	local data = msg:read( msg:getAvailable() )
-
-	if msg.opcode == types.close then
-		sock:sendClose( ws_frame.decodeCloseFrameData( data ) )
-	elseif msg.opcode == types.binary then
-		sock:send( WebSocket.BINARY, data )
-	elseif msg.opcode == types.text then
-		sock:send( WebSocket.TEXT, data )
-	end
-	-- pings and pongs aren't sent in HTML5 builds
-end
-
--- HTML5: connect with the parts do_state_init worked out
---
-function WebSocket:_doBrowserConnect( scheme )
-	-- print( "WebSocket:_doBrowserConnect" )
-	local host = self._host
-	if host:find( ':', 1, true ) then host = '[' .. host .. ']' end -- IPv6
-
-	local protocols = self._protocols
-	if type( protocols ) == 'string' then protocols = { protocols } end
-
-	self._socket = Sockets.connect{
-		url=scheme .. '://' .. host .. ':' .. self._port .. self._path,
-		protocols=protocols,
-		onEvent=self._browser_event_handler
-	}
-end
-
-
 -- the query option: a string as is, or a table of names and values
 --
 function WebSocket:_encodeQuery( query )
@@ -892,11 +482,8 @@ function WebSocket:_close( params )
 	elseif state == WebSocket.STATE_CLOSING then
 		self:gotoState( WebSocket.STATE_CLOSED, params )
 
-	elseif state == WebSocket.STATE_NOT_CONNECTED or state == WebSocket.STATE_HTTP_NEGOTIATION then
-		self:gotoState( WebSocket.STATE_CLOSED, params )
-
-	elseif IS_HTML5 and state == WebSocket.STATE_INIT then
-		-- the browser is still connecting: give up on it
+	elseif state == WebSocket.STATE_INIT then
+		-- still connecting: give up on it
 		self:gotoState( WebSocket.STATE_CLOSED, params )
 
 	else
@@ -908,27 +495,22 @@ end
 
 
 function WebSocket:_sendBinary( data )
-	local msg = ws_message{ opcode=ws_frame.type.binary, data=data }
-	self:_sendMessage( msg )
+	self:_sendMessage{ kind=WebSocket.BINARY, data=data }
 end
 function WebSocket:_sendClose( code, reason )
 	-- print( "WebSocket:_sendClose", code, reason )
-	local data = ws_frame.encodeCloseFrameData( code, reason )
-	local msg = ws_message{ opcode=ws_frame.type.close, data=data }
-	self:_sendMessage( msg )
+	self:_sendMessage{ kind='close', code=code, reason=reason }
 end
 function WebSocket:_sendPing( data )
-	local msg = ws_message{ opcode=ws_frame.type.ping, data=data }
-	self:_sendMessage( msg )
+	self:_sendMessage{ kind='ping', data=data }
 end
 function WebSocket:_sendPong( data )
-	local msg = ws_message{ opcode=ws_frame.type.pong, data=data }
-	self:_sendMessage( msg )
+	self:_sendMessage{ kind='pong', data=data }
 end
 function WebSocket:_sendText( data )
-	local msg = ws_message{ opcode=ws_frame.type.text, data=data }
-	self:_sendMessage( msg )
+	self:_sendMessage{ kind=WebSocket.TEXT, data=data }
 end
+
 
 
 --== Keep-alive: ping, wait for its pong, wait the interval, ping again
@@ -1002,7 +584,6 @@ end
 
 function WebSocket:_addMessageToQueue( message )
 	-- print( "WebSocket:_addMessageToQueue" )
-	assert( message:isa( ws_message ), "expected message object" )
 	--==--
 	tinsert( self._msg_queue, message )
 	self:_processMessageQueue()
@@ -1015,7 +596,6 @@ function WebSocket:_addMessageToQueue( message )
 end
 function WebSocket:_removeMessageFromQueue( message )
 	-- print( "WebSocket:_removeMessageFromQueue" )
-	assert( message:isa( ws_message ), "expected message object" ) -- ADD
 	--==--
 	tremove( self._msg_queue, 1 )
 
@@ -1030,26 +610,27 @@ function WebSocket:_processMessageQueue()
 
 	if #self._msg_queue == 0 then return end
 
-	if IS_HTML5 then
-		-- the browser takes messages only once the connection is open
-		local state = self:getState()
-		if state == WebSocket.STATE_CLOSED then
-			while #self._msg_queue > 0 do
-				self:_removeMessageFromQueue( self._msg_queue[1] )
-			end
-			return
-		elseif state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
-			return
+	-- a transport takes messages only once the connection is open
+	local state = self:getState()
+	if state == WebSocket.STATE_CLOSED then
+		while #self._msg_queue > 0 do
+			self:_removeMessageFromQueue( self._msg_queue[1] )
 		end
+		return
+	elseif state ~= WebSocket.STATE_CONNECTED and state ~= WebSocket.STATE_CLOSING then
+		return
 	end
 
+	local conn = self._conn
 	local start = sgettimer()
 
 	repeat
 		local msg = self._msg_queue[1]
-		self:_sendFrame( msg )
-		if msg:getAvailable() == 0 then
-			self:_removeMessageFromQueue( msg )
+		self:_removeMessageFromQueue( msg )
+		if msg.kind == 'close' then
+			conn:sendClose( msg.code, msg.reason )
+		else
+			conn:send( msg.kind, msg.data )
 		end
 		local diff = sgettimer() - start
 	until #self._msg_queue == 0 or diff > 0
@@ -1080,15 +661,8 @@ function WebSocket:do_state_init( params )
 	-- print( "WebSocket:do_state_init" )
 	params = params or {}
 	--==--
-	local socket = self._socket
-
 	self._ready_state = self.NOT_ESTABLISHED
 	self:setState( WebSocket.STATE_INIT )
-
-	self._ba = nil
-	self._rx_chunks = {}
-	self._rx_len = 0
-	self._rx_need = 0
 
 	local uri = self._uri
 	local url_parts = urllib.parse( uri )
@@ -1120,27 +694,27 @@ function WebSocket:do_state_init( params )
 	self._path = path
 	self._port = port
 
-	if socket then socket:close() end
+	if self._conn then self._conn:close() end
 
-	-- shared by all sockets: change it only when asked to
+	-- shared by all connections: change it only when asked to
 	if self._socket_throttle ~= nil then
-		Sockets.throttle = self._socket_throttle
+		Transport.setThrottle( self._socket_throttle )
 	end
 
-	if IS_HTML5 then
-		self:_doBrowserConnect( url_parts.scheme )
-		return
-	end
+	self._conn = Transport.connect{
+		scheme=url_parts.scheme,
+		host=host,
+		port=port,
+		path=path,
+		protocols=self._protocols,
+		origin=self._origin,
+		user_agent=WebSocket.USER_AGENT,
+		ssl_params=self._ssl_params,
+		onEvent=self._transport_event_handler
+	}
 
-	socket = Sockets:create( Sockets.ATCP, {ssl_params=self._ssl_params} )
-	socket.secure = (url_parts.scheme == 'wss') -- true/false
-	self._socket = socket
-
-	if LOCAL_DEBUG then
-		print( "dmc_websockets:: Connecting to '%s:%s'" % { self._host, self._port } )
-	end
-
-	socket:connect( host, port, { onConnect=self._socket_connect_handler, onData=self._socket_data_handler } )
+	-- failed while connecting
+	if self:getState() == WebSocket.STATE_CLOSED then self._conn:close() end
 
 end
 
@@ -1152,87 +726,12 @@ function WebSocket:state_init( next_state, params )
 	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
 
-	elseif next_state == WebSocket.STATE_NOT_CONNECTED then
-		self:do_state_not_connected( params )
-
-	elseif IS_HTML5 and next_state == WebSocket.STATE_CONNECTED then
-		-- the browser made the connection and the handshake
+	elseif next_state == WebSocket.STATE_CONNECTED then
+		-- the transport made the connection and the handshake
 		self:do_state_connected( params )
 
 	else
 		print( "WARNING :: WebSocket:state_init " .. tostring( next_state ) )
-	end
-
-end
-
-
---== Not Connected
-
-function WebSocket:do_state_not_connected( params )
-	-- print( "WebSocket:do_state_not_connected" )
-	params = params or {}
-	--==--
-
-	self._ready_state = WebSocket.NOT_ESTABLISHED
-
-	self:setState( WebSocket.STATE_NOT_CONNECTED )
-
-	-- do after state set
-	if LOCAL_DEBUG then
-		print("dmc_websockets:: Sending WebSocket connect request to server ")
-	end
-	self:_doHttpConnect()
-
-end
-
-function WebSocket:state_not_connected( next_state, params )
-	-- print( "WebSocket:state_not_connected >>", next_state )
-	params = params or {}
-	--==--
-
-	if next_state == WebSocket.STATE_HTTP_NEGOTIATION then
-		self:do_state_http_negotiation( params )
-
-	elseif next_state == WebSocket.STATE_CLOSED then
-		self:do_state_closed( params )
-
-	else
-		print( "WARNING :: WebSocket:state_not_connected " .. tostring( next_state ) )
-	end
-
-end
-
-
---== HTTP Negotiation
-
-function WebSocket:do_state_http_negotiation( params )
-	-- print( "WebSocket:do_state_http_negotiation" )
-	params = params or {}
-	--==--
-
-	self:setState( WebSocket.STATE_HTTP_NEGOTIATION )
-
-	-- do this after setting state
-	if LOCAL_DEBUG then
-		print("dmc_websockets:: Reading WebSocket connect response from server ")
-	end
-	self:_handleHttpRespose()
-
-end
-
-function WebSocket:state_http_negotiation( next_state, params )
-	-- print( "WebSocket:state_http_negotiation >>", next_state )
-	params = params or {}
-	--==--
-
-	if next_state == WebSocket.STATE_CONNECTED then
-		self:do_state_connected( params )
-
-	elseif next_state == WebSocket.STATE_CLOSED then
-		self:do_state_closed( params )
-
-	else
-		print( "WARNING :: WebSocket:state_http_negotiation %s" % tostring( next_state ) )
 	end
 
 end
@@ -1254,11 +753,6 @@ function WebSocket:do_state_connected( params )
 
 	self:_onOpen()
 	self:_startKeepalive()
-
-	-- check if more data after reading header
-	if not IS_HTML5 then
-		self:_receiveFrame()
-	end
 
 	-- send any waiting messages
 	self:_processMessageQueue()
@@ -1346,8 +840,7 @@ function WebSocket:do_state_closed( params )
 		self._close_timer = nil
 	end
 
-	self._socket:close()
-	self._ba = nil
+	if self._conn then self._conn:close() end
 
 	if LOCAL_DEBUG then
 		print( "dmc_websockets:: Server connection closed" )
@@ -1383,125 +876,61 @@ end
 --== Event Handlers
 
 
--- handle connection events from socket
+-- handle events from the transport's connection
 --
-function WebSocket:_socketConnectEvent_handler( event )
-	-- print( "WebSocket:_socketConnectEvent_handler", event.type, event.status )
-
-	local state = self:getState()
-	local sock = self._socket
-
-	if event.type == sock.CONNECT then
-
-		if state == WebSocket.STATE_INIT and event.status ~= sock.CONNECTED
-			or event.isError
-		then
-			-- unreachable server, timeout, failed TLS handshake
-			self:_bailout{
-				code=ERROR_CODES.NETWORK_ERROR.code,
-				reason=ERROR_CODES.NETWORK_ERROR.reason,
-				emsg=event.emsg
-			}
-		elseif event.status == sock.CONNECTED then
-			self:gotoState( WebSocket.STATE_NOT_CONNECTED )
-		else
-			if state ~= WebSocket.STATE_CLOSED then
-				self:gotoState( WebSocket.STATE_CLOSED )
-			end
-		end
-	end
-
-end
-
--- handle read/write events from socket
---
-function WebSocket:_socketDataEvent_handler( event )
-	-- print( "WebSocket:_socketDataEvent_handler", event.type, event.status )
-
-	local state = self:getState()
-	local sock = self._socket
-
-	if event.type == sock.READ then
-
-		local callback = function( s_event )
-			local data = s_event.data
-			if not data or data == '' then return end
-
-			if not self:_bufferData( data ) then return end
-
-			local state = self:getState()
-			if state == WebSocket.STATE_NOT_CONNECTED then
-				self:gotoState( WebSocket.STATE_HTTP_NEGOTIATION )
-			elseif state == WebSocket.STATE_HTTP_NEGOTIATION then
-				-- the response header came in more than one read
-				self:_handleHttpRespose()
-			else
-				self:_receiveFrame()
-			end
-
-			self:_keepUnread()
-		end
-
-		sock:receive( '*a', callback )
-
-	end
-
-end
-
--- handle events from the browser's WebSocket (HTML5 builds)
---
-function WebSocket:_browserEvent_handler( event )
-	-- print( "WebSocket:_browserEvent_handler", event.type )
-
-	-- as with frames from a socket, an error in app code fails the connection
-	local ok, err = xpcall( function()
-		self:_handleBrowserEvent( event )
-	end, debug.traceback )
-
-	if not ok then
-		print( "\n\ndmc_websockets :: Unknown Error", err )
-		if self:getState() ~= WebSocket.STATE_CLOSED then
-			self:_bailout{
-				code=CLOSE_CODES.INTERNAL.code,
-				reason=CLOSE_CODES.INTERNAL.reason
-			}
-		end
-	end
-end
-
-function WebSocket:_handleBrowserEvent( event )
+function WebSocket:_transportEvent_handler( event )
+	-- print( "WebSocket:_transportEvent_handler", event.type )
+	local etype = event.type
 	local state = self:getState()
 
-	if event.type == 'open' then
+	if etype == 'open' then
 		if state == WebSocket.STATE_INIT then
 			self:gotoState( WebSocket.STATE_CONNECTED )
 		end
 
-	elseif event.type == 'message' then
+	elseif etype == 'message' then
 		if state == WebSocket.STATE_CONNECTED or state == WebSocket.STATE_CLOSING then
 			self:_onMessage{ data=event.data, type=event.ftype }
 		end
 
-	elseif event.type == 'close' then
-		if state == WebSocket.STATE_CLOSED then
-			-- pass
-
-		elseif event.isError or state == WebSocket.STATE_INIT then
-			-- unreachable server, refused handshake, failed TLS or a
-			-- dropped connection: browsers don't say which
-			self:_bailout{
-				code=ERROR_CODES.NETWORK_ERROR.code,
-				reason=ERROR_CODES.NETWORK_ERROR.reason,
-				emsg=event.emsg
-			}
-
-		else
-			self:_close{
-				code=event.code,
-				reason=event.reason,
-				from_server=true
-			}
+	elseif etype == 'ping' then
+		if state == WebSocket.STATE_CONNECTED then
+			self:_sendPong( event.data )
 		end
+
+	elseif etype == 'pong' then
+		self:_pongReceived( event.data )
+
+	elseif etype == 'close' then
+		-- the server's close
+		self:_close{
+			code=event.code,
+			reason=event.reason,
+			from_server=true
+		}
+
+	elseif etype == 'drop' then
+		-- the connection ended without a closing handshake
+		if state ~= WebSocket.STATE_CLOSED then
+			self:gotoState( WebSocket.STATE_CLOSED )
+		end
+
+	elseif etype == 'protocol_error' then
+		-- what the server sent breaks the protocol: close with the code
+		self:_close{
+			code=event.code,
+			reason=event.reason
+		}
+
+	elseif etype == 'error' then
+		-- unreachable server, refused handshake, failed TLS, a dropped
+		-- connection, or an error in app code run from an event
+		local err = TRANSPORT_ERRORS[ event.kind ] or ERROR_CODES.NETWORK_ERROR
+		self:_bailout{
+			code=err.code,
+			reason=err.reason,
+			emsg=event.emsg
+		}
 
 	end
 end

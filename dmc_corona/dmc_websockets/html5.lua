@@ -41,9 +41,10 @@ SOFTWARE.
 
 An HTML5 build has no TCP sockets, so the browser's own WebSocket makes
 the connection, the handshake and the frames, answers pings and does the
-closing handshake. This module stands in for dmc_sockets there: it opens
-browser connections through a small JavaScript bridge (html5_js.js, next
-to this file) and hands the WebSocket class whole messages and the close.
+closing handshake. This module is the transport there, with the same
+members as the native one (dmc_websockets/native.lua): it opens browser
+connections through a small JavaScript bridge (html5_js.js, next to this
+file) and hands the WebSocket class whole messages and the close.
 
 The bridge keeps each connection's events in a queue, which is read here
 from enterFrame (as often as the throttle allows). App code never runs
@@ -88,7 +89,7 @@ end
 
 local Html5 = {}
 
---== Throttle Constants, the same as dmc_sockets
+--== Throttle Constants, the same as the native transport
 -- accepted but unused: connections are read every frame, since reading
 -- the browser's queue costs next to nothing
 
@@ -96,6 +97,9 @@ Html5.OFF = 0
 Html5.LOW = mfloor( 1000/30 )  -- ie, 30 FPS
 Html5.MEDIUM = mfloor( 1000/15 )  -- ie, 15 FPS
 Html5.HIGH = mfloor( 1000/1 )  -- ie, 1 FPS
+
+-- browsers don't let scripts send pings, and answer the server's themselves
+Html5.can_ping = false
 
 
 local bridge = nil -- JS bridge module, loaded on first use
@@ -206,7 +210,8 @@ end
 	{ type='open' }
 	{ type='message', data=<string>, ftype='text'|'binary' }
 	{ type='close', code=<number>, reason=<string>, wasClean=<boolean> }
-	{ type='close', isError=true, emsg=<string> } -- failed, no details
+	{ type='error', kind='network', emsg=<string> } -- failed, no details
+	{ type='error', kind='internal' } -- an error in app code run from an event
 --]]
 
 local Connection = {}
@@ -218,6 +223,8 @@ Connection.__index = Connection
 --
 function Connection:send( ftype, data )
 	if not self._id then return end
+	-- pings and pongs aren't sent in HTML5 builds
+	if ftype ~= 'text' and ftype ~= 'binary' then return end
 
 	local params = { id=self._id, type=ftype, data=data }
 	if ftype == 'binary' then
@@ -274,7 +281,15 @@ end
 --== Private Methods
 
 function Connection:_deliver( event )
-	if self._onEvent then self._onEvent( event ) end
+	local onEvent = self._onEvent
+	if not onEvent then return end
+
+	-- as with frames from a socket, an error in app code fails the connection
+	local ok, err = xpcall( function() onEvent( event ) end, debug.traceback )
+	if not ok then
+		print( "\n\ndmc_websockets :: Unknown Error", err )
+		if not self._done then onEvent{ type='error', kind='internal' } end
+	end
 end
 
 -- fail from the next read, after any events already queued
@@ -282,7 +297,7 @@ end
 function Connection:_fail( emsg )
 	if self._failed then return end
 	self._failed = true
-	tinsert( self._pending, { type='close', isError=true, emsg=emsg } )
+	tinsert( self._pending, { type='error', kind='network', emsg=emsg } )
 end
 
 function Connection:_read()
@@ -308,6 +323,7 @@ function Connection:_browserEvent( event )
 	local kind = event.kind
 
 	if kind == 'open' then
+		self._opened = true
 		self:_deliver{ type='open' }
 
 	elseif kind == 'message' then
@@ -327,9 +343,10 @@ function Connection:_browserEvent( event )
 		self._error = true
 
 	elseif kind == 'close' then
-		if self._error or event.code == 1006 then
-			self:_deliver{ type='close', isError=true, emsg=BROWSER_ERROR,
-				code=event.code, reason=event.reason, wasClean=event.wasClean }
+		if self._error or event.code == 1006 or not self._opened then
+			-- unreachable server, refused handshake, failed TLS or a
+			-- dropped connection: browsers don't say which
+			self:_deliver{ type='error', kind='network', emsg=BROWSER_ERROR }
 		else
 			self:_deliver{ type='close', code=event.code, reason=event.reason,
 				wasClean=event.wasClean }
@@ -345,14 +362,40 @@ end
 --====================================================================--
 
 
+-- the options a browser doesn't leave to scripts: it makes the
+-- handshake and does TLS itself
+--
+function Html5.checkParams( params )
+	assert( type( params.keepalive ) ~= 'number' or params.keepalive <= 0,
+		"WebSocket: 'keepalive' isn't available in HTML5 builds" )
+	assert( params.origin == nil,
+		"WebSocket: 'origin' isn't available in HTML5 builds, the browser sends its own" )
+	assert( params.ssl_params == nil,
+		"WebSocket: 'ssl_params' isn't available in HTML5 builds" )
+end
+
+-- accepted but unused, see Throttle Constants
+--
+function Html5.setThrottle( value )
+end
+
 -- open a connection
--- params: url, protocols (list of strings), onEvent (function)
+-- params: scheme, host, port, path (with its query), protocols (a string
+-- or a list of them), onEvent (function)
 --
 function Html5.connect( params )
+	local host = params.host
+	if host:find( ':', 1, true ) then host = '[' .. host .. ']' end -- IPv6
+	local url = params.scheme .. '://' .. host .. ':' .. params.port .. params.path
+
+	local protocols = params.protocols
+	if type( protocols ) == 'string' then protocols = { protocols } end
+
 	local conn = setmetatable( {
 		_id=nil,
 		_onEvent=params.onEvent,
 		_pending={}, -- events made here, delivered on the next read
+		_opened=false,
 		_error=false,
 		_failed=false,
 		_done=false
@@ -360,7 +403,7 @@ function Html5.connect( params )
 
 	local b, emsg = loadBridge()
 	if b then
-		local result = b.open{ url=params.url, protocols=params.protocols or {} }
+		local result = b.open{ url=url, protocols=protocols or {} }
 		if type( result ) == 'table' and result.ok then
 			conn._id = result.id
 		else
