@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "2.2.0"
+local VERSION = "2.2.1"
 
 
 
@@ -295,7 +295,9 @@ function ComponentBase:_unsetView()
 
 		if view.__dmc_ref then view.__dmc_ref = nil end
 
-		if view.numChildren~=0 then
+		-- only a group has children: a view set by _setView() may be
+		-- any display object, eg an image
+		if view.numChildren then
 			for i = view.numChildren, 1, -1 do
 				local o = view[i]
 				o.parent:remove( o )
@@ -577,7 +579,7 @@ end
 -- event type (eg, 'button-changed-event')
 -- event data, any type of data (eg, object, string, number, table, etc)
 -- event params (optional, if have, must have arg for data (nil))
--- params.merge merge data into event table, default 'true'
+-- params.merge merge data into event table, default 'false'
 function ComponentBase:dispatchEvent( ... )
 	local args = {...}
 	local evt = args[1]
