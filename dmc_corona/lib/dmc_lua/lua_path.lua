@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.3.0"
 
 
 
@@ -48,6 +48,9 @@ local VERSION = "0.2.0"
 
 
 local assert = assert
+local error = error
+local ipairs = ipairs
+local sfind = string.find
 local sgmatch = string.gmatch
 local sgsub = string.gsub
 local smatch = string.match
@@ -152,6 +155,10 @@ end
 -- break a file path (or a require string, with sep '.') into its parts
 -- sep is guessed from the path when not given
 --
+-- the last part is a file when it has a dot, and a folder when the path
+-- ends with the separator, or the part is '.' or '..'. a name with only a
+-- leading dot ('.hidden') or a trailing one has no extension
+--
 function Path.parse( filePath, sep )
 	-- print("Path.parse", filePath )
 	assert( type(filePath)=='string', "parse: expected string for filePath" )
@@ -160,15 +167,17 @@ function Path.parse( filePath, sep )
 	local isAbs = false
 	local parts, last
 	local filename, name, ext
+	local isDir = ( #filePath>0 and ssub( filePath, -#sep )==sep )
 
 	if ssub( filePath, 1, #sep )==sep then
 		isAbs=true
 	end
 	parts = Path.split( filePath, sep )
 	last = parts[#parts] or ''
-	if smatch( last, '[%.]' ) then
+	if not isDir and last~='.' and last~='..' and smatch( last, '[%.]' ) then
 		filename = tremove( parts, #parts )
 		name, ext = smatch( filename, '(.+)%.([^%.]+)$' )
+		if not name then name = filename end
 	end
 
 	return {
@@ -211,12 +220,32 @@ function Path._concatPath( params )
 end
 
 
+-- checkRequirePart()
+-- raises an error, blamed on buildRequire()'s caller, for a part
+-- that can't be in a require string
+--
+local function checkRequirePart( part, sep )
+	if part=='.' or part=='..' then
+		error( "buildRequire: path has a '" .. part .. "' part", 3 )
+	elseif sfind( part, sep, 1, true ) then
+		error( "buildRequire: '" .. part .. "' contains the separator '" .. sep .. "'", 3 )
+	end
+end
+
 -- buildRequire()
 -- returns a require string from a table from parse()
+-- raises an error for a path with no require string: an absolute
+-- path, a '.' or '..' part, or a part that contains the separator
 --
 function Path.buildRequire( parts, sep )
 	assert( type(parts)=='table' )
 	if sep==nil then sep='.' end
+	if parts.isAbs then
+		error( "buildRequire: path is absolute", 2 )
+	end
+	for _, part in ipairs( parts.dir or {} ) do checkRequirePart( part, sep ) end
+	for _, part in ipairs( parts.path or {} ) do checkRequirePart( part, sep ) end
+	if parts.name then checkRequirePart( parts.name, sep ) end
 	return Path._concatPath{
 		dir=parts.dir,
 		path=parts.path,
