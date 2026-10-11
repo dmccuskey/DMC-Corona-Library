@@ -39,7 +39,7 @@ SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.2.0"
+local VERSION = "0.2.1"
 
 
 
@@ -206,12 +206,19 @@ function Promise:_addCallback( list, func )
 end
 
 -- the promise has settled: the callback lists aren't needed after this
+-- every callback runs, even after one raises an error; the first
+-- error is raised again, as it was, once all of them have run
 function Promise:_execute( list, values )
 	-- print("Promise:_execute")
 	self._done_cbs, self._fail_cbs = {}, {}
+	local failed, first_err = false, nil
 	for i=1,#list do
-		list[i]( unpack( values, 1, values.n ) )
+		local ok, err = pcall( list[i], unpack( values, 1, values.n ) )
+		if not ok and not failed then
+			failed, first_err = true, err
+		end
 	end
+	if failed then error( first_err, 0 ) end
 end
 
 

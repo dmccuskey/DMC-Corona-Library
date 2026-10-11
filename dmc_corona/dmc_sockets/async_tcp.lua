@@ -66,6 +66,15 @@ local ssl
 
 local LOCAL_DEBUG = false
 
+-- LuaSocket's messages for a connect which can't succeed by waiting;
+-- any other message ('timeout', 'Operation already in progress', one
+-- not known here) is tried again until the socket's timeout
+local CONNECT_FAILED = {
+	[ 'connection refused' ] = true,
+	[ 'host not found' ] = true,
+	[ 'host or service not provided, or not known' ] = true,
+}
+
 
 
 --====================================================================--
@@ -219,6 +228,7 @@ function ATCPSocket:connect( host, port, params )
 		local beg_time = system.getTimer()
 		local timeout, time_diff = self._timeout, 0
 		local evt = {}
+		local failed_emsg
 
 		repeat
 
@@ -230,6 +240,7 @@ function ATCPSocket:connect( host, port, params )
 			-- nil	timeout
 			-- nil	Operation already in progress
 			-- nil	already connected
+			-- nil	connection refused
 
 			if success or emsg == self.ERR_CONNECTED then
 				self._status = self.CONNECTED
@@ -266,9 +277,11 @@ function ATCPSocket:connect( host, port, params )
 
 				self._master:_connect( self )
 
-				self:_removeCoroutineFromQueue()
-
 				if self._onConnect then self._onConnect( evt ) end
+
+			elseif CONNECT_FAILED[ emsg ] then
+				-- nothing will change by waiting: report it now
+				failed_emsg = emsg
 
 			else
 				coroutine.yield()
@@ -277,15 +290,14 @@ function ATCPSocket:connect( host, port, params )
 
 			time_diff = system.getTimer() - beg_time
 
-		until time_diff > timeout or self._status == self.CONNECTED
+		until failed_emsg or time_diff > timeout or self._status == self.CONNECTED
 
 		if self._status ~= self.CONNECTED then
 			self._status = self.NOT_CONNECTED
 			evt.type = self.CONNECT
 			evt.status = self._status
-			evt.emsg = self.ERR_TIMEOUT
-
-			self:_removeCoroutineFromQueue()
+			evt.isError = true
+			evt.emsg = failed_emsg or self.ERR_TIMEOUT
 
 			if self._onConnect then self._onConnect( evt ) end
 		end
@@ -381,8 +393,7 @@ function ATCPSocket:receive( option, callback )
 			evt.data, evt.emsg = data, nil
 			callback( evt )
 		else
-			local co = coroutine.create( f )
-			table.insert( self._coroutine_queue, co )
+			self:_addCoroutineToQueue( f )
 		end
 
 	end
@@ -417,8 +428,6 @@ function ATCPSocket:receiveUntilNewline( callback )
 					if not_coroutine then
 						return true
 					else
-						self:_removeCoroutineFromQueue()
-
 						evt.data, evt.emsg = data_list, nil
 						callback( evt )
 					end
@@ -438,8 +447,6 @@ function ATCPSocket:receiveUntilNewline( callback )
 			time_diff = system.getTimer() - beg_time
 
 		until data == '' or time_diff > timeout
-
-		self:_removeCoroutineFromQueue()
 
 		if data_list[#data_list] ~= '' then
 			if #data_list > 0 then
@@ -598,17 +605,22 @@ function ATCPSocket:_addCoroutineToQueue( func )
 	end
 end
 
-function ATCPSocket:_removeCoroutineFromQueue()
+-- _removeCoroutineFromQueue()
+-- only _processCoroutineQueue() calls this, for the coroutine it ran:
+-- a coroutine never removes itself, or one queued behind it would go too
+--
+function ATCPSocket:_removeCoroutineFromQueue( co )
 	-- print( 'ATCPSocket:_removeCoroutineFromQueue' )
-	-- assert( type(func)=='function', "expected function" )
-	--==--
-
-	if #self._coroutine_queue > 0 then
-		tremove( self._coroutine_queue, 1 )
+	local queue = self._coroutine_queue
+	for i=1,#queue do
+		if queue[i] == co then
+			tremove( queue, i )
+			break
+		end
 	end
 
 	-- if no more routines, then unset listener
-	if #self._coroutine_queue == 0 and self._coroutine_queue_active then
+	if #queue == 0 and self._coroutine_queue_active then
 		Runtime:removeEventListener( 'enterFrame', self )
 		self._coroutine_queue_active = false
 	end
@@ -618,18 +630,22 @@ function ATCPSocket:_processCoroutineQueue()
 	-- print( 'ATCPSocket:_processCoroutineQueue' )
 
 	local co = self:_getActiveCoroutine()
-	if co then
-		local status, msg = coroutine.resume( co )
-		if not status then
-			self:_removeCoroutineFromQueue()
-			print( "ERROR in async_tcp coroutine" )
-			error( msg )
-		end
-		if coroutine.status( co ) ~= 'dead' then return end
+	if not co then return end
+
+	-- called from inside the coroutine itself (its callback read data,
+	-- or queued another read): it finishes when its callback returns
+	if coroutine.status( co ) ~= 'suspended' then return end
+
+	local status, msg = coroutine.resume( co )
+	if not status then
+		self:_removeCoroutineFromQueue( co )
+		print( "ERROR in async_tcp coroutine" )
+		error( msg )
 	end
+	if coroutine.status( co ) ~= 'dead' then return end
 
 	-- coroutine is finished, remove it
-	self:_removeCoroutineFromQueue()
+	self:_removeCoroutineFromQueue( co )
 end
 
 
