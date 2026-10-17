@@ -30,7 +30,7 @@ DEALINGS IN THE SOFTWARE.
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "0.4.1"
+local VERSION = "0.4.2"
 
 
 -- boot dmc_corona with boot script, if it's there
@@ -801,7 +801,7 @@ local function multitouchTouchHandler( event )
 		end
 
 
-	elseif ( event.phase == 'ended' or event.phase == 'canceled' ) then
+	elseif ( event.phase == 'ended' or event.phase == 'cancelled' ) then
 
 		if event.isFocused then
 

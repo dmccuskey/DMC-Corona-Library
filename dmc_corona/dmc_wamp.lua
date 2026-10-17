@@ -45,7 +45,7 @@ WAMP support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.1.1"
+local VERSION = "1.2.0"
 
 
 
@@ -684,6 +684,9 @@ function Wamp:_wamp_close( params )
 	params = params or {}
 	local session = self._session
 	local details
+
+	-- subscriptions belong to the session: subscribe again after connect()
+	self._subscriptions = {}
 
 	if session then
 		session:onClose( params.reason )
