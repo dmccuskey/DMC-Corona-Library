@@ -49,7 +49,7 @@ WebSocket support adapted from:
 
 -- Semantic Versioning Specification: http://semver.org/
 
-local VERSION = "1.6.1"
+local VERSION = "1.7.0"
 
 
 
@@ -662,6 +662,7 @@ function WebSocket:do_state_init( params )
 	params = params or {}
 	--==--
 	self._ready_state = self.NOT_ESTABLISHED
+	self._latency = nil -- measured again on this connection
 	self:setState( WebSocket.STATE_INIT )
 
 	local uri = self._uri
@@ -860,6 +861,10 @@ function WebSocket:state_closed( next_state, params )
 
 	if next_state == WebSocket.STATE_CLOSED then
 		self:do_state_closed( params )
+
+	elseif next_state == WebSocket.STATE_INIT then
+		-- connect() again: a new connection, same object
+		self:do_state_init( params )
 
 	else
 		print( "WARNING :: WebSocket:state_closed %s" % tostring( next_state ) )
