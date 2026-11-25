@@ -118,7 +118,7 @@ function ATCPSocket:__init__( params )
 	-- milliseconds to wait when connecting and for '*l' reads
 	self._timeout = params.timeout or ATCPSocket.DEFAULT_TIMEOUT
 
-	self.__coroutine_queue_active = false
+	self._coroutine_queue_active = false
 	self._coroutine_queue = {}
 
 	self._read_in_process = false
@@ -140,6 +140,14 @@ function ATCPSocket:__initComplete__()
 	--==--
 
 	self.ssl_params = self._ssl_params -- use setter
+end
+
+function ATCPSocket:__undoInitComplete__()
+	-- print( "ATCPSocket:__undoInitComplete__" )
+	self:_stopWriteHandler()
+	self:_cancelCoroutineQueue()
+	--==--
+	self:superCall( '__undoInitComplete__' )
 end
 
 -- END: Setup Lua Objects
@@ -278,6 +286,9 @@ function ATCPSocket:connect( host, port, params )
 				self._master:_connect( self )
 
 				if self._onConnect then self._onConnect( evt ) end
+				-- done: the callback may have closed or reconnected,
+				-- so the socket's state is no longer this attempt's
+				return
 
 			elseif CONNECT_FAILED[ emsg ] then
 				-- nothing will change by waiting: report it now
@@ -324,6 +335,7 @@ function ATCPSocket:close()
 	-- print( 'ATCPSocket:close' )
 	self:_stopWriteHandler()
 	self._write_queue = {}
+	self:_cancelCoroutineQueue()
 	self:superCall( 'close' )
 end
 
@@ -602,6 +614,19 @@ function ATCPSocket:_addCoroutineToQueue( func )
 	if not self._coroutine_queue_active and #self._coroutine_queue > 0 then
 		Runtime:addEventListener( 'enterFrame', self )
 		self._coroutine_queue_active = true
+	end
+end
+
+-- _cancelCoroutineQueue()
+-- drop a pending connect or read, for close() and removeSelf():
+-- run on a later frame, it would use the socket they remove
+--
+function ATCPSocket:_cancelCoroutineQueue()
+	-- print( 'ATCPSocket:_cancelCoroutineQueue' )
+	self._coroutine_queue = {}
+	if self._coroutine_queue_active then
+		Runtime:removeEventListener( 'enterFrame', self )
+		self._coroutine_queue_active = false
 	end
 end
 
